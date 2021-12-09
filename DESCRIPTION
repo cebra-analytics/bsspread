@@ -1,8 +1,9 @@
 Package: bsspread
 Title: Biosecurity Spread Modelling
 Version: 0.0.1
-Authors@R: c(
-    person("Sean", "Haythorne", email = "sean.haythorne@unimelb.edu.au", role = c("aut", "cre")))
+Authors@R: c(person("Sean", "Haythorne", 
+                    email = "sean.haythorne@unimelb.edu.au", 
+                    role = c("aut", "cre")))
 Description: Biosecurity Spread Modelling...
 Depends: R (>= 4.0)
 License: GPL-3
@@ -10,3 +11,11 @@ URL: https://github.com/cebra-analytics/bsspread
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.2
+Imports:
+    dplyr (>= 1.0.7),
+    raster (>= 3.5.2),
+    terra (>= 1.4.22)
+Suggests:
+    knitr,
+    rmarkdown,
+    testthat
