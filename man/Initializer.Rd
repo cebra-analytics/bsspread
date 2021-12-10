@@ -7,13 +7,31 @@
 \alias{Initializer.Incursions}
 \title{Initializer class builder}
 \usage{
-Initializer(x, region = NULL, population_model = NULL, ...)
+Initializer(
+  x,
+  region = NULL,
+  population_model = NULL,
+  class = character(),
+  ...
+)
 
 \method{Initializer}{Raster}(x, ...)
 
-\method{Initializer}{SpatRaster}(x, region = NULL, population_model = NULL, ...)
+\method{Initializer}{SpatRaster}(
+  x,
+  region = NULL,
+  population_model = NULL,
+  class = character(),
+  ...
+)
 
-\method{Initializer}{Incursions}(x, region = NULL, population_model = NULL, ...)
+\method{Initializer}{Incursions}(
+  x,
+  region = NULL,
+  population_model = NULL,
+  class = character(),
+  ...
+)
 }
 \arguments{
 \item{x}{A \code{raster::RasterLayer} or \code{terra::SpatRaster} defining
@@ -27,6 +45,8 @@ locations included in the spread simulations.}
 \item{population_model}{A \code{Population} or inherited class object
 defining the population representation and growth functionality for the
 spread simulations.}
+
+\item{class}{Character class name for inherited classes. Default is empty.}
 
 \item{...}{Additional parameters.}
 }

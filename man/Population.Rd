@@ -12,6 +12,7 @@ Population(
   type = c("presence_only", "unstructured", "stage_structured"),
   growth = NULL,
   capacity = NULL,
+  class = character(),
   ...
 )
 
@@ -24,6 +25,7 @@ Population(
   type = c("presence_only", "unstructured", "stage_structured"),
   growth = NULL,
   capacity = NULL,
+  class = character(),
   ...
 )
 }
@@ -45,6 +47,8 @@ age/stage-based transition rates (matrix) for each time step when
 \code{terra::SpatRaster} with values for the carrying capacity of the
 invasive species at each location. Default is \code{NULL} for when
 \code{type = "presence_only"}.}
+
+\item{class}{Character class name for inherited classes. Default is empty.}
 
 \item{...}{Additional parameters.}
 }

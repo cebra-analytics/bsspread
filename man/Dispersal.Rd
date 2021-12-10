@@ -7,18 +7,20 @@
 \alias{Dispersal.Region}
 \title{Dispersal model abstract class builder}
 \usage{
-Dispersal(region, ...)
+Dispersal(region, class = character(), ...)
 
 \method{Dispersal}{Raster}(region, ...)
 
 \method{Dispersal}{SpatRaster}(region, ...)
 
-\method{Dispersal}{Region}(region, ...)
+\method{Dispersal}{Region}(region, class = character(), ...)
 }
 \arguments{
 \item{region}{A \code{raster::RasterLayer}, \code{terra::SpatRaster}, or
 \code{Region} or inherited class object representing the spatial region
 (template) for spread simulations.}
+
+\item{class}{Character class name for inherited classes. Default is empty.}
 
 \item{...}{Additional parameters.}
 }

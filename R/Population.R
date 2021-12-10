@@ -17,6 +17,7 @@
 #'   \code{terra::SpatRaster} with values for the carrying capacity of the
 #'   invasive species at each location. Default is \code{NULL} for when
 #'   \code{type = "presence_only"}.
+#' @param class Character class name for inherited classes. Default is empty.
 #' @param ... Additional parameters.
 #' @return An \code{Population} class object (list) containing functions for
 #'   accessing attributes (of the function environment) TODO:
@@ -29,7 +30,8 @@ Population <- function(region,
                        type = c("presence_only", "unstructured",
                                 "stage_structured"),
                        growth = NULL,
-                       capacity = NULL, ...) {
+                       capacity = NULL,
+                       class = character(), ...) {
   UseMethod("Population")
 }
 
@@ -53,10 +55,11 @@ Population.Region <- function(region,
                               type = c("presence_only", "unstructured",
                                        "stage_structured"),
                               growth = NULL,
-                              capacity = NULL, ...) {
+                              capacity = NULL,
+                              class = character(), ...) {
 
   # Create a class structure
-  self <- structure(list(), class = "Population")
+  self <- structure(list(), class = c(class, "Population"))
 
   return(self)
 }

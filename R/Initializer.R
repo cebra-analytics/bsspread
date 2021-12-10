@@ -14,6 +14,7 @@
 #' @param population_model A \code{Population} or inherited class object
 #'   defining the population representation and growth functionality for the
 #'   spread simulations.
+#' @param class Character class name for inherited classes. Default is empty.
 #' @param ... Additional parameters.
 #' @return An \code{Initializer} class object (list) containing functions for
 #'   accessing attributes (of the function environment) TODO:
@@ -23,7 +24,8 @@
 #' @export
 Initializer <- function(x,
                         region = NULL,
-                        population_model = NULL, ...) {
+                        population_model = NULL,
+                        class = character(), ...) {
   UseMethod("Initializer")
 }
 
@@ -38,10 +40,11 @@ Initializer.Raster <- function(x, ...) {
 #' @export
 Initializer.SpatRaster <- function(x,
                                    region = NULL,
-                                   population_model = NULL, ...) {
+                                   population_model = NULL,
+                                   class = character(), ...) {
 
   # Create a class structure
-  self <- structure(list(), class = "Initializer")
+  self <- structure(list(), class = c(class, "Initializer"))
 
   return(self)
 }
@@ -50,10 +53,11 @@ Initializer.SpatRaster <- function(x,
 #' @export
 Initializer.Incursions <- function(x,
                                    region = NULL,
-                                   population_model = NULL, ...) {
+                                   population_model = NULL,
+                                   class = character(), ...) {
 
   # Create a class structure
-  self <- structure(list(), class = "Initializer")
+  self <- structure(list(), class = c(class, "Initializer"))
 
   return(self)
 }

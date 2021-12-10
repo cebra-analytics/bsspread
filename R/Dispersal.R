@@ -6,6 +6,7 @@
 #' @param region A \code{raster::RasterLayer}, \code{terra::SpatRaster}, or
 #'   \code{Region} or inherited class object representing the spatial region
 #'   (template) for spread simulations.
+#' @param class Character class name for inherited classes. Default is empty.
 #' @param ... Additional parameters.
 #' @return An \code{Dispersal} class object (list) containing functions for
 #'   accessing attributes (of the function environment) TODO:
@@ -14,7 +15,8 @@
 #'   }
 #' @include Region.R
 #' @export
-Dispersal <- function(region, ...) {
+Dispersal <- function(region,
+                      class = character(), ...) {
   UseMethod("Dispersal")
 }
 
@@ -34,10 +36,16 @@ Dispersal.SpatRaster <- function(region, ...) {
 
 #' @name Dispersal
 #' @export
-Dispersal.Region <- function(region, ...) {
+Dispersal.Region <- function(region,
+                             class = character(), ...) {
 
   # Create a class structure
-  self <- structure(list(), class = "Dispersal")
+  self <- structure(list(), class = c(class, "Dispersal"))
+
+  # Get region object
+  self$get_region <- function() {
+    return(region)
+  }
 
   return(self)
 }
