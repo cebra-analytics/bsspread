@@ -53,10 +53,12 @@ invasive species at each location. Default is \code{NULL} for when
 \item{...}{Additional parameters.}
 }
 \value{
-An \code{Population} class object (list) containing functions for
-accessing attributes (of the function environment) TODO:
+A \code{Population} class object (list) containing function for
+simulating growth:
 \describe{
-\item{\code{TODO()}}{TODO.}
+\item{\code{grow(x)}}{Perform growth or age/stage-based transition on
+population \code{x} array (stages by locations), and return
+transformed array.}
 }
 }
 \description{

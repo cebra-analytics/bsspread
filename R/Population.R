@@ -19,10 +19,12 @@
 #'   \code{type = "presence_only"}.
 #' @param class Character class name for inherited classes. Default is empty.
 #' @param ... Additional parameters.
-#' @return An \code{Population} class object (list) containing functions for
-#'   accessing attributes (of the function environment) TODO:
+#' @return A \code{Population} class object (list) containing function for
+#'   simulating growth:
 #'   \describe{
-#'     \item{\code{TODO()}}{TODO.}
+#'     \item{\code{grow(x)}}{Perform growth or age/stage-based transition on
+#'       population \code{x} array (stages by locations), and return
+#'       transformed array.}
 #'   }
 #' @include Region.R
 #' @export
@@ -60,6 +62,9 @@ Population.Region <- function(region,
 
   # Create a class structure
   self <- structure(list(), class = c(class, "Population"))
+
+  # Generic grow method (overridden in subclass)
+  self$grow <- function(x) return(x) # no change
 
   return(self)
 }

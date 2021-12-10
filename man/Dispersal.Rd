@@ -26,8 +26,12 @@ Dispersal(region, class = character(), ...)
 }
 \value{
 An \code{Dispersal} class object (list) containing functions for
-accessing attributes (of the function environment) TODO:
+accessing attributes (of the function environment) and performing
+dispersal:
 \describe{
+\item{\code{get_region()}}{Get the spatial region object.}
+\item{\code{disperse(x)}}{Perform location dispersal on population
+\code{x} array (stages by locations), and return transformed array.}
 \item{\code{TODO()}}{TODO.}
 }
 }

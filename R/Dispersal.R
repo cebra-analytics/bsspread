@@ -9,8 +9,12 @@
 #' @param class Character class name for inherited classes. Default is empty.
 #' @param ... Additional parameters.
 #' @return An \code{Dispersal} class object (list) containing functions for
-#'   accessing attributes (of the function environment) TODO:
+#'   accessing attributes (of the function environment) and performing
+#'   dispersal:
 #'   \describe{
+#'     \item{\code{get_region()}}{Get the spatial region object.}
+#'     \item{\code{disperse(x)}}{Perform location dispersal on population
+#'       \code{x} array (stages by locations), and return transformed array.}
 #'     \item{\code{TODO()}}{TODO.}
 #'   }
 #' @include Region.R
@@ -46,6 +50,9 @@ Dispersal.Region <- function(region,
   self$get_region <- function() {
     return(region)
   }
+
+  # Generic disperse method (overridden in subclass)
+  self$disperse <- function(x) return(x) # no change
 
   return(self)
 }
