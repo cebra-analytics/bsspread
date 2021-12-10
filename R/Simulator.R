@@ -39,6 +39,7 @@
 #'       model objects.}
 #'     \item{\code{run()}}{Run the simulations and return the results.}
 #'   }
+#' @include Region.R
 #' @export
 Simulator <- function(region,
                       time_steps = 1,
