@@ -25,4 +25,5 @@ Collate:
     'Incursions.R'
     'Initializer.R'
     'Population.R'
+    'PresencePopulation.R'
     'Simulator.R'

@@ -46,6 +46,8 @@ Incursions.SpatRaster <- function(x,
                                   type = c("weight", "prob"),
                                   continued = FALSE,
                                   time_steps = 1, ...) {
+  type <- match.arg(type)
+
   # Create a class structure
   self <- structure(list(), class = "Incursions")
 

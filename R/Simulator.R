@@ -134,7 +134,7 @@ Simulator.Region <- function(region,
     # Should at least have an initializer and a population model
     object_absence <- c(is.null(initializer), is.null(population_model))
     if (any(object_absence)) {
-      stop(sprintf("The simulator requires the %s be set.",
+      stop(sprintf("The simulator requires the %s to be set.",
                  paste(c("initializer", "population model")[object_absence],
                        collapse = " and ")),
            call. = FALSE)

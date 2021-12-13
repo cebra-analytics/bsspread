@@ -2,30 +2,23 @@
 % Please edit documentation in R/Dispersal.R
 \name{Dispersal}
 \alias{Dispersal}
-\alias{Dispersal.Raster}
-\alias{Dispersal.SpatRaster}
 \alias{Dispersal.Region}
 \title{Dispersal model abstract class builder}
 \usage{
 Dispersal(region, class = character(), ...)
 
-\method{Dispersal}{Raster}(region, ...)
-
-\method{Dispersal}{SpatRaster}(region, ...)
-
 \method{Dispersal}{Region}(region, class = character(), ...)
 }
 \arguments{
-\item{region}{A \code{raster::RasterLayer}, \code{terra::SpatRaster}, or
-\code{Region} or inherited class object representing the spatial region
-(template) for spread simulations.}
+\item{region}{A \code{Region} or inherited class object representing the
+spatial region (template) for spread simulations.}
 
 \item{class}{Character class name for inherited classes. Default is empty.}
 
 \item{...}{Additional parameters.}
 }
 \value{
-An \code{Dispersal} class object (list) containing functions for
+A \code{Dispersal} class object (list) containing functions for
 accessing attributes (of the function environment) and performing
 dispersal:
 \describe{

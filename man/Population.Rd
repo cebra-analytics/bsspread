@@ -2,8 +2,6 @@
 % Please edit documentation in R/Population.R
 \name{Population}
 \alias{Population}
-\alias{Population.Raster}
-\alias{Population.SpatRaster}
 \alias{Population.Region}
 \title{Population model class builder}
 \usage{
@@ -16,10 +14,6 @@ Population(
   ...
 )
 
-\method{Population}{Raster}(region, ...)
-
-\method{Population}{SpatRaster}(region, ...)
-
 \method{Population}{Region}(
   region,
   type = c("presence_only", "unstructured", "stage_structured"),
@@ -30,9 +24,8 @@ Population(
 )
 }
 \arguments{
-\item{region}{A \code{raster::RasterLayer}, \code{terra::SpatRaster}, or
-\code{Region} or inherited class object representing the spatial region
-(template) for spread simulations.}
+\item{region}{A \code{Region} or inherited class object representing the
+spatial region (template) for spread simulations.}
 
 \item{type}{One of \code{"presence_only"} (default), \code{"unstructured"},
 or \code{"stage_structured"} to indicate how populations are represented.}
@@ -43,22 +36,29 @@ age/stage-based transition rates (matrix) for each time step when
 \code{type = "stage_structured"}. Default is \code{NULL} for when
 \code{type = "presence_only"}.}
 
-\item{capacity}{A data frame, \code{raster::RasterLayer}, or
-\code{terra::SpatRaster} with values for the carrying capacity of the
-invasive species at each location. Default is \code{NULL} for when
-\code{type = "presence_only"}.}
+\item{capacity}{A vector of carrying capacity values of the invasive species
+at each location specified by the \code{region}. Default is \code{NULL}
+for when \code{type = "presence_only"}.}
 
-\item{class}{Character class name for inherited classes. Default is empty.}
+\item{class}{Character class name for inherited classes. Default is
+\code{NULL}.}
 
 \item{...}{Additional parameters.}
 }
 \value{
-A \code{Population} class object (list) containing function for
-simulating growth:
+A \code{Population} class object (list) containing functions for
+accessing attributes (when present) and simulating growth:
 \describe{
-\item{\code{grow(x)}}{Perform growth or age/stage-based transition on
-population \code{x} array (stages by locations), and return
-transformed array.}
+\item{\code{get_type()}}{Get the population representation type.}
+\item{\code{get_growth()}}{Get the growth rate or age/stage transition
+matrix.}
+\item{\code{get_stages()}}{Get the number of stages in a age/stage-based
+representation.}
+\item{\code{get_capacity()}}{Get the carrying capacity as a vector of
+values for each location.}
+\item{\code{grow(x)}}{Performs growth or age/stage-based transitions on
+population \code{x} vector/array (stages by locations), and returns
+the transformed vector/array.}
 }
 }
 \description{
