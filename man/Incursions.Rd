@@ -4,10 +4,12 @@
 \alias{Incursions}
 \alias{Incursions.Raster}
 \alias{Incursions.SpatRaster}
+\alias{Incursions.default}
 \title{Incursions class builder}
 \usage{
 Incursions(
   x,
+  region = NULL,
   type = c("weight", "prob"),
   continued = FALSE,
   time_steps = 1,
@@ -16,8 +18,11 @@ Incursions(
 
 \method{Incursions}{Raster}(x, ...)
 
-\method{Incursions}{SpatRaster}(
+\method{Incursions}{SpatRaster}(x, region = NULL, ...)
+
+\method{Incursions}{default}(
   x,
+  region = NULL,
   type = c("weight", "prob"),
   continued = FALSE,
   time_steps = 1,
@@ -25,9 +30,12 @@ Incursions(
 )
 }
 \arguments{
-\item{x}{A \code{raster::RasterLayer} or \code{terra::SpatRaster}
-object representing the incursion weightings or arrival probabilities at
-each spatial location.}
+\item{x}{A \code{raster::RasterLayer}, \code{terra::SpatRaster}, or numeric
+vector defining the incursion weightings or arrival probabilities at each
+spatial location.}
+
+\item{region}{A \code{Region} or inherited class object representing the
+spatial region (template) for spread simulations.}
 
 \item{type}{One of \code{"weight"} or \code{"prob"} to indicate if the
 values in \code{x} represent single incursion weightings or arrival
@@ -45,9 +53,14 @@ subsequent incursions when \code{type = "prob"} and
 }
 \value{
 An \code{Incursions} class object (list) containing functions for
-accessing attributes (of the function environment) TODO:
+accessing attributes and generating sampled incursions:
 \describe{
-\item{\code{TODO()}}{TODO.}
+\item{\code{get_type()}}{Get the incursion type.}
+\item{\code{get_continued()}}{Get the continued indicator when type is
+"prob".}
+\item{\code{get_time_steps()}}{Get the continued incursion time steps
+when applicable.}
+\item{\code{generate()}}{Generates incursion locations via sampling.}
 }
 }
 \description{

@@ -47,7 +47,8 @@ for when \code{type = "presence_only"}.}
 }
 \value{
 A \code{Population} class object (list) containing functions for
-accessing attributes (when present) and simulating growth:
+accessing attributes (when present), conforming data to the appropriate
+population representation, and simulating growth:
 \describe{
 \item{\code{get_type()}}{Get the population representation type.}
 \item{\code{get_growth()}}{Get the growth rate or age/stage transition
@@ -56,6 +57,8 @@ matrix.}
 representation.}
 \item{\code{get_capacity()}}{Get the carrying capacity as a vector of
 values for each location.}
+\item{\code{conform(x)}}{Conform x to the appropriate population
+representation (if possible).}
 \item{\code{grow(x)}}{Performs growth or age/stage-based transitions on
 population \code{x} vector/array (stages by locations), and returns
 the transformed vector/array.}

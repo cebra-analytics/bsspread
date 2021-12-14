@@ -10,7 +10,8 @@
 #'   (cells) with values greater than zero should be used in the simulations.
 #' @param ... Additional parameters.
 #' @return A \code{Region} class object (list) containing functions for
-#'   accessing attributes (of the function environment):
+#'   accessing attributes and checking compatibility of objects with the
+#'   region:
 #'   \describe{
 #'     \item{\code{get_template()}}{Get the spatial template (with zeros in
 #'       non-NA locations).}
@@ -20,6 +21,8 @@
 #'       patches) that are included in the simulation.}
 #'     \item{\code{get_type()}}{Get the type of spatial representation: grid
 #'       (raster cells) or patch (network).}
+#'     \item{\code{is_compatible(y)}}{Check the compatibility of object
+#'       \code{y} with the region defined by \code{x}.}
 #'   }
 #' @export
 Region <- function(x, suitability = FALSE, ...) {
@@ -72,6 +75,14 @@ Region.SpatRaster <- function(x, suitability = FALSE, ...) {
   # Get the spatial region type
   self$get_type <- function() {
     return("grid")
+  }
+
+  # Check compatibility of a spatial raster y with the region defined by x
+  self$is_compatible <- function(y) {
+    y <- terra::rast(y)
+    return(terra::crs(y) == terra::crs(x) &&
+             terra::ext(y) == terra::ext(x) &&
+             all(terra::res(y) == terra::res(x)))
   }
 
   return(self)

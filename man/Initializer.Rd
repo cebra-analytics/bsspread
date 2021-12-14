@@ -4,6 +4,7 @@
 \alias{Initializer}
 \alias{Initializer.Raster}
 \alias{Initializer.SpatRaster}
+\alias{Initializer.default}
 \alias{Initializer.Incursions}
 \title{Initializer class builder}
 \usage{
@@ -17,7 +18,9 @@ Initializer(
 
 \method{Initializer}{Raster}(x, ...)
 
-\method{Initializer}{SpatRaster}(
+\method{Initializer}{SpatRaster}(x, region = NULL, ...)
+
+\method{Initializer}{default}(
   x,
   region = NULL,
   population_model = NULL,
@@ -34,10 +37,10 @@ Initializer(
 )
 }
 \arguments{
-\item{x}{A \code{raster::RasterLayer} or \code{terra::SpatRaster} defining
-the initial population distribution, or an \code{Incursions} or inherited
-class object for generating initial, and optionally continued, invasive
-species incursions.}
+\item{x}{A \code{raster::RasterLayer}, \code{terra::SpatRaster}, or numeric
+vector defining the initial population distribution, or an
+\code{Incursions} or inherited class object for generating initial, and
+optionally continued, invasive species incursions.}
 
 \item{region}{A \code{Region} or inherited class object defining the spatial
 locations included in the spread simulations.}

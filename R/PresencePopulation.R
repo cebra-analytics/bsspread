@@ -43,6 +43,8 @@ PresencePopulation <- function(region,
   if (is.numeric(spread_delay)) {
     self$grow <- function(x) {
       # TODO
+      print("presence only")
+      print(head(time_since_established))
       return(x) # no change
     }
   }

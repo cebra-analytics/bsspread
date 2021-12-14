@@ -7,9 +7,11 @@
 #' which optionally may continue to generate incursions at specified time
 #' intervals during a spread simulation.
 #'
-#' @param x A \code{raster::RasterLayer} or \code{terra::SpatRaster}
-#'   object representing the incursion weightings or arrival probabilities at
-#'   each spatial location.
+#' @param x A \code{raster::RasterLayer}, \code{terra::SpatRaster}, or numeric
+#'   vector defining the incursion weightings or arrival probabilities at each
+#'   spatial location.
+#' @param region A \code{Region} or inherited class object representing the
+#'   spatial region (template) for spread simulations.
 #' @param type One of \code{"weight"} or \code{"prob"} to indicate if the
 #'   values in \code{x} represent single incursion weightings or arrival
 #'   probabilities respectively.
@@ -21,13 +23,19 @@
 #'   \code{continued = TRUE}.
 #' @param ... Additional parameters.
 #' @return An \code{Incursions} class object (list) containing functions for
-#'   accessing attributes (of the function environment) TODO:
+#'   accessing attributes and generating sampled incursions:
 #'   \describe{
-#'     \item{\code{TODO()}}{TODO.}
+#'     \item{\code{get_type()}}{Get the incursion type.}
+#'     \item{\code{get_continued()}}{Get the continued indicator when type is
+#'       "prob".}
+#'     \item{\code{get_time_steps()}}{Get the continued incursion time steps
+#'       when applicable.}
+#'     \item{\code{generate()}}{Generates incursion locations via sampling.}
 #'   }
 #' @export
 Incursions <- function(x,
-                       type = c("weight", "prob"),
+                       region = NULL,
+                       type = c("weight", "prob"), #### INITIAL ####
                        continued = FALSE,
                        time_steps = 1, ...) {
   UseMethod("Incursions")
@@ -43,13 +51,82 @@ Incursions.Raster <- function(x, ...) {
 #' @name Incursions
 #' @export
 Incursions.SpatRaster <- function(x,
-                                  type = c("weight", "prob"),
-                                  continued = FALSE,
-                                  time_steps = 1, ...) {
-  type <- match.arg(type)
+                                  region = NULL, ...) {
+
+  # Resolve values and call default (vector) version
+  if (!is.null(region)) {
+
+    # Check region
+    if (!inherits(region, "Region")) {
+      stop("Region model must be a 'Region' or inherited class object.",
+           call. = FALSE)
+    }
+    if (!region$is_compatible(x)) {
+      stop("The spatial object x should be compatible with that defining the ",
+           "region.", call. = FALSE)
+    }
+
+    # Extract values from locations defined by region
+    Incursions(x[region$get_indices()], region = region, ...)
+
+  } else { # Use all values
+    Incursions(x[], region = region, ...)
+  }
+}
+
+#' @name Incursions
+#' @export
+Incursions.default <- function(x,
+                               region = NULL,
+                               type = c("weight", "prob"),
+                               continued = FALSE,
+                               time_steps = 1, ...) {
+
+  # Check region and x
+  if (!is.null(region)) {
+    if (!inherits(region, "Region")) {
+      stop("Region model must be a 'Region' or inherited class object.",
+           call. = FALSE)
+    }
+    if (length(x) != region$get_locations()) {
+      stop("Vector x length must be equal to the number of region locations.",
+           call. = FALSE)
+    }
+  }
 
   # Create a class structure
   self <- structure(list(), class = "Incursions")
+
+  # Get type
+  type <- match.arg(type)
+  self$get_type <- function() {
+    return(type)
+  }
+
+  # Get continued when type is "prob"
+  if (type == "prob") {
+    self$get_continued <- function() {
+      return(continued)
+    }
+  }
+
+  # Get continued when type is "prob" and continued is TRUE
+  if (type == "prob" && continued) {
+    self$get_time_steps <- function() {
+      return(time_steps)
+    }
+  }
+
+  # Generate incursion locations via sampling
+  self$generate <- function() {
+    incursions <- vector("logical", length(unlist(x)))
+    if (type == "weight") { # sample single location
+      incursions[sample(1:length(x), 1, prob = unlist(x))] <- TRUE
+    } else if (type == "prob") { # binomial sampling at each location
+      incursions <- as.logical(stats::rbinom(length(x), 1, prob = unlist(x)))
+    }
+    return(incursions)
+  }
 
   return(self)
 }

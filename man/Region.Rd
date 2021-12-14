@@ -23,7 +23,8 @@ object representing the spatial region (template) for spread simulations.}
 }
 \value{
 A \code{Region} class object (list) containing functions for
-accessing attributes (of the function environment):
+accessing attributes and checking compatibility of objects with the
+region:
 \describe{
 \item{\code{get_template()}}{Get the spatial template (with zeros in
 non-NA locations).}
@@ -33,6 +34,8 @@ included in the simulation.}
 patches) that are included in the simulation.}
 \item{\code{get_type()}}{Get the type of spatial representation: grid
 (raster cells) or patch (network).}
+\item{\code{is_compatible(y)}}{Check the compatibility of object
+\code{y} with the region defined by \code{x}.}
 }
 }
 \description{
