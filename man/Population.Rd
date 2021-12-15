@@ -10,6 +10,7 @@ Population(
   type = c("presence_only", "unstructured", "stage_structured"),
   growth = NULL,
   capacity = NULL,
+  incursion_values = NULL,
   class = character(),
   ...
 )
@@ -19,6 +20,7 @@ Population(
   type = c("presence_only", "unstructured", "stage_structured"),
   growth = NULL,
   capacity = NULL,
+  incursion_values = NULL,
   class = character(),
   ...
 )
@@ -40,6 +42,12 @@ age/stage-based transition rates (matrix) for each time step when
 at each location specified by the \code{region}. Default is \code{NULL}
 for when \code{type = "presence_only"}.}
 
+\item{incursion_values}{Defines how incursion locations are populated.
+Either via a fixed single value, vector, or array of values for each
+location (vector or array rows) and/or stage (array columns), or via a
+list specifying the range of values via \code{min} and \code{max} (single,
+vector or array) for uniform random sampling of values.}
+
 \item{class}{Character class name for inherited classes. Default is
 \code{NULL}.}
 
@@ -57,8 +65,11 @@ matrix.}
 representation.}
 \item{\code{get_capacity()}}{Get the carrying capacity as a vector of
 values for each location.}
-\item{\code{conform(x)}}{Conform x to the appropriate population
-representation (if possible).}
+\item{\code{make(initial, current, incursion)}}{Make a population vector
+or array (rows:stages x columns:locations) via the defined population
+representation using vectors or arrays of the \code{initial} or
+\code{current} and \code{incursion} population at each region
+location.}
 \item{\code{grow(x)}}{Performs growth or age/stage-based transitions on
 population \code{x} vector/array (stages by locations), and returns
 the transformed vector/array.}

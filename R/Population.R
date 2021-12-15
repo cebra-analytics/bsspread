@@ -15,6 +15,11 @@
 #' @param capacity A vector of carrying capacity values of the invasive species
 #'   at each location specified by the \code{region}. Default is \code{NULL}
 #'   for when \code{type = "presence_only"}.
+#' @param incursion_values Defines how incursion locations are populated.
+#'   Either via a fixed single value, vector, or array of values for each
+#'   location (vector or array rows) and/or stage (array columns), or via a
+#'   list specifying the range of values via \code{min} and \code{max} (single,
+#'   vector or array) for uniform random sampling of values.
 #' @param class Character class name for inherited classes. Default is
 #'   \code{NULL}.
 #' @param ... Additional parameters.
@@ -29,8 +34,11 @@
 #'       representation.}
 #'     \item{\code{get_capacity()}}{Get the carrying capacity as a vector of
 #'       values for each location.}
-#'     \item{\code{conform(x)}}{Conform x to the appropriate population
-#'       representation (if possible).}
+#'     \item{\code{make(initial, current, incursion)}}{Make a population vector
+#'       or array (rows:stages x columns:locations) via the defined population
+#'       representation using vectors or arrays of the \code{initial} or
+#'       \code{current} and \code{incursion} population at each region
+#'       location.}
 #'     \item{\code{grow(x)}}{Performs growth or age/stage-based transitions on
 #'       population \code{x} vector/array (stages by locations), and returns
 #'       the transformed vector/array.}
@@ -42,6 +50,7 @@ Population <- function(region,
                                 "stage_structured"),
                        growth = NULL,
                        capacity = NULL,
+                       incursion_values = NULL,
                        class = character(), ...) {
   UseMethod("Population")
 }
@@ -53,8 +62,10 @@ Population.Region <- function(region,
                                        "stage_structured"),
                               growth = NULL,
                               capacity = NULL,
+                              incursion_values = NULL,
                               class = character(), ...) {
-  # Validate based on type
+
+  # Validate based on type and set (number of) stages
   type <- match.arg(type)
   if (type == "presence_only") {
     stages = NULL
@@ -83,6 +94,35 @@ Population.Region <- function(region,
          "region location.", call. = FALSE)
   }
 
+  # Validate incursion values
+  if (!is.null(incursion_values)) {
+
+    # Check list
+    if (is.list(incursion_values)) {
+      if (length(incursion_values) != 2) {
+        stop("A range of incursion values defined by a list should have two ",
+             "entries named: 'min' and 'max'.", call. = FALSE)
+      }
+      if (!all(c("min", "max") %in% names(incursion_values))) {
+        names(incursion_values) <- c("min", "max")
+      }
+    }
+
+    # Check consistency with locations and stages
+    for (values in
+         if (is.list(incursion_values)) incursion_values
+         else list(incursion_values)) {
+      if (!nrow(as.matrix(values)) %in% c(1, region$get_locations())) {
+        stop("Incursion values must be consistent with the number of region ",
+             "locations.", call. = FALSE)
+      }
+      if (!ncol(as.matrix(values)) %in% c(1, stages)) {
+        stop("Incursion values must be consistent with the number of stages.",
+             call. = FALSE)
+      }
+    }
+  }
+
   # Create a class structure
   self <- structure(list(), class = c(class, "Population"))
 
@@ -109,6 +149,97 @@ Population.Region <- function(region,
   if (!is.null(capacity)) {
     self$get_capacity <- function() {
       return(capacity)
+    }
+  }
+
+  # Generic make method (extended/overridden in subclasses)
+  self$make <- function(initial = NULL, current = NULL, incursion = NULL) {
+
+    # Initial values only (ignore current and incursion)
+    if (!is.null(initial)) {
+
+      # Check consistency with locations and stages
+      if (!nrow(as.matrix(initial)) %in% c(1, region$get_locations())) {
+        stop("Initial population values must be consistent with the number ",
+             "of region locations.", call. = FALSE)
+      }
+      if (!ncol(as.matrix(initial)) %in% c(1, stages)) {
+        stop("Initial population values must be consistent with the number ",
+             "of stages.", call. = FALSE)
+      }
+
+      # Repeat single (stage) values for each location
+      if (nrow(as.matrix(initial)) == 1) {
+        if (ncol(as.matrix(initial)) > 1) { # stages
+          initial <- apply(as.matrix(initial), 2, rep, region$get_locations())
+        } else {
+          initial <- rep(initial, region$get_locations())
+        }
+      }
+
+      return(initial)
+    }
+
+    # Initial or ongoing incursions (combined with current in subclasses)
+    if (is.logical(incursion)) {
+
+      if (!is.null(incursion_values)) {
+
+        # Indices of incursion locations
+        indices <- which(incursion)
+
+        # Sample across range
+        if (is.list(incursion_values)) {
+
+          # Shape values for incursions
+          values <- list()
+          for (key in c("min", "max")) {
+            values[[key]] <- as.matrix(incursion_values[[key]])
+            if (nrow(values[[key]]) == 1) {
+              values[[key]] <- apply(values[[key]], 2, rep, length(indices))
+            } else { # a row per location
+              values[[key]] <- values[[key]][indices,]
+            }
+          }
+
+          # Sample values
+          cols <- max(ncol(values$min), ncol(values$max))
+          values <- stats::runif(length(indices)*cols, min = values$min,
+                                 max = values$max)
+
+        } else { # fixed incursion values
+
+          # Shape values for incursions
+          cols <- ncol(values)
+          values <- as.matrix(incursion_values)
+          if (nrow(values) == 1) {
+            values <- apply(values, 2, rep, length(indices))
+          } else { # a row per location
+            values <- values[indices,]
+          }
+        }
+
+        # Fill values
+        if (cols > 1) {
+          incursion <- array(incursion*0, c(length(incursion), cols))
+          incursion[indices,] <- values
+        } else {
+          incursion <- incursion*0
+          incursion[indices] <- values
+        }
+
+        # Combine with current if columns match, else error
+        if (!is.null(current)) {
+          if (ncol(as.matrix(current)) == ncol(as.matrix(incursion))) {
+            incursion <- incursion + current
+          } else {
+            stop("Cannot combine incursion with current population array as ",
+                 "the columns are inconsistent.", call. = FALSE)
+          }
+        }
+      }
+
+      return(incursion)
     }
   }
 

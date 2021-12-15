@@ -35,7 +35,7 @@
 #' @export
 Incursions <- function(x,
                        region = NULL,
-                       type = c("weight", "prob"), #### INITIAL ####
+                       type = c("weight", "prob"),
                        continued = FALSE,
                        time_steps = 1, ...) {
   UseMethod("Incursions")

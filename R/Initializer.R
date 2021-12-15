@@ -5,10 +5,11 @@
 #' population distribution, or via stochastic generation of invasive species
 #' incursions.
 #'
-#' @param x A \code{raster::RasterLayer}, \code{terra::SpatRaster}, or numeric
-#'   vector defining the initial population distribution, or an
-#'   \code{Incursions} or inherited class object for generating initial, and
-#'   optionally continued, invasive species incursions.
+#' @param x A \code{raster::Raster*}, \code{terra::SpatRaster}, or numeric
+#'   vector or array defining the initial population distribution (where layers
+#'   or columns optionally represent stages), or an \code{Incursions} or
+#'   inherited class object for generating initial, and optionally continued,
+#'   invasive species incursions.
 #' @param region A \code{Region} or inherited class object defining the spatial
 #'   locations included in the spread simulations.
 #' @param population_model A \code{Population} or inherited class object
@@ -53,10 +54,10 @@ Initializer.SpatRaster <- function(x,
     }
 
     # Extract values from locations defined by region
-    Incursions(x[region$get_indices()], ...)
+    Initializer(x[region$get_indices()], ...)
 
   } else { # Use all values
-    Incursions(x[], ...)
+    Initializer(x[], ...)
   }
 }
 
@@ -73,26 +74,31 @@ Initializer.default <- function(x,
       stop("Region model must be a 'Region' or inherited class object.",
            call. = FALSE)
     }
-    if (length(x) != region$get_locations()) {
-      stop("Vector x length must be equal to the number of region locations.",
-           call. = FALSE)
+    if (nrow(as.matrix(x)) != region$get_locations()) {
+      stop("Vector (or array) x length (or number of rows) must be equal to ",
+           "the number of region locations.", call. = FALSE)
     }
   }
 
-  # Check population model
-  if (!is.null(population_model) &&
-      !inherits(population_model, "Population")) {
-    stop("Population model must be a 'Population' or inherited class object.",
-         call. = FALSE)
+  # Check population model and x
+  if (!is.null(population_model)) {
+    if (!inherits(population_model, "Population")) {
+      stop("Population model must be a 'Population' or inherited class object.",
+           call. = FALSE)
+    }
+    if (!ncol(as.matrix(x)) %in% c(1, population_model$get_stages())) {
+      stop("The number of columns in array x must be consistent with the ",
+           "number of stages defined in the population model.", call. = FALSE)
+    }
   }
 
   # Create a class structure
   self <- structure(list(), class = c(class, "Initializer"))
 
-  # Initialize with x conformed to the population model
+  # Initialize using the population model make function
   self$initialize <- function() {
     if (!is.null(population_model)) {
-      return(population_model$conform(x))
+      return(population_model$make(initial = x))
     } else {
       return(x)
     }
@@ -126,11 +132,11 @@ Initializer.Incursions <- function(x,
 
   # Initialize with generated incursions transformed to the population model
   self$initialize <- function() {
-    incursions <- x$generate()
+    x_i <- x$generate()
     if (!is.null(population_model)) {
-      return(population_model$transform(incursions))
+      return(population_model$make(incursion = x_i))
     } else {
-      return(incursions)
+      return(x_i)
     }
   }
 

@@ -37,10 +37,11 @@ Initializer(
 )
 }
 \arguments{
-\item{x}{A \code{raster::RasterLayer}, \code{terra::SpatRaster}, or numeric
-vector defining the initial population distribution, or an
-\code{Incursions} or inherited class object for generating initial, and
-optionally continued, invasive species incursions.}
+\item{x}{A \code{raster::Raster*}, \code{terra::SpatRaster}, or numeric
+vector or array defining the initial population distribution (where layers
+or columns optionally represent stages), or an \code{Incursions} or
+inherited class object for generating initial, and optionally continued,
+invasive species incursions.}
 
 \item{region}{A \code{Region} or inherited class object defining the spatial
 locations included in the spread simulations.}
