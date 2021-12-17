@@ -60,6 +60,12 @@ appropriately initialize the population of each location:
 \item{\code{initialize()}}{Generates an appropriately represented
 initial population for each simulated location via either predefined
 values, or stochastic incursions.}
+\item{\code{continued_incursions()}}{Produces a function for generating
+continued incursions when configured to do so. The function produced
+has the form: \code{function(tm, n)}, where \code{tm} is the
+simulation time step and \code{n} is the array representing the
+population at each location at that time. The function returns a
+population array with merged incursions.}
 }
 }
 \description{

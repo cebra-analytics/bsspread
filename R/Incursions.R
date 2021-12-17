@@ -103,15 +103,13 @@ Incursions.default <- function(x,
     return(type)
   }
 
-  # Get continued when type is "prob"
-  if (type == "prob") {
-    self$get_continued <- function() {
-      return(continued)
-    }
+  # Get continued
+  self$get_continued <- function() {
+    return(continued)
   }
 
-  # Get continued when type is "prob" and continued is TRUE
-  if (type == "prob" && continued) {
+  # Get time steps when continued is TRUE
+  if (continued) {
     self$get_time_steps <- function() {
       return(time_steps)
     }

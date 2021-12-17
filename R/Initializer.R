@@ -22,6 +22,12 @@
 #'     \item{\code{initialize()}}{Generates an appropriately represented
 #'       initial population for each simulated location via either predefined
 #'       values, or stochastic incursions.}
+#'     \item{\code{continued_incursions()}}{Produces a function for generating
+#'       continued incursions when configured to do so. The function produced
+#'       has the form: \code{function(tm, n)}, where \code{tm} is the
+#'       simulation time step and \code{n} is the array representing the
+#'       population at each location at that time. The function returns a
+#'       population array with merged incursions.}
 #'   }
 #' @export
 Initializer <- function(x,
@@ -105,6 +111,11 @@ Initializer.default <- function(x,
     }
   }
 
+  # Empty continued incursion generator
+  self$continued_incursions <- function() {
+    return(NULL)
+  }
+
   return(self)
 }
 
@@ -138,6 +149,26 @@ Initializer.Incursions <- function(x,
       return(population_model$make(incursion = x_i))
     } else {
       return(x_i)
+    }
+  }
+
+  # Continued incursion generator
+  self$continued_incursions <- function() {
+    if (x$get_continued()) {
+      return(
+        function(tm, n) {
+          if (tm > 1 && tm %% x$get_time_steps() == 0) {
+            x_i <- x$generate()
+            if (!is.null(population_model)) {
+              return(population_model$make(current = n, incursion = x_i))
+            } else {
+              return(as.logical(n) | x_i)
+            }
+          }
+        }
+      )
+    } else {
+      return(NULL)
     }
   }
 
