@@ -24,8 +24,8 @@
 #'   \code{NULL}.
 #' @param ... Additional parameters.
 #' @return A \code{Population} class object (list) containing functions for
-#'   accessing attributes (when present), conforming data to the appropriate
-#'   population representation, and simulating growth:
+#'   accessing attributes, conforming data to the appropriate population
+#'   representation, and simulating growth:
 #'   \describe{
 #'     \item{\code{get_type()}}{Get the population representation type.}
 #'     \item{\code{get_growth()}}{Get the growth rate or age/stage transition
@@ -131,25 +131,19 @@ Population.Region <- function(region,
     return(type)
   }
 
-  # Get growth when present
-  if (!is.null(growth)) {
-    self$get_growth <- function() {
-      return(growth)
-    }
+  # Get growth
+  self$get_growth <- function() {
+    return(growth)
   }
 
-  # Get stages when present
-  if (!is.null(stages)) {
-    self$get_stages <- function() {
-      return(stages)
-    }
+  # Get stages
+  self$get_stages <- function() {
+    return(stages)
   }
 
-  # Get carrying capacity when present
-  if (!is.null(capacity)) {
-    self$get_capacity <- function() {
-      return(capacity)
-    }
+  # Get carrying capacity
+  self$get_capacity <- function() {
+    return(capacity)
   }
 
   # Generic make method (extended/overridden in subclasses)
@@ -191,41 +185,60 @@ Population.Region <- function(region,
         # Sample across range
         if (is.list(incursion_values)) {
 
-          # Shape values for incursions
-          values <- list()
-          for (key in c("min", "max")) {
-            values[[key]] <- as.matrix(incursion_values[[key]])
-            if (nrow(values[[key]]) == 1) {
-              values[[key]] <- apply(values[[key]], 2, rep, length(indices))
-            } else { # a row per location
-              values[[key]] <- values[[key]][indices,]
-            }
-          }
+          # Columns to output
+          cols <- max(unlist(lapply(incursion_values,
+                                    function(v) ncol(as.matrix(v)))))
 
-          # Sample values
-          cols <- max(ncol(values$min), ncol(values$max))
-          values <- stats::runif(length(indices)*cols, min = values$min,
-                                 max = values$max)
+          if (length(indices)) { # incursions present
+
+            # Shape values for incursions
+            values <- list()
+            for (key in c("min", "max")) {
+              values[[key]] <- as.matrix(incursion_values[[key]])
+              if (nrow(values[[key]]) == 1) {
+                values[[key]] <- apply(values[[key]], 2, rep, length(indices))
+              } else { # a row per location
+                values[[key]] <- values[[key]][indices,]
+              }
+            }
+
+            # Sample values
+            values <- stats::runif(length(indices)*cols, min = values$min,
+                                   max = values$max)
+          }
 
         } else { # fixed incursion values
 
-          # Shape values for incursions
-          cols <- ncol(values)
-          values <- as.matrix(incursion_values)
-          if (nrow(values) == 1) {
-            values <- apply(values, 2, rep, length(indices))
-          } else { # a row per location
-            values <- values[indices,]
+          # Columns to output
+          cols <- ncol(as.matrix(incursion_values))
+
+          if (length(indices)) { # incursions present
+
+            # Shape values for incursions
+            values <- as.matrix(incursion_values)
+            if (nrow(values) == 1) {
+              values <- apply(values, 2, rep, length(indices))
+            } else { # a row per location
+              values <- values[indices,]
+            }
           }
         }
 
-        # Fill values
+        # Shape incursions (as numeric)
         if (cols > 1) {
-          incursion <- array(incursion*0, c(length(incursion), cols))
-          incursion[indices,] <- values
+          incursion <- array(incursion*0L, c(length(incursion), cols))
         } else {
-          incursion <- incursion*0
-          incursion[indices] <- values
+          incursion <- incursion*0L
+        }
+
+        if (length(indices)) { # incursions present
+
+          # Fill values
+          if (cols > 1) {
+            incursion[indices,] <- values
+          } else {
+            incursion[indices] <- values
+          }
         }
 
         # Combine with current if columns match, else error

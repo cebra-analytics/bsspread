@@ -47,18 +47,19 @@ invasive species incursions.}
 locations included in the spread simulations.}
 
 \item{population_model}{A \code{Population} or inherited class object
-defining the population representation and growth functionality for the
-spread simulations.}
+defining the population representation for the spread simulations.}
 
 \item{class}{Character class name for inherited classes. Default is empty.}
 
 \item{...}{Additional parameters.}
 }
 \value{
-An \code{Initializer} class object (list) containing functions for
-accessing attributes (of the function environment) TODO:
+An \code{Initializer} class object (list) containing a function to
+appropriately initialize the population of each location:
 \describe{
-\item{\code{TODO()}}{TODO.}
+\item{\code{initialize()}}{Generates an appropriately represented
+initial population for each simulated location via either predefined
+values, or stochastic incursions.}
 }
 }
 \description{

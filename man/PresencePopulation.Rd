@@ -18,7 +18,7 @@ an implicit mechanism for growth. Default \code{NULL} assumes no delay.}
 }
 \value{
 A \code{PresencePopulation} class object (list) containing functions
-for accessing attributes (when present) and simulating (implicit) growth:
+for accessing attributes and simulating (implicit) growth:
 \describe{
 \item{\code{get_type()}}{Get the population representation type.}
 \item{\code{get_spread_delay()}}{Get the delay in spread ability.}

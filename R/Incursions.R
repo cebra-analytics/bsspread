@@ -67,10 +67,10 @@ Incursions.SpatRaster <- function(x,
     }
 
     # Extract values from locations defined by region
-    Incursions(x[region$get_indices()], region = region, ...)
+    Incursions(as.matrix(x[region$get_indices()]), region = region, ...)
 
   } else { # Use all values
-    Incursions(x[], region = region, ...)
+    Incursions(as.matrix(x[]), region = region, ...)
   }
 }
 

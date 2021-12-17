@@ -13,14 +13,15 @@
 #' @param region A \code{Region} or inherited class object defining the spatial
 #'   locations included in the spread simulations.
 #' @param population_model A \code{Population} or inherited class object
-#'   defining the population representation and growth functionality for the
-#'   spread simulations.
+#'   defining the population representation for the spread simulations.
 #' @param class Character class name for inherited classes. Default is empty.
 #' @param ... Additional parameters.
-#' @return An \code{Initializer} class object (list) containing functions for
-#'   accessing attributes (of the function environment) TODO:
+#' @return An \code{Initializer} class object (list) containing a function to
+#'   appropriately initialize the population of each location:
 #'   \describe{
-#'     \item{\code{TODO()}}{TODO.}
+#'     \item{\code{initialize()}}{Generates an appropriately represented
+#'       initial population for each simulated location via either predefined
+#'       values, or stochastic incursions.}
 #'   }
 #' @export
 Initializer <- function(x,
@@ -44,7 +45,7 @@ Initializer.SpatRaster <- function(x,
   if (!is.null(region)) {
 
     # Check region
-    if (!inherits(population_model, "Region")) {
+    if (!inherits(region, "Region")) {
       stop("Region model must be a 'Region' or inherited class object.",
            call. = FALSE)
     }
@@ -54,10 +55,10 @@ Initializer.SpatRaster <- function(x,
     }
 
     # Extract values from locations defined by region
-    Initializer(x[region$get_indices()], ...)
+    Initializer(as.matrix(x[region$get_indices()]), ...)
 
   } else { # Use all values
-    Initializer(x[], ...)
+    Initializer(as.matrix(x[]), ...)
   }
 }
 
@@ -115,7 +116,7 @@ Initializer.Incursions <- function(x,
                                    class = character(), ...) {
 
   # Check region
-  if (!inherits(population_model, "Region")) {
+  if (!inherits(region, "Region")) {
     stop("Region model must be a 'Region' or inherited class object.",
          call. = FALSE)
   }

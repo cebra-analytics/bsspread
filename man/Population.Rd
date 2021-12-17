@@ -55,8 +55,8 @@ vector or array) for uniform random sampling of values.}
 }
 \value{
 A \code{Population} class object (list) containing functions for
-accessing attributes (when present), conforming data to the appropriate
-population representation, and simulating growth:
+accessing attributes, conforming data to the appropriate population
+representation, and simulating growth:
 \describe{
 \item{\code{get_type()}}{Get the population representation type.}
 \item{\code{get_growth()}}{Get the growth rate or age/stage transition
