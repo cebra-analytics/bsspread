@@ -164,6 +164,8 @@ Initializer.Incursions <- function(x,
             } else {
               return(as.logical(n) | x_i)
             }
+          } else {
+            return(n)
           }
         }
       )

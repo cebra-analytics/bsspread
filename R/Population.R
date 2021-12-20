@@ -198,13 +198,16 @@ Population.Region <- function(region,
               if (nrow(values[[key]]) == 1) {
                 values[[key]] <- apply(values[[key]], 2, rep, length(indices))
               } else { # a row per location
-                values[[key]] <- values[[key]][indices,]
+                values[[key]] <- values[[key]][indices, , drop = FALSE]
               }
             }
 
             # Sample values
             values <- stats::runif(length(indices)*cols, min = values$min,
                                    max = values$max)
+            if (all(unlist(lapply(incursion_values, is.integer)))) {
+              values <- as.integer(round(values))
+            }
           }
 
         } else { # fixed incursion values
@@ -219,16 +222,16 @@ Population.Region <- function(region,
             if (nrow(values) == 1) {
               values <- apply(values, 2, rep, length(indices))
             } else { # a row per location
-              values <- values[indices,]
+              values <- values[indices, , drop = FALSE]
             }
           }
         }
 
-        # Shape incursions (as numeric)
+        # Shape incursions
         if (cols > 1) {
-          incursion <- array(incursion*0L, c(length(incursion), cols))
+          incursion <- array(FALSE, c(length(incursion), cols))
         } else {
-          incursion <- incursion*0L
+          incursion <- vector("logical", length(incursion))
         }
 
         if (length(indices)) { # incursions present
@@ -244,7 +247,11 @@ Population.Region <- function(region,
         # Combine with current if columns match, else error
         if (!is.null(current)) {
           if (ncol(as.matrix(current)) == ncol(as.matrix(incursion))) {
-            incursion <- incursion + current
+            if (is.logical(incursion) && is.logical(current)) {
+              incursion <- incursion | current
+            } else { # numeric
+              incursion <- incursion + current
+            }
           } else {
             stop("Cannot combine incursion with current population array as ",
                  "the columns are inconsistent.", call. = FALSE)
