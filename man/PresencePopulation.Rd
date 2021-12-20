@@ -22,6 +22,9 @@ for accessing attributes and simulating (implicit) growth:
 \describe{
 \item{\code{get_type()}}{Get the population representation type.}
 \item{\code{get_spread_delay()}}{Get the delay in spread ability.}
+\item{\code{make(initial, current, incursion)}}{Make a population vector
+using vectors of the \code{initial} or \code{current} and
+\code{incursion} population at each region location.}
 \item{\code{grow(x)}}{Performs implicit growth on the population
 \code{x} vector via spread delay when present, and returns the
 transformed vector.}
