@@ -140,6 +140,56 @@ Simulator.Region <- function(region,
            call. = FALSE)
     }
 
+    # Continued incursions function
+    continued_incursions <- initializer$continued_incursions()
+
+    # Results setup
+    results <- Results(region, population_model,
+                       time_steps = time_steps,
+                       step_duration = step_duration,
+                       step_units = step_units,
+                       collation_steps = collation_steps,
+                       replicates = replicates)
+
+    # Replicates
+    for (r in 1:replicates) {
+
+      # Initialize population array
+      N <- initializer$initialize()
+
+      # Initial results (t = 0)
+      results$collate(r, 0, N)
+
+      # Time steps
+      for (tm in 1:time_steps) {
+
+        # Population growth
+        N <- population_model$grow(N)
+
+        # Dispersal vectors
+        if (length(dispersal_models)) {
+          for (i in 1:length(dispersal_models)) {
+            N <- dispersal_models[[i]]$disperse(N)
+          }
+        }
+
+        # Continued incursions
+        if (is.function(continued_incursions)) {
+          N <- continued_incursions(tm, N)
+        }
+
+        # Collate results
+        results$collate(r, tm, N)
+
+      } # time steps
+
+    } # replicates
+
+    # Finalize results
+    results$finalize()
+
+    # Return results
+    return(results)
   }
 
   return(self)

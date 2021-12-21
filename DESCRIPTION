@@ -26,4 +26,5 @@ Collate:
     'Initializer.R'
     'Population.R'
     'PresencePopulation.R'
+    'Results.R'
     'Simulator.R'

@@ -38,12 +38,12 @@ PresencePopulation <- function(region,
   }
 
   # Make method (extends inherited function from Population class)
-  super <- list(make = self$make)
+  inherited_make <- self$make
   self$make <- function(initial = NULL, current = NULL, incursion = NULL) {
 
     # Run inherited function
-    value <- super$make(initial = initial, current = current,
-                        incursion = incursion)
+    value <- inherited_make(initial = initial, current = current,
+                            incursion = incursion)
 
     # Set attributes for type and spread delay
     if (is.null(current)) {
