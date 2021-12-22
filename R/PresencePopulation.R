@@ -5,7 +5,7 @@
 #' newly established populations to spread.
 #'
 #' @param region A \code{Region} or inherited class object representing the
-#'   spatial region (template) for spread simulations.
+#'   spatial region (template) for the spread simulations.
 #' @param spread_delay Number of simulation time steps before an incursion at
 #'   a newly established location can spread to other locations. This provides
 #'   an implicit mechanism for growth. Default \code{NULL} assumes no delay.

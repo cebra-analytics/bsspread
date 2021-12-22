@@ -1,7 +1,7 @@
 #' Population model class builder
 #'
 #' Builds a class for population representation and growth functionality for
-#' the spread simulations.
+#' spread simulations.
 #'
 #' @param region A \code{Region} or inherited class object representing the
 #'   spatial region (template) for spread simulations.

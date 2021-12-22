@@ -40,7 +40,7 @@ Simulator(
 \arguments{
 \item{region}{A \code{raster::RasterLayer}, \code{terra::SpatRaster}, or
 \code{Region} or inherited class object representing the spatial region
-(template) for spread simulations.}
+(template) for the spread simulations.}
 
 \item{time_steps}{The number of discrete time steps to simulate. Default is
 1.}

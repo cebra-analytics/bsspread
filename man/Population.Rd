@@ -77,5 +77,5 @@ the transformed vector/array.}
 }
 \description{
 Builds a class for population representation and growth functionality for
-the spread simulations.
+spread simulations.
 }

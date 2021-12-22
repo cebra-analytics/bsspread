@@ -5,13 +5,29 @@
 \alias{Dispersal.Region}
 \title{Dispersal model abstract class builder}
 \usage{
-Dispersal(region, class = character(), ...)
+Dispersal(
+  region,
+  population_model,
+  establish_pr = NULL,
+  class = character(),
+  ...
+)
 
 \method{Dispersal}{Region}(region, class = character(), ...)
 }
 \arguments{
 \item{region}{A \code{Region} or inherited class object representing the
 spatial region (template) for spread simulations.}
+
+\item{population_model}{A \code{Population} or inherited class object
+defining the population representation for the spread simulations.}
+
+\item{establish_pr}{An optional vector of probability values (0-1) to
+represent the likelihood of establishment at each location specified by
+the \code{region}. This may be used to avoid transient/unsuccessful
+migrations from being presented in the simulation results, and/or from
+subsequently contributing to spread in presence-only models. Default is
+\code{NULL}.}
 
 \item{class}{Character class name for inherited classes. Default is empty.}
 
@@ -23,12 +39,16 @@ accessing attributes (of the function environment) and performing
 dispersal:
 \describe{
 \item{\code{get_region()}}{Get the spatial region object.}
+\item{\code{get_population_model()}}{Get the population model object.}
+\item{\code{get_establish_pr()}}{Get the establishment probability
+vector.}
 \item{\code{disperse(x)}}{Perform location dispersal on population
-\code{x} array (stages by locations), and return transformed array.}
+\code{x} vector (for each location) or array (locations by stages),
+and return transformed vector or array.}
 \item{\code{TODO()}}{TODO.}
 }
 }
 \description{
-Builds a class for dispersal representation and functionality for the
-spread simulations.
+Builds a class for dispersal representation and functionality for spread
+simulations.
 }

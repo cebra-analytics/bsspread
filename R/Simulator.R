@@ -6,7 +6,7 @@
 #'
 #' @param region A \code{raster::RasterLayer}, \code{terra::SpatRaster}, or
 #'   \code{Region} or inherited class object representing the spatial region
-#'   (template) for spread simulations.
+#'   (template) for the spread simulations.
 #' @param time_steps The number of discrete time steps to simulate. Default is
 #'   1.
 #' @param step_duration The duration of the simulation time steps in units
@@ -166,7 +166,7 @@ Simulator.Region <- function(region,
         # Population growth
         N <- population_model$grow(N)
 
-        # Dispersal vectors
+        # Dispersal for each spread vector
         if (length(dispersal_models)) {
           for (i in 1:length(dispersal_models)) {
             N <- dispersal_models[[i]]$disperse(N)

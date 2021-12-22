@@ -8,7 +8,7 @@ PresencePopulation(region, spread_delay = NULL, ...)
 }
 \arguments{
 \item{region}{A \code{Region} or inherited class object representing the
-spatial region (template) for spread simulations.}
+spatial region (template) for the spread simulations.}
 
 \item{spread_delay}{Number of simulation time steps before an incursion at
 a newly established location can spread to other locations. This provides

@@ -29,7 +29,7 @@ Results(
 }
 \arguments{
 \item{region}{A \code{Region} or inherited class object representing the
-spatial region (template) for spread simulations.}
+spatial region (template) for the spread simulations.}
 
 \item{population_model}{A \code{Population} or inherited class object
 defining the population representation and growth functionality for the
