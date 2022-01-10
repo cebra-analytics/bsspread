@@ -61,7 +61,7 @@ UnstructPopulation <- function(region,
     # Calculate logistic growth rates
     if (is.numeric(capacity)) { # capacity-limited
 
-      # Zero populations at locations having zero capacity
+      # Remove populations at locations having zero capacity
       if (any(capacity[indices] <= 0)) {
         zero_idx <- indices[which(capacity[indices] <= 0)]
         x[zero_idx] <- 0
