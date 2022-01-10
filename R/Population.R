@@ -200,10 +200,22 @@ Population.Region <- function(region,
     # Initial or ongoing incursions (combined with current in subclasses)
     if (is.logical(incursion)) {
 
-      # Indices of incursion locations
-      indices <- which(incursion)
+      # Apply stochastic establishment to incursions
+      if (is.numeric(establish_pr)) {
+
+        # Indices of incursion locations
+        indices <- which(incursion)
+
+        # Select incursions via binomial sampling
+        incursion[indices] <- as.logical(
+          stats::rbinom(length(indices), size = 1,
+                        prob = establish_pr[indices]))
+      }
 
       if (!is.null(incursion_values)) {
+
+        # Indices of incursion locations
+        indices <- which(incursion)
 
         # Sample across range
         if (is.list(incursion_values)) {
@@ -265,23 +277,6 @@ Population.Region <- function(region,
           } else {
             incursion[indices] <- values
           }
-        }
-      }
-
-      # Apply stochastic establishment to incursions
-      if (is.numeric(establish_pr)) {
-        if (is.logical(incursion)) {
-          incursion[indices] <- as.logical(
-            stats::rbinom(length(indices), size = 1,
-                          prob = establish_pr[indices]))
-        } else if (is.matrix(incursion)) {
-          incursion[indices,] <- stats::rbinom(length(incursion[indices,]),
-                                               size = incursion[indices,],
-                                               prob = establish_pr[indices])
-        } else { # numeric vector
-          incursion[indices] <- stats::rbinom(length(indices),
-                                              size = incursion[indices],
-                                              prob = establish_pr[indices])
         }
       }
 
