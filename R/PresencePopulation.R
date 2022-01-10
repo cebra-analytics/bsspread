@@ -20,8 +20,8 @@
 #'   for accessing attributes and simulating (implicit) growth:
 #'   \describe{
 #'     \item{\code{get_type()}}{Get the population representation type.}
-#'     \item{\code{get_establish_pr()}}{Get the establishment probability
-#'       vector.}
+#'     \item{\code{get_establish_pr()}}{Get the establishment probability as a
+#'       vector of values for each location.}
 #'     \item{\code{get_spread_delay()}}{Get the delay in spread ability.}
 #'     \item{\code{make(initial, current, incursion)}}{Make a population vector
 #'       using vectors of the \code{initial} or \code{current} and
@@ -38,8 +38,8 @@ PresencePopulation <- function(region,
 
   # Build via base class
   self <- Population(region,
-                     establish_pr = establish_pr,
                      type = "presence_only",
+                     establish_pr = establish_pr,
                      class = "PresencePopulation")
 
   # Get spread delay

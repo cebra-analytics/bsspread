@@ -42,7 +42,7 @@ age/stage-based transition rates (matrix) for each time step when
 
 \item{capacity}{A vector of carrying capacity values of the invasive species
 at each location specified by the \code{region}. Default is \code{NULL}
-for when \code{type = "presence_only"}.}
+for when \code{type = "presence_only"} or growth is not capacity-limited.}
 
 \item{establish_pr}{An optional vector of probability values (0-1) to
 represent the likelihood of establishment at each location specified by
@@ -74,8 +74,8 @@ matrix.}
 representation.}
 \item{\code{get_capacity()}}{Get the carrying capacity as a vector of
 values for each location.}
-\item{\code{get_establish_pr()}}{Get the establishment probability
-vector.}
+\item{\code{get_establish_pr()}}{Get the establishment probability as a
+vector of values for each location.}
 \item{\code{make(initial, current, incursion)}}{Make a population vector
 or array (rows:stages x columns:locations) via the defined population
 representation using vectors or arrays of the \code{initial} or
