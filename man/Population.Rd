@@ -10,6 +10,7 @@ Population(
   type = c("presence_only", "unstructured", "stage_structured"),
   growth = NULL,
   capacity = NULL,
+  establish_pr = NULL,
   incursion_values = NULL,
   class = character(),
   ...
@@ -20,6 +21,7 @@ Population(
   type = c("presence_only", "unstructured", "stage_structured"),
   growth = NULL,
   capacity = NULL,
+  establish_pr = NULL,
   incursion_values = NULL,
   class = character(),
   ...
@@ -41,6 +43,13 @@ age/stage-based transition rates (matrix) for each time step when
 \item{capacity}{A vector of carrying capacity values of the invasive species
 at each location specified by the \code{region}. Default is \code{NULL}
 for when \code{type = "presence_only"}.}
+
+\item{establish_pr}{An optional vector of probability values (0-1) to
+represent the likelihood of establishment at each location specified by
+the \code{region}. This may be used to avoid transient/unsuccessful
+incursion or migration arrivals from being presented in the simulation
+results, and/or from subsequently contributing to spread in presence-only
+models. Default is \code{NULL}.}
 
 \item{incursion_values}{Defines how incursion locations are populated.
 Either via a fixed single value, vector, or array of values for each
@@ -65,6 +74,8 @@ matrix.}
 representation.}
 \item{\code{get_capacity()}}{Get the carrying capacity as a vector of
 values for each location.}
+\item{\code{get_establish_pr()}}{Get the establishment probability
+vector.}
 \item{\code{make(initial, current, incursion)}}{Make a population vector
 or array (rows:stages x columns:locations) via the defined population
 representation using vectors or arrays of the \code{initial} or

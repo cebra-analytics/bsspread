@@ -15,6 +15,12 @@
 #' @param capacity A vector of carrying capacity values of the invasive species
 #'   at each location specified by the \code{region}. Default is \code{NULL}
 #'   for when \code{type = "presence_only"}.
+#' @param establish_pr An optional vector of probability values (0-1) to
+#'   represent the likelihood of establishment at each location specified by
+#'   the \code{region}. This may be used to avoid transient/unsuccessful
+#'   incursion or migration arrivals from being presented in the simulation
+#'   results, and/or from subsequently contributing to spread in presence-only
+#'   models. Default is \code{NULL}.
 #' @param incursion_values Defines how incursion locations are populated.
 #'   Either via a fixed single value, vector, or array of values for each
 #'   location (vector or array rows) and/or stage (array columns), or via a
@@ -34,6 +40,8 @@
 #'       representation.}
 #'     \item{\code{get_capacity()}}{Get the carrying capacity as a vector of
 #'       values for each location.}
+#'     \item{\code{get_establish_pr()}}{Get the establishment probability
+#'       vector.}
 #'     \item{\code{make(initial, current, incursion)}}{Make a population vector
 #'       or array (rows:stages x columns:locations) via the defined population
 #'       representation using vectors or arrays of the \code{initial} or
@@ -50,6 +58,7 @@ Population <- function(region,
                                 "stage_structured"),
                        growth = NULL,
                        capacity = NULL,
+                       establish_pr = NULL,
                        incursion_values = NULL,
                        class = character(), ...) {
   UseMethod("Population")
@@ -62,6 +71,7 @@ Population.Region <- function(region,
                                        "stage_structured"),
                               growth = NULL,
                               capacity = NULL,
+                              establish_pr = NULL,
                               incursion_values = NULL,
                               class = character(), ...) {
 
@@ -91,6 +101,14 @@ Population.Region <- function(region,
   if (!is.null(capacity) && (!is.numeric(capacity) ||
                              length(capacity) != region$get_locations())) {
     stop("Population capacity should be a vector with a value for each ",
+         "region location.", call. = FALSE)
+  }
+
+  # Validate establishment probability via region
+  if (!is.null(establish_pr) &&
+      (!is.numeric(establish_pr) ||
+       length(establish_pr) != region$get_locations())) {
+    stop("Establishment probability should be a vector with a value for each ",
          "region location.", call. = FALSE)
   }
 
@@ -146,6 +164,11 @@ Population.Region <- function(region,
     return(capacity)
   }
 
+  # Get establishment probability
+  self$get_establish_pr <- function() {
+    return(establish_pr)
+  }
+
   # Generic make method (extended/overridden in subclasses)
   self$make <- function(initial = NULL, current = NULL, incursion = NULL) {
 
@@ -177,10 +200,10 @@ Population.Region <- function(region,
     # Initial or ongoing incursions (combined with current in subclasses)
     if (is.logical(incursion)) {
 
-      if (!is.null(incursion_values)) {
+      # Indices of incursion locations
+      indices <- which(incursion)
 
-        # Indices of incursion locations
-        indices <- which(incursion)
+      if (!is.null(incursion_values)) {
 
         # Sample across range
         if (is.list(incursion_values)) {
@@ -243,19 +266,36 @@ Population.Region <- function(region,
             incursion[indices] <- values
           }
         }
+      }
 
-        # Combine with current if columns match, else error
-        if (!is.null(current)) {
-          if (ncol(as.matrix(current)) == ncol(as.matrix(incursion))) {
-            if (is.logical(incursion) && is.logical(current)) {
-              incursion <- incursion | current
-            } else { # numeric
-              incursion <- incursion + current
-            }
-          } else {
-            stop("Cannot combine incursion with current population array as ",
-                 "the columns are inconsistent.", call. = FALSE)
+      # Apply stochastic establishment to incursions
+      if (is.numeric(establish_pr)) {
+        if (is.logical(incursion)) {
+          incursion[indices] <- as.logical(
+            stats::rbinom(length(indices), size = 1,
+                          prob = establish_pr[indices]))
+        } else if (is.matrix(incursion)) {
+          incursion[indices,] <- stats::rbinom(length(incursion[indices,]),
+                                               size = incursion[indices,],
+                                               prob = establish_pr[indices])
+        } else { # numeric vector
+          incursion[indices] <- stats::rbinom(length(indices),
+                                              size = incursion[indices],
+                                              prob = establish_pr[indices])
+        }
+      }
+
+      # Combine with current if columns match, else error
+      if (!is.null(current)) {
+        if (ncol(as.matrix(current)) == ncol(as.matrix(incursion))) {
+          if (is.logical(incursion) && is.logical(current)) {
+            incursion <- incursion | current
+          } else { # numeric
+            incursion <- incursion + current
           }
+        } else {
+          stop("Cannot combine incursion with current population array as ",
+               "the columns are inconsistent.", call. = FALSE)
         }
       }
 

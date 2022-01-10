@@ -131,9 +131,6 @@ Results.Region <- function(region, population_model,
         (previous_sd + ((total_n - previous_mean)*
                           (total_n - results$total[[tmc]]$mean)))
 
-      # Transform standard deviation at final replicate and time step
-
-
     } else {
 
       # Population at each location

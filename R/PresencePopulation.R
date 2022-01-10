@@ -6,6 +6,12 @@
 #'
 #' @param region A \code{Region} or inherited class object representing the
 #'   spatial region (template) for the spread simulations.
+#' @param establish_pr An optional vector of probability values (0-1) to
+#'   represent the likelihood of establishment at each location specified by
+#'   the \code{region}. This may be used to avoid transient/unsuccessful
+#'   incursions or migrations from being presented in the simulation results,
+#'   and/or from subsequently contributing to spread in presence-only models.
+#'   Default is \code{NULL}.
 #' @param spread_delay Number of simulation time steps before an incursion at
 #'   a newly established location can spread to other locations. This provides
 #'   an implicit mechanism for growth. Default \code{NULL} assumes no delay.
@@ -14,6 +20,8 @@
 #'   for accessing attributes and simulating (implicit) growth:
 #'   \describe{
 #'     \item{\code{get_type()}}{Get the population representation type.}
+#'     \item{\code{get_establish_pr()}}{Get the establishment probability
+#'       vector.}
 #'     \item{\code{get_spread_delay()}}{Get the delay in spread ability.}
 #'     \item{\code{make(initial, current, incursion)}}{Make a population vector
 #'       using vectors of the \code{initial} or \code{current} and
@@ -25,10 +33,12 @@
 #' @include Population.R
 #' @export
 PresencePopulation <- function(region,
+                               establish_pr = NULL,
                                spread_delay = NULL, ...) {
 
   # Build via base class
   self <- Population(region,
+                     establish_pr = establish_pr,
                      type = "presence_only",
                      class = "PresencePopulation")
 

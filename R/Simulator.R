@@ -155,31 +155,31 @@ Simulator.Region <- function(region,
     for (r in 1:replicates) {
 
       # Initialize population array
-      N <- initializer$initialize()
+      n <- initializer$initialize()
 
       # Initial results (t = 0)
-      results$collate(r, 0, N)
+      results$collate(r, 0, n)
 
       # Time steps
       for (tm in 1:time_steps) {
 
         # Population growth
-        N <- population_model$grow(N)
+        n <- population_model$grow(n)
 
         # Dispersal for each spread vector
         if (length(dispersal_models)) {
           for (i in 1:length(dispersal_models)) {
-            N <- dispersal_models[[i]]$disperse(N)
+            n <- dispersal_models[[i]]$disperse(n)
           }
         }
 
         # Continued incursions
         if (is.function(continued_incursions)) {
-          N <- continued_incursions(tm, N)
+          n <- continued_incursions(tm, n)
         }
 
         # Collate results
-        results$collate(r, tm, N)
+        results$collate(r, tm, n)
 
       } # time steps
 

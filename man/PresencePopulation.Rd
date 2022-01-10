@@ -4,11 +4,18 @@
 \alias{PresencePopulation}
 \title{Presence-only population model class builder}
 \usage{
-PresencePopulation(region, spread_delay = NULL, ...)
+PresencePopulation(region, establish_pr = NULL, spread_delay = NULL, ...)
 }
 \arguments{
 \item{region}{A \code{Region} or inherited class object representing the
 spatial region (template) for the spread simulations.}
+
+\item{establish_pr}{An optional vector of probability values (0-1) to
+represent the likelihood of establishment at each location specified by
+the \code{region}. This may be used to avoid transient/unsuccessful
+incursions or migrations from being presented in the simulation results,
+and/or from subsequently contributing to spread in presence-only models.
+Default is \code{NULL}.}
 
 \item{spread_delay}{Number of simulation time steps before an incursion at
 a newly established location can spread to other locations. This provides
@@ -21,6 +28,8 @@ A \code{PresencePopulation} class object (list) containing functions
 for accessing attributes and simulating (implicit) growth:
 \describe{
 \item{\code{get_type()}}{Get the population representation type.}
+\item{\code{get_establish_pr()}}{Get the establishment probability
+vector.}
 \item{\code{get_spread_delay()}}{Get the delay in spread ability.}
 \item{\code{make(initial, current, incursion)}}{Make a population vector
 using vectors of the \code{initial} or \code{current} and
