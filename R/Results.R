@@ -146,16 +146,19 @@ Results.Region <- function(region, population_model,
   # Finalize the results collation
   self$finalize <- function() {
 
-    # Transform collated population standard deviations
-    for (tmc in names(results$collated)) {
-      results$collated[[tmc]]$sd <<-
-        sqrt(results$collated[[tmc]]$sd/(replicates - 1))
-    }
+    if (replicates > 1) { # summaries
 
-    # Transform total population standard deviations
-    for (tmc in names(results$total)) {
-      results$total[[tmc]]$sd <<-
-        sqrt(results$total[[tmc]]$sd/(replicates - 1))
+      # Transform collated population standard deviations
+      for (tmc in names(results$collated)) {
+        results$collated[[tmc]]$sd <<-
+          sqrt(results$collated[[tmc]]$sd/(replicates - 1))
+      }
+
+      # Transform total population standard deviations
+      for (tmc in names(results$total)) {
+        results$total[[tmc]]$sd <<-
+          sqrt(results$total[[tmc]]$sd/(replicates - 1))
+      }
     }
   }
 
