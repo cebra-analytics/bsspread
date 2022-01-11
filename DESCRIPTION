@@ -28,4 +28,5 @@ Collate:
     'PresencePopulation.R'
     'Results.R'
     'Simulator.R'
+    'StagedPopulation.R'
     'UnstructPopulation.R'

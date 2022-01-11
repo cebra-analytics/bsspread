@@ -52,10 +52,10 @@ results, and/or from subsequently contributing to spread in presence-only
 models. Default is \code{NULL}.}
 
 \item{incursion_values}{Defines how incursion locations are populated.
-Either via a fixed single value, vector, or array of values for each
-location (vector or array rows) and/or stage (array columns), or via a
+Either via a fixed single value, vector, or matrix of values for each
+location (vector or matrix rows) and/or stage (matrix columns), or via a
 list specifying the range of values via \code{min} and \code{max} (single,
-vector or array) for uniform random sampling of values.}
+vector or matrix) for uniform random sampling of values.}
 
 \item{class}{Character class name for inherited classes. Default is
 \code{NULL}.}

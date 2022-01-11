@@ -52,21 +52,21 @@ PresencePopulation <- function(region,
   self$make <- function(initial = NULL, current = NULL, incursion = NULL) {
 
     # Run inherited function
-    value <- inherited_make(initial = initial, current = current,
+    values <- inherited_make(initial = initial, current = current,
                             incursion = incursion)
 
     # Set attributes for type and spread delay
     if (is.null(current)) {
-      attributes(value) <- list(type = self$get_type(),
+      attributes(values) <- list(type = self$get_type(),
                                 spread_delay = NULL)
       if (is.numeric(spread_delay)) {
-        attr(value, "spread_delay") <- rep(NA, region$get_locations())
+        attr(values, "spread_delay") <- rep(NA, region$get_locations())
       }
     } else {
-      attributes(value) <- attributes(current)
+      attributes(values) <- attributes(current)
     }
 
-    return(value)
+    return(values)
   }
 
   # Grow method - override for implicit (spread) delay-based growth

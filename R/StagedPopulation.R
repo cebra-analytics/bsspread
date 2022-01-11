@@ -1,0 +1,160 @@
+#' Stage or age-based population model class builder
+#'
+#' Builds a class for representing stage or age-based populations in spread
+#' simulations. Simulates logistic (capacity-limited) growth.
+#'
+#' @param region A \code{Region} or inherited class object representing the
+#'   spatial region (template) for the spread simulations.
+#' @param growth A stage or age-based matrix containing transition (fecundity
+#'   and survival) rates for each time step.
+#' @param capacity A vector of carrying capacity values of the invasive species
+#'   at each location specified by the \code{region}. Default is \code{NULL}
+#'   for when growth is not capacity-limited.
+#' @param capacity_stages A vector of stage or age indices (as per the
+#'   rows/columns of \code{growth} matrix) indicating which life-stages/ages
+#'   are applicable for capacity-limited growth (and survival). Default is
+#'   \code{NULL} for when growth is not capacity-limited, or when all
+#'   stages/ages are applicable for capacity-limited growth.
+#' @param establish_pr An optional vector of probability values (0-1) to
+#'   represent the likelihood of establishment at each location specified by
+#'   the \code{region}. This may be used to avoid transient/unsuccessful
+#'   incursions or migrations from being presented in the simulation results.
+#'   Default is \code{NULL}.
+#' @param incursion_values Defines how incursion locations are populated.
+#'   A matrix of fixed values with a row for each region location, or a single
+#'   row applicable for all locations, and with columns for each stage/age.
+#'   Alternatively, a list of matrices (as before), labelled \code{min} and
+#'   \code{max}, be used to specifying ranges of values for uniform random
+#'   sampling of values.
+#' @param ... Additional parameters.
+#' @return A \code{StagedPopulation} class object (list) containing functions
+#'   for accessing attributes and simulating growth:
+#'   \describe{
+#'     \item{\code{get_type()}}{Get the population representation type.}
+#'     \item{\code{get_growth()}}{Get the growth stage/age matrix.}
+#'     \item{\code{get_capacity()}}{Get the carrying capacity as a vector of
+#'       values for each location.}
+#'     \item{\code{get_capacity_stages()}}{Get the stage/age (indices) that are
+#'       applicable for capacity-limited growth.}
+#'     \item{\code{get_establish_pr()}}{Get the establishment probability as a
+#'       vector of values for each location.}
+#'     \item{\code{make(initial, current, incursion)}}{Make a population matrix
+#'       (with a row per location and a column per stage/age) via using vectors
+#'       or matrices of the \code{initial} or \code{current} and
+#'       \code{incursion} population at each region location.}
+#'     \item{\code{grow(x)}}{Performs logistic (capacity-limited) growth on the
+#'       population \code{x} matrix (having a row per location and a column per
+#'       stage/age), and returns the transformed matrix.}
+#'   }
+#' @include Population.R
+#' @export
+StagedPopulation <- function(region, growth,
+                             capacity = NULL,
+                             capacity_stages = NULL,
+                             establish_pr = NULL,
+                             incursion_values = NULL, ...) {
+
+  # Build via base class
+  self <- Population(region,
+                     type = "stage_structured",
+                     growth = growth,
+                     capacity = capacity,
+                     establish_pr = establish_pr,
+                     incursion_values = incursion_values,
+                     class = "StagedPopulation")
+
+  # Number of stages or age classes
+  stages = self$get_stages()
+
+  # Validate capacity stages
+  if (is.null(capacity_stages)) {
+    if (!is.null(capacity)) { # default values
+      capacity_stages <- 1:stages
+    }
+  } else {
+    capacity_stages <- unique(capacity_stages)
+    if (!is.numeric(capacity_stages) ||
+        !all(capacity_stages %in% 1:stages)) {
+      stop(paste0("Capacity stages should specify index values between 1 and ",
+                  stages, "."), call. = FALSE)
+    }
+  }
+
+  # Get capacity stages
+  self$get_capacity_stages <- function() {
+    return(capacity_stages)
+  }
+
+  # Make method (extends inherited function from Population class)
+  inherited_make <- self$make
+  self$make <- function(initial = NULL, current = NULL, incursion = NULL) {
+
+    # Run inherited function
+    values <- inherited_make(initial = initial, current = current,
+                             incursion = incursion)
+
+    # Distribute single location values across stages if required
+    if (ncol(as.matrix(values)) == 1) {
+
+      # Calculate ratio for stable distribution of stages
+      ratio <- Re((eigen(growth)$vectors)[,1])
+
+      # Distribute across stages for occupied indices
+      values <- array(values, c(length(values), stages))
+      for (i in which(values[,1] > 0)) {
+        values[i,] <- stats::rmultinom(1, size = values[i,], prob = ratio)
+      }
+    }
+
+    return(values)
+  }
+
+  # Survival mask (assumed)
+  survival <- lower.tri(growth, diag = TRUE)
+
+  # Look-up table of matrix multipliers for equivalent growth rates
+  if (is.numeric(capacity)) { # capacity-limited
+
+    # Maximum multiplier when 100% survival
+    max_mult <- max(1/max(colSums(survival*growth), 0.001), 1)
+
+    # Construct look-up table
+    r_mult <- data.frame(r = NA, mult = (1:trunc(max_mult*1000))/1000)
+    r_mult$r <- sapply(r_mult$mult, function(m) {
+      log(Re((eigen(growth*m, only.values = TRUE)$values)[1]))
+    })
+  }
+
+  # Grow method - override for logistic (capacity-limited) growth
+  self$grow <- function(x) { # TODO
+
+    # Indices of occupied locations
+    indices <- which(x > 0)
+
+    # Calculate logistic growth rates
+    if (is.numeric(capacity)) { # capacity-limited
+
+      # Remove populations at locations having zero capacity
+      if (any(capacity[indices] <= 0)) {
+        zero_idx <- indices[which(capacity[indices] <= 0)]
+        x[zero_idx] <- 0
+        indices <- indices[!indices %in% zero_idx]
+      }
+
+      # Calculate capacity-limited growth rates for each occupied location
+      r <- exp(log(growth)*(1 - x[indices]/capacity[indices]))
+
+    } else {
+      r <- growth
+    }
+
+    # Sample the new population values via the Poisson distribution
+    if (length(indices)) {
+      x[indices] <- stats::rpois(length(indices), r*x[indices])
+    }
+
+    return(x)
+  }
+
+  return(self)
+}
