@@ -18,8 +18,11 @@ StagedPopulation(
 \item{region}{A \code{Region} or inherited class object representing the
 spatial region (template) for the spread simulations.}
 
-\item{growth}{A stage or age-based matrix containing transition (fecundity
-and survival) rates for each time step.}
+\item{growth}{A stage or age-based matrix containing reproduction and
+survival rates for each time step. An optional attribute \code{survivals}
+may be used to differentiate the survival rates, otherwise survival rates
+are assumed to be any non-zero values on the lower (left) triangle of the
+matrix, including those on the diagonal.}
 
 \item{capacity}{A vector of carrying capacity values of the invasive species
 at each location specified by the \code{region}. Default is \code{NULL}

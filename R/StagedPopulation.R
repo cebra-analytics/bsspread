@@ -5,8 +5,11 @@
 #'
 #' @param region A \code{Region} or inherited class object representing the
 #'   spatial region (template) for the spread simulations.
-#' @param growth A stage or age-based matrix containing transition (fecundity
-#'   and survival) rates for each time step.
+#' @param growth A stage or age-based matrix containing reproduction and
+#'   survival rates for each time step. An optional attribute \code{survivals}
+#'   may be used to differentiate the survival rates, otherwise survival rates
+#'   are assumed to be any non-zero values on the lower (left) triangle of the
+#'   matrix, including those on the diagonal.
 #' @param capacity A vector of carrying capacity values of the invasive species
 #'   at each location specified by the \code{region}. Default is \code{NULL}
 #'   for when growth is not capacity-limited.
@@ -66,6 +69,21 @@ StagedPopulation <- function(region, growth,
   # Number of stages or age classes
   stages = self$get_stages()
 
+  # Equivalent growth rate for stage/age matrix (growth)
+  growth_r <- Re((eigen(growth, only.values = TRUE)$values)[1])
+
+  # Growth survivals from attribute when present or lower triangle
+  if ("survivals" %in% names(attributes(growth))) {
+    survivals <- attr(growth, "survivals")
+    if (!is.matrix(survivals) || !is.numeric(survivals) ||
+        !all(dim(survivals) == dim(growth))) {
+      stop("Growth survivals attribute should be a numeric matrix with the ",
+           "same dimensions as the growth (stage/age) matrix.", call. = FALSE)
+    }
+  } else {
+    survivals <- lower.tri(growth, diag = TRUE)*growth
+  }
+
   # Validate capacity stages
   if (is.null(capacity_stages)) {
     if (!is.null(capacity)) { # default values
@@ -109,44 +127,47 @@ StagedPopulation <- function(region, growth,
     return(values)
   }
 
-  # Survival mask (assumed)
-  survival <- lower.tri(growth, diag = TRUE)
-
   # Look-up table of matrix multipliers for equivalent growth rates
   if (is.numeric(capacity)) { # capacity-limited
 
     # Maximum multiplier when 100% survival
-    max_mult <- max(1/max(colSums(survival*growth), 0.001), 1)
+    max_mult <- max(1/max(colSums(survivals), 0.001), 1)
 
     # Construct look-up table
     r_mult <- data.frame(r = NA, mult = (1:trunc(max_mult*1000))/1000)
     r_mult$r <- sapply(r_mult$mult, function(m) {
-      log(Re((eigen(growth*m, only.values = TRUE)$values)[1]))
+      Re((eigen(growth*m, only.values = TRUE)$values)[1])
     })
   }
 
   # Grow method - override for logistic (capacity-limited) growth
-  self$grow <- function(x) { # TODO
+  self$grow <- function(x) {
 
     # Indices of occupied locations
-    indices <- which(x > 0)
+    indices <- which(rowSums(x) > 0)
 
-    # Calculate logistic growth rates
+    # Calculate logistic growth rates and their equivalent matrix multipliers
     if (is.numeric(capacity)) { # capacity-limited
 
       # Remove populations at locations having zero capacity
       if (any(capacity[indices] <= 0)) {
         zero_idx <- indices[which(capacity[indices] <= 0)]
-        x[zero_idx] <- 0
+        x[zero_idx,] <- 0
         indices <- indices[!indices %in% zero_idx]
       }
 
       # Calculate capacity-limited growth rates for each occupied location
-      r <- exp(log(growth)*(1 - x[indices]/capacity[indices]))
+      r <- exp(log(growth_r)*(1 - (rowSums(x[indices, capacity_stages])/
+                                     capacity[indices])))
+
+      # Look-up stage/age matrix multiplier for each occupied location
+      mult <- sapply(r, function(r) r_mult$mult[which.min(abs(r_mult$r - r))])
 
     } else {
-      r <- growth
+      mult <- 1
     }
+
+    # TODO separate matrix sampling for survival and reproduction
 
     # Sample the new population values via the Poisson distribution
     if (length(indices)) {
