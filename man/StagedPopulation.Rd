@@ -55,6 +55,8 @@ for accessing attributes and simulating growth:
 \describe{
 \item{\code{get_type()}}{Get the population representation type.}
 \item{\code{get_growth()}}{Get the growth stage/age matrix.}
+\item{\code{get_growth_r()}}{Get the equivalent (single value) growth
+rate for the \code{growth} stage/age matrix.}
 \item{\code{get_capacity()}}{Get the carrying capacity as a vector of
 values for each location.}
 \item{\code{get_capacity_stages()}}{Get the stage/age (indices) that are

@@ -35,6 +35,8 @@
 #'   \describe{
 #'     \item{\code{get_type()}}{Get the population representation type.}
 #'     \item{\code{get_growth()}}{Get the growth stage/age matrix.}
+#'     \item{\code{get_growth_r()}}{Get the equivalent (single value) growth
+#'       rate for the \code{growth} stage/age matrix.}
 #'     \item{\code{get_capacity()}}{Get the carrying capacity as a vector of
 #'       values for each location.}
 #'     \item{\code{get_capacity_stages()}}{Get the stage/age (indices) that are
@@ -71,6 +73,9 @@ StagedPopulation <- function(region, growth,
 
   # Equivalent growth rate for stage/age matrix (growth)
   growth_r <- Re((eigen(growth, only.values = TRUE)$values)[1])
+  get_growth_r <- function() {
+    return(growth_r)
+  }
 
   # Growth survivals from attribute when present or lower triangle
   if ("survivals" %in% names(attributes(growth))) {
@@ -83,6 +88,10 @@ StagedPopulation <- function(region, growth,
   } else {
     survivals <- lower.tri(growth, diag = TRUE)*growth
   }
+
+  # Growth reproductions
+  reproductions <- growth - survivals
+  attr(reproductions, "survivals") <- NULL
 
   # Validate capacity stages
   if (is.null(capacity_stages)) {
@@ -146,32 +155,54 @@ StagedPopulation <- function(region, growth,
     # Indices of occupied locations
     indices <- which(rowSums(x) > 0)
 
-    # Calculate logistic growth rates and their equivalent matrix multipliers
-    if (is.numeric(capacity)) { # capacity-limited
+    if (length(indices)) { # grow occupied populations
 
-      # Remove populations at locations having zero capacity
-      if (any(capacity[indices] <= 0)) {
-        zero_idx <- indices[which(capacity[indices] <= 0)]
-        x[zero_idx,] <- 0
-        indices <- indices[!indices %in% zero_idx]
+      # Calculate logistic growth rates and their equivalent matrix multipliers
+      if (is.numeric(capacity)) { # capacity-limited
+
+        # Remove populations at locations having zero capacity
+        if (any(capacity[indices] <= 0)) {
+          zero_idx <- indices[which(capacity[indices] <= 0)]
+          x[zero_idx,] <- 0
+          indices <- indices[!indices %in% zero_idx]
+        }
+
+        # Calculate capacity-limited growth rates for each occupied location
+        r <- exp(log(growth_r)*(1 - (rowSums(x[indices, capacity_stages])/
+                                       capacity[indices])))
+
+        # Look-up stage/age matrix multiplier for each occupied location
+        mult <- sapply(r, function(r) {
+          r_mult$mult[which.min(abs(r_mult$r - r))]})
+
+      } else {
+        mult <- rep(1, length(indices))
       }
 
-      # Calculate capacity-limited growth rates for each occupied location
-      r <- exp(log(growth_r)*(1 - (rowSums(x[indices, capacity_stages])/
-                                     capacity[indices])))
+      # Sample the new population values (reproduction and survival)
+      new_x <- array(0L, c(length(indices), stages))
+      for (stage in 1:stages) {
 
-      # Look-up stage/age matrix multiplier for each occupied location
-      mult <- sapply(r, function(r) r_mult$mult[which.min(abs(r_mult$r - r))])
+        # Sample reproduction via a Poisson distribution
+        new_x <- new_x + stats::rpois(
+          length(indices)*stages,
+          (x[indices, stage]*
+             t(reproductions[, rep(stage, length(indices))])*mult))
 
-    } else {
-      mult <- 1
-    }
+        # Sample stage survivals via a binomial distribution
+        stage_surv <- stats::rbinom(length(indices), x[indices, stage],
+                                    rep(sum(survivals[, stage]),
+                                        length(indices))*mult)
 
-    # TODO separate matrix sampling for survival and reproduction
+        # Distribute survivals across stages via multinomial sampling
+        new_x <- new_x + t(sapply(1:length(indices), function(i) {
+          stats::rmultinom(1, size = stage_surv[i],
+                           prob = survivals[, stage]*mult[i])
+        }))
+      }
 
-    # Sample the new population values via the Poisson distribution
-    if (length(indices)) {
-      x[indices] <- stats::rpois(length(indices), r*x[indices])
+      # Update populations at occupied locations
+      x[indices,] <- new_x
     }
 
     return(x)
