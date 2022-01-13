@@ -183,13 +183,13 @@ StagedPopulation <- function(region, growth,
       new_x <- array(0L, c(length(indices), stages))
       for (stage in 1:stages) {
 
-        # Sample reproduction via a Poisson distribution
+        # Sample stage reproduction via a Poisson distribution
         new_x <- new_x + stats::rpois(
           length(indices)*stages,
           (x[indices, stage]*
              t(reproductions[, rep(stage, length(indices))])*mult))
 
-        # Sample stage survivals via a binomial distribution
+        # Sample stage survival via a binomial distribution
         stage_surv <- stats::rbinom(length(indices), x[indices, stage],
                                     rep(sum(survivals[, stage]),
                                         length(indices))*mult)
