@@ -168,7 +168,8 @@ StagedPopulation <- function(region, growth,
         }
 
         # Calculate capacity-limited growth rates for each occupied location
-        r <- exp(log(growth_r)*(1 - (rowSums(x[indices, capacity_stages])/
+        r <- exp(log(growth_r)*(1 - (rowSums(x[indices, capacity_stages,
+                                               drop = FALSE])/
                                        capacity[indices])))
 
         # Look-up stage/age matrix multiplier for each occupied location
