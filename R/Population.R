@@ -269,6 +269,9 @@ Population.Region <- function(region,
         } else {
           incursion <- vector("logical", length(incursion))
         }
+        if (type != "presence_only") { # to integer
+          incursion <- incursion*0L
+        }
 
         if (length(indices)) { # incursions present
 

@@ -116,8 +116,8 @@ StagedPopulation <- function(region, growth,
   inherited_make <- self$make
   self$make <- function(initial = NULL, current = NULL, incursion = NULL) {
 
-    # Run inherited function
-    values <- inherited_make(initial = initial, current = current,
+    # Run inherited function for initial or incursion only
+    values <- inherited_make(initial = initial, current = NULL,
                              incursion = incursion)
 
     # Distribute single location values across stages if required
@@ -130,6 +130,16 @@ StagedPopulation <- function(region, growth,
       values <- array(values, c(length(values), stages))
       for (i in which(values[,1] > 0)) {
         values[i,] <- stats::rmultinom(1, size = values[i,], prob = ratio)
+      }
+    }
+
+    # Combine incursion and current values
+    if (!is.null(incursion) && !is.null(current)) {
+      if (ncol(as.matrix(current)) == ncol(as.matrix(values))) {
+        values <- values + current
+      } else {
+        stop("Cannot combine incursion with current population array as ",
+             "the columns are inconsistent.", call. = FALSE)
       }
     }
 

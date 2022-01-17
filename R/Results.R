@@ -70,6 +70,7 @@ Results.Region <- function(region, population_model,
   zeros <- list(collated = as.integer(population_model$make(initial = 0L)),
                 total = 0L, area = 0L)
   if (is.numeric(stages)) {
+    zeros$collated <- matrix(zeros$collated, ncol = stages)
     zeros$total <- array(0L, c(1, stages))
   }
   if (replicates > 1) { # summaries
