@@ -13,8 +13,9 @@
 #'   accessing attributes and checking compatibility of objects with the
 #'   region:
 #'   \describe{
-#'     \item{\code{get_template()}}{Get the spatial template (with zeros in
-#'       non-NA locations).}
+#'     \item{\code{get_template(empty = FALSE)}}{Get the spatial template with
+#'      either zeros in non-NA locations (default), or with no values when
+#'      \code{empty = TRUE}.}
 #'     \item{\code{get_indices()}}{Get cell indices of grid locations that are
 #'       included in the simulation.}
 #'     \item{\code{get_locations()}}{Get the number of locations (cells or
@@ -55,10 +56,14 @@ Region.SpatRaster <- function(x, suitability = FALSE, ...) {
   # Create a class structure
   self <- structure(list(), class = "Region")
 
-  # Get spatial template
-  self$get_template <- function() {
-    template <- x*0
-    names(template) <- "value"
+  # Get spatial template with zero/NA or empty values
+  self$get_template <- function(empty = FALSE) {
+    if (empty) {
+      template <- terra::rast(x)
+    } else {
+      template <- x*0
+      names(template) <- "value"
+    }
     return(template)
   }
 

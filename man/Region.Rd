@@ -26,8 +26,9 @@ A \code{Region} class object (list) containing functions for
 accessing attributes and checking compatibility of objects with the
 region:
 \describe{
-\item{\code{get_template()}}{Get the spatial template (with zeros in
-non-NA locations).}
+\item{\code{get_template(empty = FALSE)}}{Get the spatial template with
+either zeros in non-NA locations (default), or with no values when
+\code{empty = TRUE}.}
 \item{\code{get_indices()}}{Get cell indices of grid locations that are
 included in the simulation.}
 \item{\code{get_locations()}}{Get the number of locations (cells or
