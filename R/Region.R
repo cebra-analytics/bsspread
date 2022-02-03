@@ -90,5 +90,75 @@ Region.SpatRaster <- function(x, suitability = FALSE, ...) {
              all(terra::res(y) == terra::res(x)))
   }
 
+  # Check, get, and set long-distance dispersal aggregation (list)
+  aggr <- NULL
+  self$use_aggr <- function() {
+    return(!is.null(aggr))
+  }
+  self$get_aggr <- function() { # ???
+    return(aggr)
+  }
+  self$set_aggr <- function(aggr_factor, inner_radius) {
+    aggr <<- list(factor = aggr_factor, inner_radius = inner_radius)
+    aggr$rast <<- terra::aggregate(self$get_template(), fact = aggr_factor,
+                                  fun = "mean", na.rm = TRUE)
+  }
+
+  # Lists of distances, directions, and graphs for dispersal calculations
+  distances <- list()
+  directions <- list()
+  graphs <- list()
+
+  # Other variables dynamically created for dispersal calculations
+  region_pts <- NULL
+  any_dispersal_variables <- function() {
+    return(!is.null(region_pts))
+  }
+  set_dispersal_variables <- function() {
+    region_pts <<- terra::as.points(self$get_template())
+  }
+
+  # Get distances for a region cell
+  self$get_distances <- function(cell_i, max_distance = NULL) {
+
+    # Set dispersal variables when required
+    if (!any_dispersal_variables()) {
+      set_dispersal_variables()
+    }
+
+    # Resolve all reachable (local) cells
+    if (self$use_aggr()) {
+      # TODO
+
+    } else {
+      if (!is.null(max_distance)) {
+        inner_vect <- terra::buffer(region_pts[cell_i,], width = max_distance,
+                                    quadsegs = 180)
+        cell_idx <- terra::cells(x, inner_vect, touches = TRUE)[, "cell"]
+        cell_idx <- which(indices %in% cell_idx)
+      } else {
+        # TODO
+      }
+    }
+
+    # IN PROGRESS
+
+    distance_list[[as.character(cell_i)]] <- list(cell = as.list(
+      as.integer(round(as.numeric(
+        terra::distance(region_pts[cell_i], region_pts[cell_idx]))))))
+
+    distance_list[[as.character(cell_i)]][["aggr"]] <- as.list(
+      as.integer(round(as.numeric(
+        terra::distance(region_pts[cell_i], aggr_region_pts[aggr_idx])))))
+  }
+
+  # Get directions
+  self$get_directions()
+
+  # Get graph (shortest path) weights
+  self$get_graph_weights()
+
+  # IN PROGRESS
+
   return(self)
 }

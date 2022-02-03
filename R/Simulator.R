@@ -168,9 +168,11 @@ Simulator.Region <- function(region,
 
         # Dispersal for each spread vector
         if (length(dispersal_models)) {
+          n <- list(original = n, remaining = n, relocated = n*0) # TODO presence only => pop model empty
           for (i in 1:length(dispersal_models)) {
             n <- dispersal_models[[i]]$disperse(n)
           }
+          n <- n$remaining + n$relocated # TODO presence only => pop model merge
         }
 
         # Continued incursions
