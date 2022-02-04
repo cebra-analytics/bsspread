@@ -12,7 +12,6 @@ Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.2
 Imports:
-    dplyr (>= 1.0.7),
     raster (>= 3.5.2),
     terra (>= 1.4.22)
 Suggests:

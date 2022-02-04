@@ -6,18 +6,15 @@
 \alias{Region.SpatRaster}
 \title{Region class builder}
 \usage{
-Region(x, suitability = FALSE, ...)
+Region(x, ...)
 
 \method{Region}{Raster}(x, ...)
 
-\method{Region}{SpatRaster}(x, suitability = FALSE, ...)
+\method{Region}{SpatRaster}(x, ...)
 }
 \arguments{
 \item{x}{A \code{raster::RasterLayer} or \code{terra::SpatRaster}
 object representing the spatial region (template) for spread simulations.}
-
-\item{suitability}{Logical to indicate whether only suitable locations
-(cells) with values greater than zero should be used in the simulations.}
 
 \item{...}{Additional parameters.}
 }
@@ -37,10 +34,42 @@ patches) that are included in the simulation.}
 (raster cells) or patch (network).}
 \item{\code{is_compatible(y)}}{Check the compatibility of object
 \code{y} with the region defined by \code{x}.}
+\item{\code{two_tier()}}{Check if the region is configured for two-tier
+dispersal (local plus aggregate cells).}
+\item{\code{get_aggr()}}{Get a list of two-tier dispersal aggregation
+components \code{factor}, \code{inner_radius}, \code{rast}
+(\code{terra::SpatRaster}), \code{indices} (non-NA), and \code{pts}
+(\code{terra::SpatVector}).}
+\item{\code{set_aggr(aggr_factor, inner_radius)}}{Configure a two-tier
+dispersal aggregation of the region via an aggregation factor and
+an inner radius (in m) to define the boundary between local dispersal
+at the original resolution and long-distance dispersal at an aggregate
+resolution.}
+\item{\code{get_reachable(cells, max_distance = NULL)}}{Get the indices
+of cells that are reachable for each cell index in \code{cells},
+including local (\code{$cell}) and aggregate (\code{$aggr}) cells when
+configured, and optionally limited via a maximum distance (in m).}
+\item{\code{get_distances(cells, max_distance = NULL)}}{Get the distance
+(in m) of cells that are reachable from each cell index in
+\code{cells}, including local (\code{$cell}) and aggregate
+(\code{$aggr}) cells when configured, and optionally limited via a
+maximum distance (in m).}
+\item{\code{get_directions(cells, max_distance = NULL)}}{Get the
+direction (0-360 degrees) of cells that are reachable from each cell
+index in \code{cells}, including local (\code{$cell}) and aggregate
+(\code{$aggr}) cells when configured, and optionally limited via a
+maximum distance (in m).}
 }
 }
 \description{
 Builds a class to represent a spatial region for a spread simulation,
-defined by a raster layer with active (non-NA) and/or suitable (non-zero)
-cells, or by a network of locations or patches.
+defined by a raster layer with active (non-NA) cells, or by a network of
+locations or patches. When defined by a raster layer, the region can be
+configured for two-tier dispersal, whereby long-distance dispersal is
+calculated using a courser (aggregate) spatial resolution for destinations
+outside of an inner radius, within which local dispersal is calculated using
+the original spatial resolution of the region. Functions for calculating
+distances and directions between (local and aggregate) cells are also
+provided, as well as functionality for calculating network paths (graphs)
+between cells (local and aggregate).
 }

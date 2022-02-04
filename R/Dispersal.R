@@ -17,10 +17,11 @@
 #'     \item{\code{get_population_model()}}{Get the population model object.}
 #'     \item{\code{disperse(x)}}{Perform location dispersal on a list \code{x}
 #'       of population vectors (for each location) or arrays (locations by
-#'       stages), representing the original, remaining and relocated
-#'       populations, and return the transformed list of vectors or arrays. The
-#'       separation of original, remaining and relocated populations enables
-#'       multiple models for different dispersal vectors to run in sequence.}
+#'       stages), representing the \code{original}, \code{remaining} and
+#'       \code{relocated} populations, and return the transformed list of
+#'       vectors or arrays. The separation of original, remaining and relocated
+#'       populations enables multiple models for different dispersal vectors to
+#'       run in sequence.}
 #'     \item{\code{TODO()}}{TODO.}
 #'   }
 #' @include Region.R
