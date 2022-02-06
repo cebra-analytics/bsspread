@@ -35,7 +35,7 @@ patches) that are included in the simulation.}
 \item{\code{is_compatible(y)}}{Check the compatibility of object
 \code{y} with the region defined by \code{x}.}
 \item{\code{two_tier()}}{Check if the region is configured for two-tier
-dispersal (local plus aggregate cells).}
+dispersal (local plus aggregate cells) when type is grid.}
 \item{\code{get_aggr()}}{Get a list of two-tier dispersal aggregation
 components \code{factor}, \code{inner_radius}, \code{rast}
 (\code{terra::SpatRaster}), \code{indices} (non-NA), and \code{pts}

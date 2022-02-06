@@ -30,7 +30,7 @@
 #'     \item{\code{is_compatible(y)}}{Check the compatibility of object
 #'       \code{y} with the region defined by \code{x}.}
 #'     \item{\code{two_tier()}}{Check if the region is configured for two-tier
-#'       dispersal (local plus aggregate cells).}
+#'       dispersal (local plus aggregate cells) when type is grid.}
 #'     \item{\code{get_aggr()}}{Get a list of two-tier dispersal aggregation
 #'       components \code{factor}, \code{inner_radius}, \code{rast}
 #'       (\code{terra::SpatRaster}), \code{indices} (non-NA), and \code{pts}
@@ -250,17 +250,17 @@ Region.SpatRaster <- function(x, ...) {
       if (!cell_char %in% names(paths$directions)) {
 
         # Calculate (local) cell directions
-        xy_diff <- (terra::crds(region_pts[paths$idx[[cell_char]]$cell]) -
-                      terra::crds(region_pts[cell])[
-                        rep(1, length(paths$idx[[cell_char]]$cell)),])
+        xy_diff <- (terra::crds(region_pts[cell])[
+          rep(1, length(paths$idx[[cell_char]]$cell)),] -
+            terra::crds(region_pts[paths$idx[[cell_char]]$cell]))
         paths$directions[[cell_char]] <<- list(cell = as.integer(round(
           atan2(xy_diff[,"y"], xy_diff[,"x"])*180/pi + 180)))
 
         # Calculate aggregate cell directions when applicable
         if (is.list(aggr)) {
-          xy_diff <- (terra::crds(aggr$pts[paths$idx[[cell_char]]$aggr]) -
-                        terra::crds(region_pts[cell])[
-                          rep(1, length(paths$idx[[cell_char]]$aggr)),])
+          xy_diff <- (terra::crds(region_pts[cell])[
+            rep(1, length(paths$idx[[cell_char]]$aggr)),] -
+              terra::crds(aggr$pts[paths$idx[[cell_char]]$aggr]))
           paths$directions[[cell_char]]$aggr <<- as.integer(round(
             atan2(xy_diff[,"y"], xy_diff[,"x"])*180/pi + 180))
         }
