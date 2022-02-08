@@ -15,8 +15,8 @@
 #'   object representing the spatial region (template) for spread simulations.
 #' @param ... Additional parameters.
 #' @return A \code{Region} class object (list) containing functions for
-#'   accessing attributes and checking compatibility of objects with the
-#'   region:
+#'   accessing attributes, checking compatibility of objects with the
+#'   region, and to maintain common spatial data for dispersal:
 #'   \describe{
 #'     \item{\code{get_template(empty = FALSE)}}{Get the spatial template with
 #'      either zeros in non-NA locations (default), or with no values when
@@ -40,20 +40,23 @@
 #'       an inner radius (in m) to define the boundary between local dispersal
 #'       at the original resolution and long-distance dispersal at an aggregate
 #'       resolution.}
-#'     \item{\code{get_reachable(cells, max_distance = NULL)}}{Get the indices
-#'       of cells that are reachable for each cell index in \code{cells},
-#'       including local (\code{$cell}) and aggregate (\code{$aggr}) cells when
-#'       configured, and optionally limited via a maximum distance (in m).}
-#'     \item{\code{get_distances(cells, max_distance = NULL)}}{Get the distance
-#'       (in m) of cells that are reachable from each cell index in
+#'     \item{\code{configure_paths(directions = FALSE, graphs = FALSE,
+#'       max_distance = NULL)}}{Configure the inclusion of path directions from
+#'       occupied to reachable cells, the inclusion of \code{graphs} for
+#'       representing weighted (permeability) paths, and an optional maximum
+#'       distance (in m) for the paths, which are used in dispersal
+#'       calculations. Defaults infer non-inclusion.}
+#'     \item{\code{calculate_paths(cells)}}{Calculate the cells that are
+#'       reachable for each cell index in \code{cells}, including local and
+#'       aggregate cells when configured, and a graph connecting these paths
+#'       when configured. These are both limited via a maximum distance (in m)
+#'       when configured.}
+#'     \item{\code{get_paths(cells, directions = FALSE, max_distance = NULL)}}{
+#'       Get a list of indices, distances (in m), and directions (0-360
+#'       degrees) when configured, of/to reachable cells for each cell index in
 #'       \code{cells}, including local (\code{$cell}) and aggregate
-#'       (\code{$aggr}) cells when configured, and optionally limited via a
-#'       maximum distance (in m).}
-#'     \item{\code{get_directions(cells, max_distance = NULL)}}{Get the
-#'       direction (0-360 degrees) of cells that are reachable from each cell
-#'       index in \code{cells}, including local (\code{$cell}) and aggregate
-#'       (\code{$aggr}) cells when configured, and optionally limited via a
-#'       maximum distance (in m).}
+#'       (\code{$aggr}) cells when configured, and optionally (further) limited
+#'       via a maximum distance (in m).}
 #'   }
 #' @export
 Region <- function(x, ...) {
@@ -128,12 +131,30 @@ Region.SpatRaster <- function(x, ...) {
     aggr$pts <<- terra::as.points(aggr$rast, values = FALSE)
   }
 
-  # Path list of distances, directions, and graphs for dispersal calculations
-  paths <- list(idx = list(), distances = list(), directions = list(),
-                graphs = list())
+  # Path list of reachable indices and distances, and optionally configured
+  # directions, graphs and maximum distance for dispersal calculations
+  paths <- list(idx = list(), distances = list())
+  self$configure_paths <- function(directions = FALSE, graphs = FALSE,
+                                   max_distance = NULL) {
+    if (directions) {
+      paths$directions <<- list()
+    }
+    if (graphs) {
+      paths$graphs <<- list()
+    }
+    if (is.numeric(max_distance)) { # set if empty, or replace if larger
+      if (is.null(paths$max_distance) ||
+          (is.numeric(paths$max_distance) &&
+           max_distance > paths$max_distance)) {
+        paths$max_distance <<- max_distance
+      }
+    } else { # use full extent of region
+      paths$max_distance <<- Inf
+    }
+  }
 
-  # Calculate reachable cells for region cells (indices) [internal function]
-  calculate_reachable <- function(cells, max_distance) {
+  # Calculate reachable cells and graphs for region cells (indices)
+  self$calculate_paths <- function(cells) {
 
     for (cell in cells) {
 
@@ -161,9 +182,11 @@ Region.SpatRaster <- function(x, ...) {
             cell = which(indices %in% terra::cells(x, aggr_poly)[,2]))
 
           # Aggregate cell indices outside polygon
-          if (is.numeric(max_distance)) {
+          if (is.numeric(paths$max_distance) &&
+              is.finite(paths$max_distance)) {
             outer_vect <- terra::buffer(region_pts[cell,],
-                                        width = max_distance, quadsegs = 180)
+                                        width = paths$max_distance,
+                                        quadsegs = 180)
             outer_idx <- terra::cells(aggr$rast, outer_vect,
                                       touches = TRUE)[,2]
             outer_idx <- outer_idx[which(!outer_idx %in% aggr_idx)]
@@ -175,9 +198,11 @@ Region.SpatRaster <- function(x, ...) {
         } else { # cell approach
 
           # Select cells within range when applicable
-          if (is.numeric(max_distance)) {
+          if (is.numeric(paths$max_distance) &&
+              is.finite(paths$max_distance)) {
             range_vect <- terra::buffer(region_pts[cell,],
-                                        width = max_distance, quadsegs = 180)
+                                        width = paths$max_distance,
+                                        quadsegs = 180)
             paths$idx[[cell_char]] <<- list(
               cell = which(indices %in% terra::cells(x, range_vect,
                                                      touches = TRUE)[,2]))
@@ -189,23 +214,17 @@ Region.SpatRaster <- function(x, ...) {
     }
   }
 
-  # Get reachable cells for region cells (indices)
-  self$get_reachable <- function(cells, max_distance = NULL) {
+  # Get a list of indices, distances and directions of/to reachable cells for
+  # region cells (indices), optionally (further) limited via maximum distance
+  self$get_paths <- function(cells, directions = FALSE, max_distance = NULL) {
 
     # Calculate reachable cell indices (when not present)
-    calculate_reachable(cells, max_distance)
+    self$calculate_paths(cells)
 
-    # Return from paths list
-    return(paths$idx[as.character(cells)])
-  }
+    # Prepare selected paths as a nested list
+    selected <- list(idx = list(), distances = list())
 
-  # Get distances for region cells (indices)
-  self$get_distances <- function(cells, max_distance = NULL) {
-
-    # Calculate reachable cell indices (when not present)
-    calculate_reachable(cells, max_distance)
-
-    # Get distances to reachable cells for each cell
+    # Get distances and directions to reachable cells for each cell
     for (cell in cells) {
 
       # Map path lists use cells as characters
@@ -228,47 +247,64 @@ Region.SpatRaster <- function(x, ...) {
                               aggr$pts[paths$idx[[cell_char]]$aggr]))))
         }
       }
-    }
 
-    # Return from paths list
-    return(paths$distances[as.character(cells)])
-  }
-
-  # Get directions for region cells (indices)
-  self$get_directions <- function(cells, max_distance = NULL) {
-
-    # Calculate reachable cell indices (when not present)
-    calculate_reachable(cells, max_distance)
-
-    # Get directions to reachable cells for each cell
-    for (cell in cells) {
-
-      # Map path lists use cells as characters
-      cell_char <- as.character(cell)
-
-      # Calculate directions when not present
-      if (!cell_char %in% names(paths$directions)) {
-
-        # Calculate (local) cell directions
-        xy_diff <- (terra::crds(region_pts[cell])[
-          rep(1, length(paths$idx[[cell_char]]$cell)),] -
-            terra::crds(region_pts[paths$idx[[cell_char]]$cell]))
-        paths$directions[[cell_char]] <<- list(cell = as.integer(round(
-          atan2(xy_diff[,"y"], xy_diff[,"x"])*180/pi + 180)))
-
-        # Calculate aggregate cell directions when applicable
+      # Limit to paths within a maximum distance when required
+      if (is.numeric(max_distance) && max_distance < paths$max_distance) {
+        cell_ids <- which(paths$distances[[cell_char]]$cell <= max_distance)
+        selected$idx[[cell_char]] <- list(
+          cell = paths$idx[[cell_char]]$cell[cell_ids])
+        selected$distances[[cell_char]] <- list(
+          cell = paths$distances[[cell_char]]$cell[cell_ids])
         if (is.list(aggr)) {
+          aggr_ids <- which(paths$distances[[cell_char]]$aggr <= max_distance)
+          selected$idx[[cell_char]]$aggr <-
+            paths$idx[[cell_char]]$aggr[aggr_ids]
+          selected$distances[[cell_char]]$aggr <-
+            paths$distances[[cell_char]]$aggr[aggr_ids]
+        }
+      } else { # use full range
+        selected$idx[[cell_char]] <- paths$idx[[cell_char]]
+        selected$distances[[cell_char]] <- paths$distances[[cell_char]]
+      }
+
+      # Get directions when required
+      if (is.list(paths$directions) && directions) {
+
+        # Calculate directions when not present
+        if (!cell_char %in% names(paths$directions)) {
+
+          # Calculate (local) cell directions
           xy_diff <- (terra::crds(region_pts[cell])[
-            rep(1, length(paths$idx[[cell_char]]$aggr)),] -
-              terra::crds(aggr$pts[paths$idx[[cell_char]]$aggr]))
-          paths$directions[[cell_char]]$aggr <<- as.integer(round(
-            atan2(xy_diff[,"y"], xy_diff[,"x"])*180/pi + 180))
+            rep(1, length(paths$idx[[cell_char]]$cell)),] -
+              terra::crds(region_pts[paths$idx[[cell_char]]$cell]))
+          paths$directions[[cell_char]] <<- list(cell = as.integer(round(
+            atan2(xy_diff[,"y"], xy_diff[,"x"])*180/pi + 180)))
+
+          # Calculate aggregate cell directions when applicable
+          if (is.list(aggr)) {
+            xy_diff <- (terra::crds(region_pts[cell])[
+              rep(1, length(paths$idx[[cell_char]]$aggr)),] -
+                terra::crds(aggr$pts[paths$idx[[cell_char]]$aggr]))
+            paths$directions[[cell_char]]$aggr <<- as.integer(round(
+              atan2(xy_diff[,"y"], xy_diff[,"x"])*180/pi + 180))
+          }
+        }
+
+        # Limit to paths within a maximum distance when required (again)
+        if (is.numeric(max_distance) && max_distance < paths$max_distance) {
+          selected$directions[[cell_char]] <- list(
+            cell = paths$directions[[cell_char]]$cell[cell_ids])
+          if (is.list(aggr)) {
+            selected$directions[[cell_char]]$aggr <-
+              paths$directions[[cell_char]]$aggr[aggr_ids]
+          }
+        } else { # use full range
+          selected$directions[[cell_char]] <- paths$directions[[cell_char]]
         }
       }
     }
 
-    # Return from paths list
-    return(paths$directions[as.character(cells)])
+    return(selected)
   }
 
   # Get graph (shortest path) weights

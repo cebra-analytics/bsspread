@@ -20,8 +20,8 @@ object representing the spatial region (template) for spread simulations.}
 }
 \value{
 A \code{Region} class object (list) containing functions for
-accessing attributes and checking compatibility of objects with the
-region:
+accessing attributes, checking compatibility of objects with the
+region, and to maintain common spatial data for dispersal:
 \describe{
 \item{\code{get_template(empty = FALSE)}}{Get the spatial template with
 either zeros in non-NA locations (default), or with no values when
@@ -45,20 +45,23 @@ dispersal aggregation of the region via an aggregation factor and
 an inner radius (in m) to define the boundary between local dispersal
 at the original resolution and long-distance dispersal at an aggregate
 resolution.}
-\item{\code{get_reachable(cells, max_distance = NULL)}}{Get the indices
-of cells that are reachable for each cell index in \code{cells},
-including local (\code{$cell}) and aggregate (\code{$aggr}) cells when
-configured, and optionally limited via a maximum distance (in m).}
-\item{\code{get_distances(cells, max_distance = NULL)}}{Get the distance
-(in m) of cells that are reachable from each cell index in
+\item{\code{configure_paths(directions = FALSE, graphs = FALSE,
+      max_distance = NULL)}}{Configure the inclusion of path directions from
+occupied to reachable cells, the inclusion of \code{graphs} for
+representing weighted (permeability) paths, and an optional maximum
+distance (in m) for the paths, which are used in dispersal
+calculations. Defaults infer non-inclusion.}
+\item{\code{calculate_paths(cells)}}{Calculate the cells that are
+reachable for each cell index in \code{cells}, including local and
+aggregate cells when configured, and a graph connecting these paths
+when configured. These are both limited via a maximum distance (in m)
+when configured.}
+\item{\code{get_paths(cells, directions = FALSE, max_distance = NULL)}}{
+Get a list of indices, distances (in m), and directions (0-360
+degrees) when configured, of/to reachable cells for each cell index in
 \code{cells}, including local (\code{$cell}) and aggregate
-(\code{$aggr}) cells when configured, and optionally limited via a
-maximum distance (in m).}
-\item{\code{get_directions(cells, max_distance = NULL)}}{Get the
-direction (0-360 degrees) of cells that are reachable from each cell
-index in \code{cells}, including local (\code{$cell}) and aggregate
-(\code{$aggr}) cells when configured, and optionally limited via a
-maximum distance (in m).}
+(\code{$aggr}) cells when configured, and optionally (further) limited
+via a maximum distance (in m).}
 }
 }
 \description{
