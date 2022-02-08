@@ -156,6 +156,7 @@ Region.SpatRaster <- function(x, ...) {
   # Calculate reachable cells and graphs for region cells (indices)
   self$calculate_paths <- function(cells) {
 
+    # Reachable cells
     for (cell in cells) {
 
       # Calculate when not present
@@ -210,6 +211,74 @@ Region.SpatRaster <- function(x, ...) {
             paths$idx[[cell_char]] <<- list(cell = indices)
           }
         }
+      }
+    }
+
+    # Graphs
+    if (is.list(paths$graphs)) {
+
+      # Maintain a graph to all region cells within reach
+      if (is.list(aggr) ||
+          (is.numeric(paths$max_distance) && is.finite(paths$max_distance))) {
+
+        if (is.list(aggr)) { # two-tier approach
+
+          # Select aggregate cells in/on intersected inner circles
+          inner_vect <- terra::buffer(region_pts[cells,],
+                                      width = aggr$inner_radius,
+                                      quadsegs = 180)
+          aggr_idx <- terra::cells(aggr$rast, inner_vect, touches = TRUE)[,2]
+
+          # Create a polygon from aggregate cells in/on the inner circles
+          new_poly <- terra::rast(aggr$rast)
+          new_poly[aggr_idx] <- 0
+          new_poly <- terra::as.polygons(new_poly)
+
+          # Build a graph for the full aggregation (once)
+          if (is.null(paths$graphs$aggr)) {
+            # TODO ####
+          }
+
+        } else { # cell approach
+
+          # Create a polygon from intersected range circles
+          new_poly <- terra::buffer(region_pts[cells,],
+                                    width = paths$max_distance,
+                                    quadsegs = 180)
+        }
+
+        # Determine new graph coverage and update total via polygons
+        if (!is.null(paths$graphs$poly)) {
+          new_poly <- terra::erase(new_poly, paths$graphs$poly)
+          paths$graphs$poly <- terra::union(paths$graphs$poly, new_poly)
+        } else {
+          paths$graphs$poly <- new_poly
+        }
+
+        # Calculate region cell indices inside new polygon
+        cell_idx <- terra::cells(x, new_poly, touches = TRUE)[,2]
+        if (length(cell_idx)) {
+
+          # Find adjacency of region cells
+          cell_adj_df <- rbind(
+            cbind(terra::adjacent(x, cells = cell_idx, directions = "rook",
+                                  pairs = TRUE), weight = 1),
+            cbind(terra::adjacent(x, cells = cell_idx, directions = "bishop",
+                                  pairs = TRUE), weight = sqrt(2)))
+
+          # Create and set or update graph
+          new_graph <- igraph::graph_from_data_frame(cell_adj_df,
+                                                     directed = FALSE)
+          if (is.null(paths$graphs$cell)) {
+            paths$graphs$cell <- new_graph
+          } else { # union
+            paths$graphs$cell <- igraph::union(paths$graphs$cell,
+                                               new_graph, byname = TRUE)
+          }
+        }
+
+      } else if (is.null(paths$graphs)) { # static graph for all cells
+        # TODO ####
       }
     }
   }
