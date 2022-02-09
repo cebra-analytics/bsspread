@@ -24,6 +24,7 @@ Collate:
     'Dispersal.R'
     'Incursions.R'
     'Initializer.R'
+    'Permeability.R'
     'Population.R'
     'PresencePopulation.R'
     'Results.R'

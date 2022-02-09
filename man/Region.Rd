@@ -21,7 +21,7 @@ object representing the spatial region (template) for spread simulations.}
 \value{
 A \code{Region} class object (list) containing functions for
 accessing attributes, checking compatibility of objects with the
-region, and to maintain common spatial data for dispersal:
+region, and to maintain and calculate spatial data for dispersal:
 \describe{
 \item{\code{get_template(empty = FALSE)}}{Get the spatial template with
 either zeros in non-NA locations (default), or with no values when
@@ -75,6 +75,10 @@ calculated using a courser (aggregate) spatial resolution for destinations
 outside of an inner radius, within which local dispersal is calculated using
 the original spatial resolution of the region. Functions for calculating
 distances and directions between (local and aggregate) cells are also
-provided, as well as functionality for calculating network paths (graphs)
-between cells (local and aggregate).
+provided, as well as functionality for calculating weighted paths (graphs)
+between cells (local and aggregate) via permeability layers. When used,
+the inverse of the permeability (0-1) of cells is used to (linearly) scale
+the actual distance between adjacent cells. The effective distance
+between any two cells in the region is thus calculated via the shortest
+weighted path between the cells.
 }
