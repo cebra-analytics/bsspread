@@ -45,23 +45,25 @@ dispersal aggregation of the region via an aggregation factor and
 an inner radius (in m) to define the boundary between local dispersal
 at the original resolution and long-distance dispersal at an aggregate
 resolution.}
-\item{\code{configure_paths(directions = FALSE, graphs = FALSE,
-      max_distance = NULL)}}{Configure the inclusion of path directions from
-occupied to reachable cells, the inclusion of \code{graphs} for
-representing weighted (permeability) paths, and an optional maximum
-distance (in m) for the paths, which are used in dispersal
-calculations. Defaults infer non-inclusion.}
+\item{\code{configure_paths(directions = FALSE, max_distance = NULL,
+      permeability = NULL)}}{Configure the inclusion of path directions from
+occupied to reachable cells, an optional maximum distance (in m) for
+the paths, and an optional \code{Permeability} class object containing
+a spatial layer for calculating weighted paths, each of which are used
+in dispersal calculations. Defaults infer non-inclusion.}
 \item{\code{calculate_paths(cells)}}{Calculate the cells that are
 reachable for each cell index in \code{cells}, including local and
 aggregate cells when configured, and a graph connecting these paths
 when configured. These are both limited via a maximum distance (in m)
 when configured.}
-\item{\code{get_paths(cells, directions = FALSE, max_distance = NULL)}}{
-Get a list of indices, distances (in m), and directions (0-360
-degrees) when configured, of/to reachable cells for each cell index in
-\code{cells}, including local (\code{$cell}) and aggregate
-(\code{$aggr}) cells when configured, and optionally (further) limited
-via a maximum distance (in m).}
+\item{\code{get_paths(cells, directions = FALSE, max_distance = NULL,
+      perm_id = NULL)}}{Get a list of indices of, and distances (in m) and
+(optional) directions (0-360 degrees) to, reachable cells for each
+cell index in \code{cells}, including local (\code{$cell}) and
+aggregate (\code{$aggr}) cells when configured, and optionally
+(further) limited via a maximum distance (in m). Distances, and thus
+reachable cells, are optionally modified via weighted paths specified
+by a configured permeability object id.}
 }
 }
 \description{

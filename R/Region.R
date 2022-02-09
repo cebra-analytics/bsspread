@@ -40,23 +40,25 @@
 #'       an inner radius (in m) to define the boundary between local dispersal
 #'       at the original resolution and long-distance dispersal at an aggregate
 #'       resolution.}
-#'     \item{\code{configure_paths(directions = FALSE, graphs = FALSE,
-#'       max_distance = NULL)}}{Configure the inclusion of path directions from
-#'       occupied to reachable cells, the inclusion of \code{graphs} for
-#'       representing weighted (permeability) paths, and an optional maximum
-#'       distance (in m) for the paths, which are used in dispersal
-#'       calculations. Defaults infer non-inclusion.}
+#'     \item{\code{configure_paths(directions = FALSE, max_distance = NULL,
+#'       permeability = NULL)}}{Configure the inclusion of path directions from
+#'       occupied to reachable cells, an optional maximum distance (in m) for
+#'       the paths, and an optional \code{Permeability} class object containing
+#'       a spatial layer for calculating weighted paths, each of which are used
+#'       in dispersal calculations. Defaults infer non-inclusion.}
 #'     \item{\code{calculate_paths(cells)}}{Calculate the cells that are
 #'       reachable for each cell index in \code{cells}, including local and
 #'       aggregate cells when configured, and a graph connecting these paths
 #'       when configured. These are both limited via a maximum distance (in m)
 #'       when configured.}
-#'     \item{\code{get_paths(cells, directions = FALSE, max_distance = NULL)}}{
-#'       Get a list of indices, distances (in m), and directions (0-360
-#'       degrees) when configured, of/to reachable cells for each cell index in
-#'       \code{cells}, including local (\code{$cell}) and aggregate
-#'       (\code{$aggr}) cells when configured, and optionally (further) limited
-#'       via a maximum distance (in m).}
+#'     \item{\code{get_paths(cells, directions = FALSE, max_distance = NULL,
+#'       perm_id = NULL)}}{Get a list of indices of, and distances (in m) and
+#'       (optional) directions (0-360 degrees) to, reachable cells for each
+#'       cell index in \code{cells}, including local (\code{$cell}) and
+#'       aggregate (\code{$aggr}) cells when configured, and optionally
+#'       (further) limited via a maximum distance (in m). Distances, and thus
+#'       reachable cells, are optionally modified via weighted paths specified
+#'       by a configured permeability object id.}
 #'   }
 #' @export
 Region <- function(x, ...) {
@@ -132,15 +134,12 @@ Region.SpatRaster <- function(x, ...) {
   }
 
   # Path list of reachable indices and distances, and optionally configured
-  # directions, graphs and maximum distance for dispersal calculations
+  # directions, maximum distance and permeability for dispersal calculations
   paths <- list(idx = list(), distances = list())
-  self$configure_paths <- function(directions = FALSE, graphs = FALSE,
-                                   max_distance = NULL) {
+  self$configure_paths <- function(directions = FALSE, max_distance = NULL,
+                                   permeability = NULL) {
     if (directions) {
       paths$directions <<- list()
-    }
-    if (graphs) {
-      paths$graphs <<- list()
     }
     if (is.numeric(max_distance)) { # set if empty, or replace if larger
       if (is.null(paths$max_distance) ||
@@ -150,6 +149,16 @@ Region.SpatRaster <- function(x, ...) {
       }
     } else { # use full extent of region
       paths$max_distance <<- Inf
+    }
+    if ("permeability" %in% class(permeability)) { # TODO permeability class with raster and id ####
+      paths$graphs <<- list()
+      if (is.null(paths$perm)) {
+        paths$perm <- list(permeability)
+        # permeability$set_id(1)
+      } else {
+        paths$perm[[length(paths$perm) + 1]] <- permeability
+        # permeability$set_id(length(paths$perm))
+      }
     }
   }
 
@@ -180,7 +189,8 @@ Region.SpatRaster <- function(x, ...) {
 
           # Local cell indices inside aggregate polygon
           paths$idx[[cell_char]] <<- list(
-            cell = which(indices %in% terra::cells(x, aggr_poly)[,2]))
+            cell = which(indices %in% terra::cells(x, aggr_poly)[,2] &
+                           indices != indices[cell]))
 
           # Aggregate cell indices outside polygon
           if (is.numeric(paths$max_distance) &&
@@ -206,9 +216,10 @@ Region.SpatRaster <- function(x, ...) {
                                         quadsegs = 180)
             paths$idx[[cell_char]] <<- list(
               cell = which(indices %in% terra::cells(x, range_vect,
-                                                     touches = TRUE)[,2]))
+                                                     touches = TRUE)[,2] &
+                             indices != indices[cell]))
           } else {
-            paths$idx[[cell_char]] <<- list(cell = indices)
+            paths$idx[[cell_char]] <<- list(cell = indices[-cell])
           }
         }
       }
@@ -236,7 +247,21 @@ Region.SpatRaster <- function(x, ...) {
 
           # Build a graph for the full aggregation (once)
           if (is.null(paths$graphs$aggr)) {
-            # TODO ####
+
+            # Find adjacency of aggregate cells
+            cell_adj_df <- rbind(
+              cbind(terra::adjacent(aggr$rast,
+                                    cells = 1:terra::ncell(aggr$rast),
+                                    directions = "rook", pairs = TRUE),
+                    weight = 1),
+              cbind(terra::adjacent(aggr$rast,
+                                    cells = 1:terra::ncell(aggr$rast),
+                                    directions = "bishop", pairs = TRUE),
+                    weight = sqrt(2)))
+
+            # Create graph for all aggregate cells (including NAs)
+            paths$graphs$aggr <<- igraph::graph_from_data_frame(
+              cell_adj_df, directed = FALSE)
           }
 
         } else { # cell approach
@@ -250,9 +275,9 @@ Region.SpatRaster <- function(x, ...) {
         # Determine new graph coverage and update total via polygons
         if (!is.null(paths$graphs$poly)) {
           new_poly <- terra::erase(new_poly, paths$graphs$poly)
-          paths$graphs$poly <- terra::union(paths$graphs$poly, new_poly)
+          paths$graphs$poly <<- terra::union(paths$graphs$poly, new_poly)
         } else {
-          paths$graphs$poly <- new_poly
+          paths$graphs$poly <<- new_poly
         }
 
         # Calculate region cell indices inside new polygon
@@ -270,22 +295,36 @@ Region.SpatRaster <- function(x, ...) {
           new_graph <- igraph::graph_from_data_frame(cell_adj_df,
                                                      directed = FALSE)
           if (is.null(paths$graphs$cell)) {
-            paths$graphs$cell <- new_graph
+            paths$graphs$cell <<- new_graph
           } else { # union
-            paths$graphs$cell <- igraph::union(paths$graphs$cell,
-                                               new_graph, byname = TRUE)
+            paths$graphs$cell <<- igraph::union(paths$graphs$cell,
+                                                new_graph, byname = TRUE)
           }
         }
 
-      } else if (is.null(paths$graphs)) { # static graph for all cells
-        # TODO ####
+      } else if (is.null(paths$graphs$cell)) { # static graph for all cells
+
+        # Find adjacency of region cells
+        cell_adj_df <- rbind(
+          cbind(terra::adjacent(x, cells = 1:terra::ncell(x),
+                                directions = "rook", pairs = TRUE),
+                weight = 1),
+          cbind(terra::adjacent(x, cells = 1:terra::ncell(x),
+                                directions = "bishop", pairs = TRUE),
+                weight = sqrt(2)))
+
+        # Create graph for all region cells (including NAs)
+        paths$graphs$cell <<- igraph::graph_from_data_frame(
+          cell_adj_df, directed = FALSE)
       }
     }
   }
 
   # Get a list of indices, distances and directions of/to reachable cells for
   # region cells (indices), optionally (further) limited via maximum distance
-  self$get_paths <- function(cells, directions = FALSE, max_distance = NULL) {
+  # Distances (and reachable cells) are optionally modified via permeability # TODO
+  self$get_paths <- function(cells, directions = FALSE, max_distance = NULL,
+                             perm_id = NULL) {
 
     # Calculate reachable cell indices (when not present)
     self$calculate_paths(cells)
@@ -374,11 +413,6 @@ Region.SpatRaster <- function(x, ...) {
     }
 
     return(selected)
-  }
-
-  # Get graph (shortest path) weights
-  self$get_graph_weights <- function() {
-    # TODO
   }
 
   # IN PROGRESS
