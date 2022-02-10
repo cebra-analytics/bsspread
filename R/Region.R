@@ -142,7 +142,7 @@ Region.SpatRaster <- function(x, ...) {
   paths <- list(idx = list(), distances = list())
   self$configure_paths <- function(directions = FALSE, max_distance = NULL,
                                    permeability = NULL) {
-    if (directions) {
+    if (directions && is.null(paths$directions)) {
       paths$directions <<- list()
     }
     if (is.numeric(max_distance)) { # set if empty, or replace if larger
@@ -155,8 +155,12 @@ Region.SpatRaster <- function(x, ...) {
       paths$max_distance <<- Inf
     }
     if (inherits(permeability, "Permeability")) {
-      paths$graphs <<- list()
-      paths$weights <<- list()
+      if (is.null(paths$graphs)) {
+        paths$graphs <<- list()
+      }
+      if (is.null(paths$weights)) {
+        paths$weights <<- list()
+      }
       if (is.null(paths$perms)) {
         paths$perms <<- list(permeability)
         permeability$set_id(1)
@@ -268,8 +272,11 @@ Region.SpatRaster <- function(x, ...) {
             paths$graphs$aggr <<- igraph::graph_from_data_frame(
               cell_adj_df, directed = FALSE)
 
-            # Calculate path weights for aggregate permeability layers
-            paths$weights$aggr <<- list()
+            # Extract adjacency from graph (different order than above)
+            cell_adj_df <- igraph::as_data_frame(paths$graphs$aggr)
+
+            # Calculate path weights for aggregate base/permeability layers
+            paths$weights$aggr <<- list(base = cell_adj_df$weight) # faster
             for (perm in paths$perms) {
 
               # Aggregate the permeability raster layer
@@ -277,8 +284,7 @@ Region.SpatRaster <- function(x, ...) {
                                             fact = aggr$factor, fun = "mean",
                                             na.rm = TRUE)
 
-              # Extract adjacency from graph (different order than above)
-              cell_adj_df <- igraph::as_data_frame(paths$graphs$aggr)
+              # Calculate permeability weights
               perm_weight <- rowMeans(
                 1/as.matrix(cbind(aggr_rast[as.integer(cell_adj_df$from)],
                                   aggr_rast[as.integer(cell_adj_df$to)]))
@@ -286,7 +292,12 @@ Region.SpatRaster <- function(x, ...) {
               perm_weight[which(is.na(perm_weight))] <- Inf
 
               # Add to list
-              paths$weights$aggr <- c(paths$weights$aggr, perm_weight)
+              if (is.null(paths$weights$aggr$perms)) {
+                paths$weights$aggr$perms <<- list(perm_weight)
+              } else {
+                index <- length(paths$weights$aggr$perms) + 1
+                paths$weights$aggr$perms[[index]] <<- perm_weight
+              }
             }
           }
 
@@ -301,7 +312,8 @@ Region.SpatRaster <- function(x, ...) {
         # Determine new graph coverage and update total via polygons
         if (!is.null(paths$graphs$poly)) {
           new_poly <- terra::erase(new_poly, paths$graphs$poly)
-          paths$graphs$poly <<- terra::union(paths$graphs$poly, new_poly)
+          paths$graphs$poly <<- terra::aggregate(
+            terra::union(paths$graphs$poly, new_poly))
         } else {
           paths$graphs$poly <<- new_poly
         }
@@ -317,14 +329,56 @@ Region.SpatRaster <- function(x, ...) {
             cbind(terra::adjacent(x, cells = cell_idx, directions = "bishop",
                                   pairs = TRUE), weight = sqrt(2)))
 
-          # Create and set or update graph
-          new_graph <- igraph::graph_from_data_frame(cell_adj_df,
-                                                     directed = FALSE)
+          # Create or update graph
           if (is.null(paths$graphs$cell)) {
-            paths$graphs$cell <<- new_graph
+
+            # Create initial graph
+            paths$graphs$cell <<-
+              igraph::graph_from_data_frame(cell_adj_df, directed = FALSE)
+
+            # Extract adjacency from graph (different order than above)
+            cell_adj_df <- igraph::as_data_frame(paths$graphs$cell)
+
           } else { # union
-            paths$graphs$cell <<- igraph::union(paths$graphs$cell,
-                                                new_graph, byname = TRUE)
+
+            # Create graph for new cells
+            colnames(cell_adj_df)[3] <- "new_weight"
+            new_graph <- igraph::graph_from_data_frame(cell_adj_df,
+                                                       directed = FALSE)
+
+            # Union with existing graph (keeps both weight columns)
+            new_graph <- igraph::union(paths$graphs$cell, new_graph,
+                                       byname = TRUE)
+
+            # Extract adjacency from graph (different order than above)
+            cell_adj_df <- igraph::as_data_frame(new_graph)
+
+            # Merge new with existing weights
+            new_idx <- which(is.na(cell_adj_df$weight))
+            cell_adj_df$weight[new_idx] <- cell_adj_df$new_weight[new_idx]
+            igraph::edge_attr(new_graph, "weight") <- cell_adj_df$weight
+            paths$graphs$cell <<- igraph::delete_edge_attr(new_graph,
+                                                          "new_weight")
+          }
+
+          # Create or update path weights for base and permeability layers
+          paths$weights$cell <<- list(base = cell_adj_df$weight) # faster
+          for (perm in paths$perms) {
+
+            # Calculate permeability weights
+            perm_weight <- rowMeans(
+              1/as.matrix(cbind(perm$get_rast()[as.integer(cell_adj_df$from)],
+                                perm$get_rast()[as.integer(cell_adj_df$to)]))
+            )*cell_adj_df$weight
+            perm_weight[which(is.na(perm_weight))] <- Inf
+
+            # Add to list
+            if (is.null(paths$weights$cell$perms)) {
+              paths$weights$cell$perms <<- list(perm_weight)
+            } else {
+              index <- length(paths$weights$cell$perms) + 1
+              paths$weights$cell$perms[[index]] <<- perm_weight
+            }
           }
         }
 
@@ -342,6 +396,29 @@ Region.SpatRaster <- function(x, ...) {
         # Create graph for all region cells (including NAs)
         paths$graphs$cell <<- igraph::graph_from_data_frame(
           cell_adj_df, directed = FALSE)
+
+        # Extract adjacency from graph (different order than above)
+        cell_adj_df <- igraph::as_data_frame(paths$graphs$cell)
+
+        # Create path weights for base and permeability layers
+        paths$weights$cell <<- list(base = cell_adj_df$weight) # faster
+        for (perm in paths$perms) {
+
+          # Calculate permeability weights
+          perm_weight <- rowMeans(
+            1/as.matrix(cbind(perm$get_rast()[as.integer(cell_adj_df$from)],
+                              perm$get_rast()[as.integer(cell_adj_df$to)]))
+          )*cell_adj_df$weight
+          perm_weight[which(is.na(perm_weight))] <- Inf
+
+          # Add to list
+          if (is.null(paths$weights$cell$perms)) {
+            paths$weights$cell$perms <<- list(perm_weight)
+          } else {
+            index <- length(paths$weights$cell$perms) + 1
+            paths$weights$cell$perms[[index]] <<- perm_weight
+          }
+        }
       }
     }
   }
