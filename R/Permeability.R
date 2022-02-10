@@ -6,8 +6,7 @@
 #' cells. For example, a permeability value of \code{0.5} results in an
 #' effective distance twice that of the actual distance, a value of \code{0}
 #' prevents spread to or through a cell, and a value of \code{1} does not
-#' modify the effective distance. The class may also be used to calculate an
-#' optional aggregate (courser resolution) version of the permeability layer.
+#' modify the effective distance.
 #'
 #' @param x A \code{raster::RasterLayer} or \code{terra::SpatRaster}
 #'   object representing the spatial permeability of the spread simulation
@@ -22,13 +21,6 @@
 #'     \item{\code{set_id(id)}}{Set the object numeric identifier.}
 #'     \item{\code{get_rast()}}{Get the permeability \code{terra::SpatRaster}
 #'       object.}
-#'     \item{\code{get_aggr_rast()}}{Get the aggregate permeability
-#'       \code{terra::SpatRaster} object.}
-#'     \item{\code{calculate_aggregate(aggr_factor)}}{Calculate the aggregate
-#'       permeability \code{terra::SpatRaster} object via a specified
-#'       aggregation factor.}
-#'     \item{\code{has_aggregate()}}{Check the (logical) presence of an
-#'       aggregate permeability.}
 #'   }
 #' @include Region.R
 #' @export
@@ -63,9 +55,6 @@ Permeability.SpatRaster <- function(x, region, ...) {
   # Permeability object id
   id <- NULL
 
-  # Aggregate permeability raster
-  aggr_rast <- NULL
-
   # Get the permeability object id
   self$get_id <- function() {
     return(x)
@@ -79,22 +68,6 @@ Permeability.SpatRaster <- function(x, region, ...) {
   # Get the permeability raster
   self$get_rast <- function() {
     return(x)
-  }
-
-  # Check the presence of an aggregate permeability
-  self$has_aggregate <- function() {
-    return(!is.null(aggr_rast))
-  }
-
-  # Get the aggregate permeability raster
-  self$get_aggr_rast <- function() {
-    return(aggr_rast)
-  }
-
-  # Calculate the aggregate permeability
-  self$calculate_aggregate <- function(aggr_factor) {
-    aggr_rast <<- terra::aggregate(x, fact = aggr_factor, fun = "mean",
-                                   na.rm = TRUE)
   }
 
   return(self)
