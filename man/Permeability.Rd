@@ -26,10 +26,17 @@ locations included in the spread simulations.}
 A \code{Permeability} class object (list) containing functions for
 accessing attributes:
 \describe{
-\item{\code{get_rast()}}{Get the permeability \code{terra::SpatRaster}
-object.}
 \item{\code{get_id()}}{Get the object numeric identifier.}
 \item{\code{set_id(id)}}{Set the object numeric identifier.}
+\item{\code{get_rast()}}{Get the permeability \code{terra::SpatRaster}
+object.}
+\item{\code{get_aggr_rast()}}{Get the aggregate permeability
+\code{terra::SpatRaster} object.}
+\item{\code{calculate_aggregate(aggr_factor)}}{Calculate the aggregate
+permeability \code{terra::SpatRaster} object via a specified
+aggregation factor.}
+\item{\code{has_aggregate()}}{Check the (logical) presence of an
+aggregate permeability.}
 }
 }
 \description{
@@ -39,5 +46,6 @@ of cells is used to (linearly) scale the actual distance between adjacent
 cells. For example, a permeability value of \code{0.5} results in an
 effective distance twice that of the actual distance, a value of \code{0}
 prevents spread to or through a cell, and a value of \code{1} does not
-modify the effective distance.
+modify the effective distance. The class may also be used to calculate an
+optional aggregate (courser resolution) version of the permeability layer.
 }

@@ -154,14 +154,15 @@ Region.SpatRaster <- function(x, ...) {
     } else { # use full extent of region
       paths$max_distance <<- Inf
     }
-    if (inherits(population_model, "Permeability")) {
+    if (inherits(permeability, "Permeability")) {
       paths$graphs <<- list()
-      if (is.null(paths$perm)) {
-        paths$perm <- list(permeability)
+      paths$weights <<- list()
+      if (is.null(paths$perms)) {
+        paths$perms <<- list(permeability)
         permeability$set_id(1)
       } else {
-        paths$perm[[length(paths$perm) + 1]] <- permeability
-        permeability$set_id(length(paths$perm))
+        paths$perms[[length(paths$perms) + 1]] <<- permeability
+        permeability$set_id(length(paths$perms))
       }
     }
   }
@@ -229,7 +230,7 @@ Region.SpatRaster <- function(x, ...) {
       }
     }
 
-    # Graphs
+    # Graphs for permeability
     if (is.list(paths$graphs)) {
 
       # Maintain a graph to all region cells within reach
@@ -266,6 +267,27 @@ Region.SpatRaster <- function(x, ...) {
             # Create graph for all aggregate cells (including NAs)
             paths$graphs$aggr <<- igraph::graph_from_data_frame(
               cell_adj_df, directed = FALSE)
+
+            # Calculate path weights for aggregate permeability layers
+            paths$weights$aggr <<- list()
+            for (perm in paths$perms) {
+
+              # Aggregate the permeability raster layer
+              aggr_rast <- terra::aggregate(perm$get_rast(),
+                                            fact = aggr$factor, fun = "mean",
+                                            na.rm = TRUE)
+
+              # Extract adjacency from graph (different order than above)
+              cell_adj_df <- igraph::as_data_frame(paths$graphs$aggr)
+              perm_weight <- rowMeans(
+                1/as.matrix(cbind(aggr_rast[as.integer(cell_adj_df$from)],
+                                  aggr_rast[as.integer(cell_adj_df$to)]))
+                )*cell_adj_df$weight
+              perm_weight[which(is.na(perm_weight))] <- Inf
+
+              # Add to list
+              paths$weights$aggr <- c(paths$weights$aggr, perm_weight)
+            }
           }
 
         } else { # cell approach
