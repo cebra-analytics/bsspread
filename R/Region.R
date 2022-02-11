@@ -312,8 +312,10 @@ Region.SpatRaster <- function(x, ...) {
         # Determine new graph coverage and update total via polygons
         if (!is.null(paths$graphs$poly)) {
           new_poly <- terra::erase(new_poly, paths$graphs$poly)
-          paths$graphs$poly <<- terra::aggregate(
-            terra::union(paths$graphs$poly, new_poly))
+          if (length(new_poly)) {
+            paths$graphs$poly <<- terra::aggregate(
+              terra::union(paths$graphs$poly, new_poly))
+          }
         } else {
           paths$graphs$poly <<- new_poly
         }
@@ -425,7 +427,7 @@ Region.SpatRaster <- function(x, ...) {
 
   # Get a list of indices, distances and directions of/to reachable cells for
   # region cells (indices), optionally (further) limited via maximum distance
-  # Distances (and reachable cells) are optionally modified via permeability # TODO
+  # Distances (and reachable cells) are optionally modified via permeability
   self$get_paths <- function(cells, directions = FALSE, max_distance = NULL,
                              perm_id = NULL) {
 
@@ -459,23 +461,106 @@ Region.SpatRaster <- function(x, ...) {
         }
       }
 
-      # Limit to paths within a maximum distance when required
-      if (is.numeric(max_distance) && max_distance < paths$max_distance) {
-        cell_ids <- which(paths$distances[[cell_char]]$cell <= max_distance)
-        selected$idx[[cell_char]] <- list(
-          cell = paths$idx[[cell_char]]$cell[cell_ids])
-        selected$distances[[cell_char]] <- list(
-          cell = paths$distances[[cell_char]]$cell[cell_ids])
+      # Select indices and distances
+      selected$idx[[cell_char]] <- paths$idx[[cell_char]]
+      selected$distances[[cell_char]] <- paths$distances[[cell_char]]
+
+      # Modify distances via permeability graph weights when required
+      limit_paths <- FALSE
+      if (is.numeric(perm_id) && is.list(paths$perms) &&
+          length(paths$perms) >= perm_id) {
+
+        # Get base (no permeability) weight distance to reachable inner cells
+        base_dist <- as.vector(igraph::distances(
+          paths$graphs$cell,
+          v = as.character(indices[cell]),
+          to = as.character(indices[paths$idx[[cell_char]]$cell]),
+          weights = paths$weights$cell$base))
+
+        # Get permeability weight distance to reachable inner cells
+        perm_dist <- as.vector(igraph::distances(
+          paths$graphs$cell,
+          v = as.character(indices[cell]),
+          to = as.character(indices[paths$idx[[cell_char]]$cell]),
+          weights = paths$weights$cell$perms[[perm_id]]))
+
+        # Scale the distance to (otherwise) reachable inner cells
+        selected$distances[[cell_char]]$cell <- round(
+          selected$distances[[cell_char]]$cell*as.vector(perm_dist/base_dist))
+
+        # Modify aggregate cell distances when applicable
         if (is.list(aggr)) {
-          aggr_ids <- which(paths$distances[[cell_char]]$aggr <= max_distance)
-          selected$idx[[cell_char]]$aggr <-
-            paths$idx[[cell_char]]$aggr[aggr_ids]
-          selected$distances[[cell_char]]$aggr <-
-            paths$distances[[cell_char]]$aggr[aggr_ids]
+
+          # Find the aggregate cell index that contains the region cell
+          aggr_i <- terra::cells(aggr$rast, region_pts[cell],
+                                 touches = TRUE)[, "cell"]
+
+          # Get base weight distance to reachable aggregate cells
+          base_dist <- as.vector(igraph::distances(
+            paths$graphs$aggr,
+            v = as.character(aggr_i),
+            to = as.character(aggr$indices[paths$idx[[cell_char]]$aggr]),
+            weights = paths$weights$aggr$base))
+
+          # Get permeability weight distance to reachable aggregate cells
+          perm_dist <- as.vector(igraph::distances(
+            paths$graphs$aggr,
+            v = as.character(aggr_i),
+            to = as.character(aggr$indices[paths$idx[[cell_char]]$aggr]),
+            weights = paths$weights$aggr$perms[[perm_id]]))
+
+          # Scale the distance to (otherwise) reachable inner cells
+          selected$distances[[cell_char]]$aggr <- round(
+            selected$distances[[cell_char]]$aggr*as.vector(perm_dist/base_dist))
         }
-      } else { # use full range
-        selected$idx[[cell_char]] <- paths$idx[[cell_char]]
-        selected$distances[[cell_char]] <- paths$distances[[cell_char]]
+
+        limit_paths <- TRUE
+      }
+
+      # Limit to paths within a maximum distance or reachable cells if required
+      if (limit_paths ||
+          is.numeric(max_distance) && max_distance < paths$max_distance) {
+
+        # Resolve maximum distance when present
+        if (is.numeric(max_distance) && is.numeric(paths$max_distance)) {
+          max_distance <- min(max_distance, paths$max_distance)
+        } else if (is.numeric(paths$max_distance)) {
+          max_distance <- paths$max_distance
+        }
+
+        # Find cells within range
+        if (is.numeric(max_distance)) {
+          cell_ids <-
+            which(selected$distances[[cell_char]]$cell <= max_distance)
+        } else {
+          cell_ids <- which(is.finite(selected$distances[[cell_char]]$cell))
+        }
+
+        # Update selected indices and distances to in-range cells
+        selected$idx[[cell_char]]$cell <-
+          selected$idx[[cell_char]]$cell[cell_ids]
+        selected$distances[[cell_char]]$cell <-
+          as.integer(selected$distances[[cell_char]]$cell[cell_ids])
+
+        # Update selected aggregate indices and distances
+        if (is.list(aggr)) {
+
+          # Find cells within range
+          if (is.numeric(max_distance)) {
+            aggr_ids <-
+              which(selected$distances[[cell_char]]$aggr <= max_distance)
+          } else {
+            aggr_ids <- which(is.finite(selected$distances[[cell_char]]$aggr))
+          }
+
+          # Update selected indices and distances to in-range aggregate cells
+          selected$idx[[cell_char]]$aggr <-
+            selected$idx[[cell_char]]$aggr[aggr_ids]
+          selected$distances[[cell_char]]$aggr <-
+            as.integer(selected$distances[[cell_char]]$aggr[aggr_ids])
+        }
+
+        limit_paths <- TRUE
       }
 
       # Get directions when required
@@ -501,24 +586,23 @@ Region.SpatRaster <- function(x, ...) {
           }
         }
 
-        # Limit to paths within a maximum distance when required (again)
-        if (is.numeric(max_distance) && max_distance < paths$max_distance) {
-          selected$directions[[cell_char]] <- list(
-            cell = paths$directions[[cell_char]]$cell[cell_ids])
+        # Select directions
+        selected$directions[[cell_char]] <- paths$directions[[cell_char]]
+
+        # Limit within range paths when required
+        if (limit_paths) {
+          selected$directions[[cell_char]]$cell <-
+            selected$directions[[cell_char]]$cell[cell_ids]
           if (is.list(aggr)) {
             selected$directions[[cell_char]]$aggr <-
-              paths$directions[[cell_char]]$aggr[aggr_ids]
+              selected$directions[[cell_char]]$aggr[aggr_ids]
           }
-        } else { # use full range
-          selected$directions[[cell_char]] <- paths$directions[[cell_char]]
         }
       }
     }
 
     return(selected)
   }
-
-  # IN PROGRESS
 
   return(self)
 }
