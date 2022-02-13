@@ -50,11 +50,13 @@
 #'       the paths, and an optional \code{Permeability} class object containing
 #'       a spatial layer for calculating weighted paths, each of which are used
 #'       in dispersal calculations. Defaults infer non-inclusion.}
-#'     \item{\code{calculate_paths(cells)}}{Calculate the cells that are
-#'       reachable for each cell index in \code{cells}, including local and
-#'       aggregate cells when configured, and a graph connecting these paths
-#'       when configured. These are both limited via a maximum distance (in m)
-#'       when configured.}
+#'     \item{\code{calculate_paths(cells)}}{Calculate the indices, distances
+#'       (in m), and directions (0-360 degrees) when required, of cells that
+#'       are reachable for each cell index in \code{cells}, including local and
+#'       aggregate cells when using two-tier configuration, and a graph
+#'       connecting these paths when configured with permeability layers.
+#'       The reachable cells are limited via a maximum distance (in m) and/or
+#'       permeability layers when either are configured.}
 #'     \item{\code{get_paths(cells, directions = FALSE, max_distance = NULL,
 #'       perm_id = NULL)}}{Get a list of indices of, and distances (in m) and
 #'       (optional) directions (0-360 degrees) to, reachable cells for each
@@ -171,17 +173,18 @@ Region.SpatRaster <- function(x, ...) {
     }
   }
 
-  # Calculate reachable cells and graphs for region cells (indices)
+  # Calculate reachable region cell indices, distances, and directions (when
+  # required), as well as permeability graphs (when required)
   self$calculate_paths <- function(cells) {
 
     # Reachable cells
     for (cell in cells) {
 
-      # Calculate when not present
-      if (!as.character(cell) %in% names(paths$idx)) {
+      # Map path lists use cells as characters
+      cell_char <- as.character(cell)
 
-        # Map path lists use cells as characters
-        cell_char <- as.character(cell)
+      # Calculate indices when not present
+      if (!cell_char %in% names(paths$idx)) {
 
         if (is.list(aggr)) { # two-tier approach
 
@@ -230,6 +233,45 @@ Region.SpatRaster <- function(x, ...) {
           } else {
             paths$idx[[cell_char]] <<- list(cell = indices[-cell])
           }
+        }
+      }
+
+      # Calculate distances when not present
+      if (!cell_char %in% names(paths$distances)) {
+
+        # Calculate (local) cell distances
+        paths$distances[[cell_char]] <<- list(
+          cell = as.integer(round(as.numeric(
+            terra::distance(region_pts[cell],
+                            region_pts[paths$idx[[cell_char]]$cell])))))
+
+        # Calculate aggregate cell distances when applicable
+        if (is.list(aggr)) {
+          paths$distances[[cell_char]]$aggr <<-
+            as.integer(round(as.numeric(
+              terra::distance(region_pts[cell],
+                              aggr$pts[paths$idx[[cell_char]]$aggr]))))
+        }
+      }
+
+      # Calculate directions when required and not present
+      if (is.list(paths$directions) &&
+          !cell_char %in% names(paths$directions)) {
+
+        # Calculate (local) cell directions
+        xy_diff <- (terra::crds(region_pts[cell])[
+          rep(1, length(paths$idx[[cell_char]]$cell)),] -
+            terra::crds(region_pts[paths$idx[[cell_char]]$cell]))
+        paths$directions[[cell_char]] <<- list(cell = as.integer(round(
+          atan2(xy_diff[,"y"], xy_diff[,"x"])*180/pi + 180)))
+
+        # Calculate aggregate cell directions when applicable
+        if (is.list(aggr)) {
+          xy_diff <- (terra::crds(region_pts[cell])[
+            rep(1, length(paths$idx[[cell_char]]$aggr)),] -
+              terra::crds(aggr$pts[paths$idx[[cell_char]]$aggr]))
+          paths$directions[[cell_char]]$aggr <<- as.integer(round(
+            atan2(xy_diff[,"y"], xy_diff[,"x"])*180/pi + 180))
         }
       }
     }
@@ -443,24 +485,6 @@ Region.SpatRaster <- function(x, ...) {
       # Map path lists use cells as characters
       cell_char <- as.character(cell)
 
-      # Calculate distances when not present
-      if (!cell_char %in% names(paths$distances)) {
-
-        # Calculate (local) cell distances
-        paths$distances[[cell_char]] <<- list(
-          cell = as.integer(round(as.numeric(
-            terra::distance(region_pts[cell],
-                            region_pts[paths$idx[[cell_char]]$cell])))))
-
-        # Calculate aggregate cell distances when applicable
-        if (is.list(aggr)) {
-          paths$distances[[cell_char]]$aggr <<-
-            as.integer(round(as.numeric(
-              terra::distance(region_pts[cell],
-                              aggr$pts[paths$idx[[cell_char]]$aggr]))))
-        }
-      }
-
       # Select indices and distances
       selected$idx[[cell_char]] <- paths$idx[[cell_char]]
       selected$distances[[cell_char]] <- paths$distances[[cell_char]]
@@ -565,26 +589,6 @@ Region.SpatRaster <- function(x, ...) {
 
       # Get directions when required
       if (is.list(paths$directions) && directions) {
-
-        # Calculate directions when not present
-        if (!cell_char %in% names(paths$directions)) {
-
-          # Calculate (local) cell directions
-          xy_diff <- (terra::crds(region_pts[cell])[
-            rep(1, length(paths$idx[[cell_char]]$cell)),] -
-              terra::crds(region_pts[paths$idx[[cell_char]]$cell]))
-          paths$directions[[cell_char]] <<- list(cell = as.integer(round(
-            atan2(xy_diff[,"y"], xy_diff[,"x"])*180/pi + 180)))
-
-          # Calculate aggregate cell directions when applicable
-          if (is.list(aggr)) {
-            xy_diff <- (terra::crds(region_pts[cell])[
-              rep(1, length(paths$idx[[cell_char]]$aggr)),] -
-                terra::crds(aggr$pts[paths$idx[[cell_char]]$aggr]))
-            paths$directions[[cell_char]]$aggr <<- as.integer(round(
-              atan2(xy_diff[,"y"], xy_diff[,"x"])*180/pi + 180))
-          }
-        }
 
         # Select directions
         selected$directions[[cell_char]] <- paths$directions[[cell_char]]
