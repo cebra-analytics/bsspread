@@ -21,6 +21,7 @@ Suggests:
     testthat
 Collate: 
     'Region.R'
+    'Attractor.R'
     'Dispersal.R'
     'Incursions.R'
     'Initializer.R'
