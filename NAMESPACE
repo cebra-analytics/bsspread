@@ -2,6 +2,7 @@
 
 S3method(Attractor,Raster)
 S3method(Attractor,SpatRaster)
+S3method(Attractor,numeric)
 S3method(Dispersal,Region)
 S3method(Incursions,Raster)
 S3method(Incursions,SpatRaster)

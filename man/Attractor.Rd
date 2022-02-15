@@ -4,13 +4,34 @@
 \alias{Attractor}
 \alias{Attractor.Raster}
 \alias{Attractor.SpatRaster}
+\alias{Attractor.numeric}
 \title{Attractor class builder}
 \usage{
-Attractor(x, region, ...)
+Attractor(
+  x,
+  region,
+  type = c("source", "destination", "both"),
+  multiplier = NULL,
+  ...
+)
 
 \method{Attractor}{Raster}(x, ...)
 
-\method{Attractor}{SpatRaster}(x, region, ...)
+\method{Attractor}{SpatRaster}(
+  x,
+  region,
+  type = c("source", "destination", "both"),
+  multiplier = NULL,
+  ...
+)
+
+\method{Attractor}{numeric}(
+  x,
+  region,
+  type = c("source", "destination", "both"),
+  multiplier = NULL,
+  ...
+)
 }
 \arguments{
 \item{x}{A \code{raster::RasterLayer} or \code{terra::SpatRaster}
@@ -18,6 +39,14 @@ object representing spatial attractor values across the simulation region.}
 
 \item{region}{A \code{Region} or inherited class object defining the spatial
 locations included in the spread simulations.}
+
+\item{type}{One of \code{"source"}, \code{"destination"}, or \code{"both"},
+indicating whether attractor values represent scale factors for dispersal
+from source locations, or dispersal likelihood weightings for destination
+locations, or both.}
+
+\item{multiplier}{Optional numeric multiplier for scaling or weighting
+attractor values appropriately (for convenience).}
 
 \item{...}{Additional parameters.}
 }
@@ -27,13 +56,26 @@ accessing attributes:
 \describe{
 \item{\code{get_rast()}}{Get the attractor \code{terra::SpatRaster}
 object.}
-\item{\code{get_values(cells = NULL)}}{Get the attractor values for
-optionally specified region (non-NA) cell indices. Default is all.}
+\item{\code{get_values(cells = NULL)}}{Get the attractor values
+(multiplied by the specified multiplier when present) for optionally
+specified region (non-NA) cell indices. Default is all.}
+\item{\code{get_aggr_values(cells = NULL)}}{Get the raster aggregated
+attractor values (multiplied by the specified multiplier when present)
+for optionally specified aggregated region (non-NA) cell indices.
+Default is all indices. Only available for an attractor built with a
+spatial raster layer, and functional when region is two-tiered.}
+\item{\code{get_type())}}{Get the attractor type ("source",
+"destination", or "both").}
 }
 }
 \description{
-Builds a class to represent spatially distributed weights, or actual or
-relative probabilities assigned to cells/locations to represent an
-"attractor" that influences the likelihood of dispersal from or to other
-locations.
+Builds a class to represent spatially distributed weights or scaling factors
+assigned to cells/locations to represent an "attractor" that modify the
+likelihood of dispersal from source or to destination locations. Attractor
+values may be used to scale the proportion of each population dispersing
+from each source location, or to scale the number of dispersal events
+originating at each source location. Alternatively, attractor weight values
+may be used to modify the relative likelihood of dispersal to each
+destination location. The \code{type} attribute of an attractor may thus be
+defined as "source", "destination", or "both".
 }
