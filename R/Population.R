@@ -38,10 +38,12 @@
 #'       matrix.}
 #'     \item{\code{get_stages()}}{Get the number of stages in a age/stage-based
 #'       representation.}
-#'     \item{\code{get_capacity()}}{Get the carrying capacity as a vector of
-#'       values for each location.}
-#'     \item{\code{get_establish_pr()}}{Get the establishment probability as a
-#'       vector of values for each location.}
+#'     \item{\code{get_capacity(cells = NULL)}}{Get the carrying capacity as a
+#'       vector of values for each region location or optionally specified
+#'       region locations (indices).}
+#'     \item{\code{get_establish_pr(cells = NULL)}}{Get the establishment
+#'       probability as a vector of values for each region location or
+#'       optionally specified region locations (indices).}
 #'     \item{\code{make(initial, current, incursion)}}{Make a population vector
 #'       or array (rows:stages x columns:locations) via the defined population
 #'       representation using vectors or arrays of the \code{initial} or
@@ -159,14 +161,22 @@ Population.Region <- function(region,
     return(stages)
   }
 
-  # Get carrying capacity
-  self$get_capacity <- function() {
-    return(capacity)
+  # Get carrying capacity for specified region (non-NA) cell indices
+  self$get_capacity <- function(cells = NULL) {
+    if (is.numeric(cells)) {
+      return(capacity[cells])
+    } else {
+      return(capacity)
+    }
   }
 
-  # Get establishment probability
-  self$get_establish_pr <- function() {
-    return(establish_pr)
+  # Get establishment probability for specified region (non-NA) cell indices
+  self$get_establish_pr <- function(cells = NULL) {
+    if (is.numeric(cells)) {
+      return(establish_pr[cells])
+    } else {
+      return(establish_pr)
+    }
   }
 
   # Generic make method (extended/overridden in subclasses)
