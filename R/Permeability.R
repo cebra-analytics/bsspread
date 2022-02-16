@@ -57,7 +57,7 @@ Permeability.SpatRaster <- function(x, region, ...) {
 
   # Get the permeability object id
   self$get_id <- function() {
-    return(x)
+    return(id)
   }
 
   # Set the permeability object id

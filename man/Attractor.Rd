@@ -35,7 +35,8 @@ Attractor(
 }
 \arguments{
 \item{x}{A \code{raster::RasterLayer} or \code{terra::SpatRaster}
-object representing spatial attractor values across the simulation region.}
+object, or numeric vector, representing spatial attractor values across
+the simulation region.}
 
 \item{region}{A \code{Region} or inherited class object defining the spatial
 locations included in the spread simulations.}
@@ -56,13 +57,20 @@ accessing attributes:
 \describe{
 \item{\code{get_rast()}}{Get the attractor \code{terra::SpatRaster}
 object.}
-\item{\code{get_values(cells = NULL)}}{Get the attractor values
-(multiplied by the specified multiplier when present) for optionally
-specified region (non-NA) cell indices. Default is all.}
-\item{\code{get_aggr_values(cells = NULL)}}{Get the raster aggregated
+\item{\code{get_values(cells = NULL, na.incl = FALSE)}}{Get the
 attractor values (multiplied by the specified multiplier when present)
-for optionally specified aggregated region (non-NA) cell indices.
-Default is all indices. Only available for an attractor built with a
+for optionally specified region cell indices, which should only refer
+to all raster indices (including NA-value cells) when specified (via
+\code{na.incl = TRUE}), otherwise the index sequence should skip
+NA-value cells (as per \code{Region get_indices}). Default is all
+non-NA cell values.}
+\item{\code{get_aggr_values(cells = NULL, na.incl = FALSE)}}{Get the
+raster aggregated attractor values (multiplied by the specified
+multiplier when present) for optionally specified aggregated region
+cell indices, which should only refer to all raster indices (including
+NA-value cells) when specified (via \code{na.incl = TRUE}), otherwise
+the index sequence should skip NA-value cells. Default is all
+non-NA cell values. Only available for an attractor built with a
 spatial raster layer, and functional when region is two-tiered.}
 \item{\code{get_type())}}{Get the attractor type ("source",
 "destination", or "both").}

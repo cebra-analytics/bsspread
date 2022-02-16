@@ -11,7 +11,8 @@
 #' defined as "source", "destination", or "both".
 #'
 #' @param x A \code{raster::RasterLayer} or \code{terra::SpatRaster}
-#'   object representing spatial attractor values across the simulation region.
+#'   object, or numeric vector, representing spatial attractor values across
+#'   the simulation region.
 #' @param region A \code{Region} or inherited class object defining the spatial
 #'   locations included in the spread simulations.
 #' @param type One of \code{"source"}, \code{"destination"}, or \code{"both"},
@@ -26,13 +27,20 @@
 #'   \describe{
 #'     \item{\code{get_rast()}}{Get the attractor \code{terra::SpatRaster}
 #'       object.}
-#'     \item{\code{get_values(cells = NULL)}}{Get the attractor values
-#'       (multiplied by the specified multiplier when present) for optionally
-#'       specified region (non-NA) cell indices. Default is all.}
-#'     \item{\code{get_aggr_values(cells = NULL)}}{Get the raster aggregated
+#'     \item{\code{get_values(cells = NULL, na.incl = FALSE)}}{Get the
 #'       attractor values (multiplied by the specified multiplier when present)
-#'       for optionally specified aggregated region (non-NA) cell indices.
-#'       Default is all indices. Only available for an attractor built with a
+#'       for optionally specified region cell indices, which should only refer
+#'       to all raster indices (including NA-value cells) when specified (via
+#'       \code{na.incl = TRUE}), otherwise the index sequence should skip
+#'       NA-value cells (as per \code{Region get_indices}). Default is all
+#'       non-NA cell values.}
+#'     \item{\code{get_aggr_values(cells = NULL, na.incl = FALSE)}}{Get the
+#'       raster aggregated attractor values (multiplied by the specified
+#'       multiplier when present) for optionally specified aggregated region
+#'       cell indices, which should only refer to all raster indices (including
+#'       NA-value cells) when specified (via \code{na.incl = TRUE}), otherwise
+#'       the index sequence should skip NA-value cells. Default is all
+#'       non-NA cell values. Only available for an attractor built with a
 #'       spatial raster layer, and functional when region is two-tiered.}
 #'     \item{\code{get_type())}}{Get the attractor type ("source",
 #'       "destination", or "both").}
@@ -92,16 +100,24 @@ Attractor.SpatRaster <- function(x, region,
   }
 
   # Get the values for specified region (non-NA) cell indices
-  self$get_values <- function(cells = NULL) {
+  self$get_values <- function(cells = NULL, na.incl = FALSE) {
     if (is.numeric(cells)) {
-      return(x[region$get_indices()[cells]][,1]*multiplier)
+      if (na.incl) {
+        return(x[cells][,1]*multiplier)
+      } else {
+        return(x[region$get_indices()[cells]][,1]*multiplier)
+      }
     } else {
-      return(x[region$get_indices()][,1]*multiplier)
+      if (na.incl) {
+        return(x[][,1]*multiplier)
+      } else {
+        return(x[region$get_indices()][,1]*multiplier)
+      }
     }
   }
 
   # Get aggregate values for specified aggregate region cell indices
-  self$get_aggr_values <- function(cells = NULL) {
+  self$get_aggr_values <- function(cells = NULL, na.incl = FALSE) {
     if (region$two_tier()) {
       aggr <- region$get_aggr()
       if (is.null(aggr_rast) && region$two_tier()) {
@@ -109,9 +125,17 @@ Attractor.SpatRaster <- function(x, region,
                                        na.rm = TRUE)
       }
       if (is.numeric(cells)) {
-        return(aggr_rast[aggr$indices[cells]][,1]*multiplier)
+        if (na.incl) {
+          return(aggr_rast[cells][,1]*multiplier)
+        } else {
+          return(aggr_rast[aggr$indices[cells]][,1]*multiplier)
+        }
       } else {
-        return(aggr_rast[aggr$indices][,1]*multiplier)
+        if (na.incl) {
+          return(aggr_rast[][,1]*multiplier)
+        } else {
+          return(aggr_rast[aggr$indices][,1]*multiplier)
+        }
       }
     }
   }
@@ -160,7 +184,7 @@ Attractor.numeric <- function(x, region,
     return(x_rast)
   }
 
-  # Get the values for specified region (non-NA) cell indices
+  # Get the values for specified region cell indices
   self$get_values <- function(cells = NULL) {
     if (is.numeric(cells)) {
       return(x[cells]*multiplier)
