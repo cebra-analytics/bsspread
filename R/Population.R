@@ -163,7 +163,7 @@ Population.Region <- function(region,
 
   # Get carrying capacity for specified region (non-NA) cell indices
   self$get_capacity <- function(cells = NULL) {
-    if (is.numeric(cells)) {
+    if (is.numeric(capacity) && is.numeric(cells)) {
       return(capacity[cells])
     } else {
       return(capacity)
@@ -172,7 +172,7 @@ Population.Region <- function(region,
 
   # Get establishment probability for specified region (non-NA) cell indices
   self$get_establish_pr <- function(cells = NULL) {
-    if (is.numeric(cells)) {
+    if (is.numeric(establish_pr) && is.numeric(cells)) {
       return(establish_pr[cells])
     } else {
       return(establish_pr)
