@@ -34,6 +34,10 @@ patches) that are included in the simulation.}
 (raster cells) or patch (network).}
 \item{\code{is_compatible(y)}}{Check the compatibility of object
 \code{y} with the region defined by \code{x}.}
+\item{\code{is_included(indices)}}{Check if cell \code{indices} of grid
+locations are included (non-NA cells) in the simulation (when type is
+grid), and return a logical vector indicating the inclusion of each
+index.}
 \item{\code{two_tier()}}{Check if the region is configured for two-tier
 dispersal (local plus aggregate cells) when type is grid.}
 \item{\code{get_aggr()}}{Get a list of two-tier dispersal aggregation

@@ -33,6 +33,10 @@
 #'       (raster cells) or patch (network).}
 #'     \item{\code{is_compatible(y)}}{Check the compatibility of object
 #'       \code{y} with the region defined by \code{x}.}
+#'     \item{\code{is_included(indices)}}{Check if cell \code{indices} of grid
+#'       locations are included (non-NA cells) in the simulation (when type is
+#'       grid), and return a logical vector indicating the inclusion of each
+#'       index.}
 #'     \item{\code{two_tier()}}{Check if the region is configured for two-tier
 #'       dispersal (local plus aggregate cells) when type is grid.}
 #'     \item{\code{get_aggr()}}{Get a list of two-tier dispersal aggregation
@@ -123,6 +127,11 @@ Region.SpatRaster <- function(x, ...) {
              all(terra::res(y) == terra::res(x)))
   }
 
+  # Check if cell indices are included (non-NA cells) in the simulation
+  self$is_included <- function(indices) {
+      return(!is.na(x[indices][,1]))
+  }
+
   # Check, get, and set two-tier aggregation (list) for dispersal
   aggr <- NULL
   self$two_tier <- function() {
@@ -133,8 +142,9 @@ Region.SpatRaster <- function(x, ...) {
   }
   self$set_aggr <- function(aggr_factor, inner_radius) {
     aggr <<- list(factor = aggr_factor, inner_radius = inner_radius)
-    aggr$rast <<- terra::aggregate(x, fact = aggr_factor, fun = "mean",
+    aggr$rast <<- terra::aggregate((x*0 + 1), fact = aggr_factor, fun = "sum",
                                    na.rm = TRUE)
+    names(aggr$rast) <<- "cells"
     aggr$indices <<- which(!is.na(aggr$rast[]))
     aggr$pts <<- terra::as.points(aggr$rast, values = FALSE)
   }
