@@ -99,6 +99,11 @@ Initializer.default <- function(x,
     }
   }
 
+  # Collapse when single column
+  if (is.matrix(x) && ncol(x) == 1) {
+    x <- x[,1]
+  }
+
   # Create a class structure
   self <- structure(list(), class = c(class, "Initializer"))
 

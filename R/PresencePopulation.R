@@ -51,14 +51,19 @@ PresencePopulation <- function(region,
   inherited_make <- self$make
   self$make <- function(initial = NULL, current = NULL, incursion = NULL) {
 
+    # Convert to initial values to logical
+    if (!is.null(initial)) {
+      initial <- as.logical(initial)
+    }
+
     # Run inherited function
     values <- inherited_make(initial = initial, current = current,
-                            incursion = incursion)
+                             incursion = incursion)
 
     # Set attributes for type and spread delay
     if (is.null(current)) {
       attributes(values) <- list(type = self$get_type(),
-                                spread_delay = NULL)
+                                 spread_delay = NULL)
       if (is.numeric(spread_delay)) {
         attr(values, "spread_delay") <- rep(NA, region$get_locations())
       }
