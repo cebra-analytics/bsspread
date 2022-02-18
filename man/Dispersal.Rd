@@ -27,11 +27,12 @@ dispersal:
 \describe{
 \item{\code{get_region()}}{Get the spatial region object.}
 \item{\code{get_population_model()}}{Get the population model object.}
-\item{\code{disperse(x)}}{Perform location dispersal on a list \code{x}
-of population vectors (for each location) or arrays (locations by
-stages), representing the \code{original}, \code{remaining} and
-\code{relocated} populations, and return the transformed list of
-vectors or arrays. The separation of original, remaining and relocated
+\item{\code{disperse(n)}}{Perform location dispersal on a list \code{n}
+of vectors or matrices, representing the occupied \code{cells}
+(indices), the \code{original} occupied populations, the
+\code{remaining} occupied populations, and the \code{relocated}
+populations (at all region cells), and return the transformed list of
+vectors or matrices. The separation of original, remaining and relocated
 populations enables multiple models for different dispersal vectors to
 run in sequence.}
 \item{\code{TODO()}}{TODO.}
