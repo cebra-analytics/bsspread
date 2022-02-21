@@ -41,8 +41,10 @@
 #'       dispersal (local plus aggregate cells) when type is grid.}
 #'     \item{\code{get_aggr()}}{Get a list of two-tier dispersal aggregation
 #'       components \code{factor}, \code{inner_radius}, \code{rast}
-#'       (\code{terra::SpatRaster}), \code{indices} (non-NA), and \code{pts}
-#'       (\code{terra::SpatVector}).}
+#'       (\code{terra::SpatRaster}), \code{indices} (non-NA), \code{pts}
+#'       (\code{terra::SpatVector}), and a function \code{get_cells(indices)}
+#'       that returns the region cells (indices) within the specified aggregate
+#'       cell (\code{indices}).}
 #'     \item{\code{set_aggr(aggr_factor, inner_radius)}}{Configure a two-tier
 #'       dispersal aggregation of the region via an aggregation factor and
 #'       an inner radius (in m) to define the boundary between local dispersal
@@ -142,11 +144,26 @@ Region.SpatRaster <- function(x, ...) {
   }
   self$set_aggr <- function(aggr_factor, inner_radius) {
     aggr <<- list(factor = aggr_factor, inner_radius = inner_radius)
-    aggr$rast <<- terra::aggregate((x*0 + 1), fact = aggr_factor, fun = "sum",
-                                   na.rm = TRUE)
+    idx_rast <- terra::rast(x)
+    idx_rast[indices] <- 1:length(indices)
+    aggr$cells <<- list()
+    aggr$rast <<- terra::aggregate(idx_rast, fact = aggr_factor,
+                                   fun = function(values) {
+      values <- values[which(is.finite(values))]
+      if (length(values)) {
+        aggr$cells <<- c(aggr$cells, list(values))
+        return(length(values))
+      } else {
+        return(NA)
+      }
+    })
     names(aggr$rast) <<- "cells"
     aggr$indices <<- which(!is.na(aggr$rast[]))
+    aggr$get_cells <<- function(indices) {
+      return(unlist(aggr$cells[indices]))
+    }
     aggr$pts <<- terra::as.points(aggr$rast, values = FALSE)
+    rm(idx_rast)
   }
 
   # Path list of reachable indices and distances, and optionally configured
