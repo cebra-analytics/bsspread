@@ -43,9 +43,9 @@ dispersal (local plus aggregate cells) when type is grid.}
 \item{\code{get_aggr()}}{Get a list of two-tier dispersal aggregation
 components \code{factor}, \code{inner_radius}, \code{rast}
 (\code{terra::SpatRaster}), \code{indices} (non-NA), \code{pts}
-(\code{terra::SpatVector}), and a function \code{get_cells(indices)}
-that returns the region cells (indices) within the specified aggregate
-cell (\code{indices}).}
+(\code{terra::SpatVector}), \code{cells} (list of region cells), and a
+function \code{get_cells(indices)} that returns the region cells
+(indices) within the specified aggregate cell (\code{indices}).}
 \item{\code{set_aggr(aggr_factor, inner_radius)}}{Configure a two-tier
 dispersal aggregation of the region via an aggregation factor and
 an inner radius (in m) to define the boundary between local dispersal
