@@ -136,7 +136,7 @@ unreachable paths. Dispersal paths may also be limited to a \code{maximum}
 configured via the population model, may be applied to each dispersal event,
 resulting in potential "deaths" of individuals or unsuccessful presence-only
 dispersal events. Presence-only population dispersal may also be configured
-without \code{events} when a \code{proportion} is specified to represent a
+without \code{events} when \code{proportion} is specified to represent a
 scaling multiplier for (presumed) actual (rather than relative) dispersal
 probabilities. Under these circumstances destination locations are sampled
 from all reachable destinations using the scaled probabilities. The
