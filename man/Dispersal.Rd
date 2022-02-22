@@ -94,8 +94,6 @@ A \code{Dispersal} class object (list) containing functions for
 accessing attributes (of the function environment) and performing
 dispersal:
 \describe{
-\item{\code{get_region()}}{Get the spatial region object.}
-\item{\code{get_population_model()}}{Get the population model object.}
 \item{\code{pack(n)}}{Packs a population vector or matrix \code{n} into
 a list containing a vector of occupied \code{cells} (indices), the
 \code{original} population values at the occupied locations only, the

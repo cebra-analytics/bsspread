@@ -76,8 +76,6 @@
 #'   accessing attributes (of the function environment) and performing
 #'   dispersal:
 #'   \describe{
-#'     \item{\code{get_region()}}{Get the spatial region object.}
-#'     \item{\code{get_population_model()}}{Get the population model object.}
 #'     \item{\code{pack(n)}}{Packs a population vector or matrix \code{n} into
 #'       a list containing a vector of occupied \code{cells} (indices), the
 #'       \code{original} population values at the occupied locations only, the
@@ -174,11 +172,9 @@ Dispersal.Region <- function(region, population_model,
          "'source_density'.", call. = FALSE)
   }
 
-  # Check permeability and get identifier
-  perm_id <- NULL
-  if (inherits(permeability, "Permeability")) {
-    perm_id <- permeability$get_id()
-  } else if (!is.null(permeability)) {
+  # Check permeability
+  if (!is.null(permeability) &&
+             !inherits(permeability, "Permeability")) {
     stop("Permeability parameter must be a 'Permeability' or inherited class ",
          "object.", call. = FALSE)
   }
@@ -190,18 +186,19 @@ Dispersal.Region <- function(region, population_model,
          call. = FALSE)
   }
 
+  # Configure paths via region (sets permeability id when present)
+  region$configure_paths(directions = is.function(direction_function),
+                         max_distance = max_distance,
+                         permeability = permeability)
+
+  # Get the permeability identifier
+  perm_id <- NULL
+  if (inherits(permeability, "Permeability")) {
+    perm_id <- permeability$get_id()
+  }
+
   # Create a class structure
   self <- structure(list(), class = c(class, "Dispersal"))
-
-  # Get region object
-  self$get_region <- function() {
-    return(region)
-  }
-
-  # Get population model
-  self$get_population_model <- function() {
-    return(population_model)
-  }
 
   # Pack population vector/matrix into a list for dispersal
   self$pack <- function(n) {
