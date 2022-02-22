@@ -162,9 +162,10 @@ Dispersal.Region <- function(region, population_model,
   }
 
   # Check the attractors
-  if (!is.list(attractors) || !all(sapply(1:length(attractors), function(i) {
-    (inherits(attractors[[i]], "Attractor") |
-     (is.numeric(attractors[[i]]) & attractors[[i]] > 0 &
+  if (!is.list(attractors) ||
+      length(attractors) && !all(sapply(1:length(attractors), function(i) {
+    (inherits(attractors[[i]], "Attractor") ||
+     (is.numeric(attractors[[i]]) & attractors[[i]] > 0 &&
       names(attractors)[i] == "source_density"))
   }))) {
     stop("Attractors must be a list containing zero or more 'Attractor' or ",
@@ -229,8 +230,16 @@ Dispersal.Region <- function(region, population_model,
     # Calculate paths
     region$calculate_paths(n$cells)
 
-    # Perform dispersal for each occupied cell
-    for (i in 1:length(n$cells)) {
+    # Limit to dispersal-ready when presence-only with spread delay
+    if (population_type == "presence_only" &&
+        "spread_delay" %in% names(attributes(n$relocated))) {
+      dispersal_ready <- which(attr(n$relocated, "spread_delay")[n$cells] == 0)
+    } else {
+      dispersal_ready <- 1:length(n$cells)
+    }
+
+    # Perform dispersal for each (dispersal-ready) occupied cell
+    for (i in dispersal_ready) {
 
       ## Map path lists use cells as characters
       cell <- n$cells[i]
