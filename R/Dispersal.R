@@ -174,7 +174,7 @@ Dispersal.Region <- function(region, population_model,
 
   # Check permeability
   if (!is.null(permeability) &&
-             !inherits(permeability, "Permeability")) {
+      !inherits(permeability, "Permeability")) {
     stop("Permeability parameter must be a 'Permeability' or inherited class ",
          "object.", call. = FALSE)
   }
