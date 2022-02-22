@@ -3,20 +3,89 @@
 \name{Dispersal}
 \alias{Dispersal}
 \alias{Dispersal.Region}
-\title{Dispersal model abstract class builder}
+\title{Generic dispersal model class builder}
 \usage{
-Dispersal(region, population_model, class = character(), ...)
+Dispersal(
+  region,
+  population_model,
+  dispersal_stages = NULL,
+  proportion = NULL,
+  events = NULL,
+  distance_function = NULL,
+  direction_function = NULL,
+  attractors = list(),
+  permeability = NULL,
+  max_distance = NULL,
+  class = character(),
+  ...
+)
 
-\method{Dispersal}{Region}(region, class = character(), ...)
+\method{Dispersal}{Region}(
+  region,
+  population_model,
+  dispersal_stages = NULL,
+  proportion = NULL,
+  events = NULL,
+  distance_function = NULL,
+  direction_function = NULL,
+  attractors = list(),
+  permeability = NULL,
+  max_distance = NULL,
+  class = character(),
+  ...
+)
 }
 \arguments{
 \item{region}{A \code{Region} or inherited class object representing the
-spatial region (template) for spread simulations.}
+spatial region (template) for spread simulations. The region object
+contains functionality for calculating path distances and directions,
+permeability graphs, and structures to facilitate two-tier dispersal.}
 
 \item{population_model}{A \code{Population} or inherited class object
 defining the population representation for the spread simulations.}
 
-\item{class}{Character class name for inherited classes. Default is empty.}
+\item{dispersal_stages}{Numeric vector of population stages (indices) that
+disperse. Default is all stages (when set to \code{NULL}).}
+
+\item{proportion}{The proportion of the (unstructured or staged) population
+that disperses at each time step. This parameter is also used to scale the
+the number of dispersal destinations selected when the population is
+presence-only and the number of dispersal \code{events} is not defined.
+Default is \code{NULL} (producing no dispersal unless the population is
+presence-only and \code{events} is defined).}
+
+\item{events}{The mean number of dispersal events generated via a Poisson
+distribution for each location at each time step. A dispersal destination
+(location) is selected for each dispersal event. Default is \code{NULL}
+(resulting in destinations being selected for each individual within
+unstructured or staged populations, or stochastic sampling of destinations
+for presence-only populations).}
+
+\item{distance_function}{A function (or kernel) in the form
+\code{function(distances)}, that calculates the (relative) probability of
+dispersal for each distance (in m) specified as a numeric vector. Default
+is none.}
+
+\item{direction_function}{A function (or kernel) in the form
+\code{function(directions)}, that calculates the (relative) probability of
+dispersal for each direction (0-360 degrees) specified as an integer
+vector. Default is none.}
+
+\item{attractors}{List containing \code{Attractor} (or inherited) class
+objects for spatially weighted dispersal, and/or containing a named
+numeric multiplier \code{source_density = <numeric>}, which (when present)
+is used to dynamically create an "attractor" based on the population
+density (number/capacity) at each dispersal location source (origin) at
+each simulation time step. Default is empty.}
+
+\item{permeability}{A \code{Permeability} class (or inherited) class object
+for representing spatial permeability or constraints. Default is none.}
+
+\item{max_distance}{The maximum dispersal distance (in m). Default is
+\code{NULL} (resulting in no explicit distance limit).}
+
+\item{class}{Character class name for inherited classes. Default is
+\code{NULL}.}
 
 \item{...}{Additional parameters.}
 }
@@ -27,6 +96,15 @@ dispersal:
 \describe{
 \item{\code{get_region()}}{Get the spatial region object.}
 \item{\code{get_population_model()}}{Get the population model object.}
+\item{\code{pack(n)}}{Packs a population vector or matrix \code{n} into
+a list containing a vector of occupied \code{cells} (indices), the
+\code{original} population values at the occupied locations only, the
+\code{remaining} occupied values (initially a duplicate
+\code{original}), and a vector or matrix for the \code{relocated}
+population values at all locations (initially all zero).}
+\item{\code{unpack(n)}}{Unpacks a population list by combining the
+\code{remaining} and \code{relocated} population values to form a
+new post-dispersal population vector or matrix.}
 \item{\code{disperse(n)}}{Perform location dispersal on a list \code{n}
 of vectors or matrices, representing the occupied \code{cells}
 (indices), the \code{original} occupied populations, the
@@ -35,10 +113,37 @@ populations (at all region cells), and return the transformed list of
 vectors or matrices. The separation of original, remaining and relocated
 populations enables multiple models for different dispersal vectors to
 run in sequence.}
-\item{\code{TODO()}}{TODO.}
 }
 }
 \description{
-Builds a class for dispersal representation and functionality for spread
-simulations.
+Builds a generic class for representing dispersal with functionality for
+spread simulations. Dispersal may be simulated for presence-only,
+unstructured or stage-based \code{populations}. For unstructured or
+stage-based populations, a specified \code{proportion} of the population at
+each occupied (cell) location is selected (sampled) for dispersal at each
+simulation time step. Presence-only populations may disperse via specifying
+a (mean) number of dispersal \code{events}. Dispersal events are generated
+for each occupied location. Unstructured and stage-based population
+dispersal may also utilize specified events, otherwise an event is assigned
+to each dispersing individual. For each dispersal event a destination
+location is selected via stochastic sampling using (relative) probabilities
+of dispersal from each occupied location to reachable destinations. These
+(relative) probabilities are calculated via \code{distance} and/or
+\code{direction} functions, optionally combined with \code{attractor}
+(layer) values. Paths to reachable destinations are calculated via the
+\code{region} class object. Paths may be derived via \code{permeability} or
+constraint layers, which are used to adjust path distances or omit
+unreachable paths. Dispersal paths may also be limited to a \code{maximum}
+(adjusted) distance. An optional establishment likelihood (layer), which is
+configured via the population model, may be applied to each dispersal event,
+resulting in potential "deaths" of individuals or unsuccessful presence-only
+events. Presence-only population dispersal may also be configured without
+\code{events} when a \code{proportion} is specified to represent a scaling
+multiplier for presumed actual (rather than relative) dispersal
+probabilities. Under these circumstances destination locations are sampled
+from all reachable destinations using the scaled probabilities. The
+dispersal functionality utilizes a wrapped population list of separate
+values for the \code{original}, \code{remaining}, and \code{relocated}
+populations. This separation enables multiple dispersal models, representing
+different dispersal vectors, to be run in sequence.
 }
