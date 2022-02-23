@@ -186,7 +186,7 @@ Region.SpatRaster <- function(x, ...) {
     if (inherits(permeability, "Permeability")) {
       if (is.null(paths$graphs)) {
         paths$graphs <<- list()
-        if (is.null(paths$graphs$agg_idx)) {
+        if (is.list(aggr)) {
           idx_rast <- terra::rast(x)
           idx_rast[] <- 1:terra::ncell(x)
           paths$graphs$agg_idx <<- list()
