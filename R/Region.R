@@ -186,6 +186,21 @@ Region.SpatRaster <- function(x, ...) {
     if (inherits(permeability, "Permeability")) {
       if (is.null(paths$graphs)) {
         paths$graphs <<- list()
+        if (is.null(paths$graphs$agg_idx)) {
+          idx_rast <- terra::rast(x)
+          idx_rast[] <- 1:terra::ncell(x)
+          paths$graphs$agg_idx <<- list()
+          idx_rast <- terra::aggregate(idx_rast, fact = aggr$factor,
+                           fun = function(values) {
+                               paths$graphs$agg_idx <<-
+                                 c(paths$graphs$agg_idx, list(values))
+                               return(NA)
+                           })
+          paths$graphs$get_cells <<- function(indices) {
+            return(unlist(paths$graphs$agg_idx[indices]))
+          }
+          rm(idx_rast)
+        }
       }
       if (is.null(paths$weights)) {
         paths$weights <<- list()
@@ -221,17 +236,13 @@ Region.SpatRaster <- function(x, ...) {
                                       quadsegs = 180)
           aggr_idx <- terra::cells(aggr$rast, inner_vect, touches = TRUE)[,2]
 
-          # Create a polygon from aggregate cells in/on inner circle
-          aggr_poly <- terra::rast(aggr$rast)
-          aggr_poly[aggr_idx] <- 0
-          aggr_poly <- terra::as.polygons(aggr_poly)
-
-          # Local cell indices inside aggregate polygon
+          # Local cell indices within inner area
           paths$idx[[cell_char]] <<- list(
-            cell = which(indices %in% terra::cells(x, aggr_poly)[,2] &
-                           indices != indices[cell]))
+            cell = aggr$get_cells(which(aggr$indices %in% aggr_idx)))
+          cell_i <- which(paths$idx[[cell_char]]$cell == cell)
+          paths$idx[[cell_char]]$cell <<- paths$idx[[cell_char]]$cell[-cell_i]
 
-          # Aggregate cell indices outside polygon
+          # Aggregate cells outside inner area
           if (is.numeric(paths$max_distance) &&
               is.finite(paths$max_distance)) {
             outer_vect <- terra::buffer(region_pts[cell,],
@@ -313,9 +324,9 @@ Region.SpatRaster <- function(x, ...) {
         if (is.list(aggr)) { # two-tier approach
 
           # Select aggregate cells in/on intersected inner circles
-          inner_vect <- terra::buffer(region_pts[cells,],
-                                      width = aggr$inner_radius,
-                                      quadsegs = 180)
+          inner_vect <- terra::aggregate(
+            terra::buffer(region_pts[cells,], width = aggr$inner_radius,
+                          quadsegs = 180))
           aggr_idx <- terra::cells(aggr$rast, inner_vect, touches = TRUE)[,2]
 
           # Create a polygon from aggregate cells in/on the inner circles
@@ -373,9 +384,9 @@ Region.SpatRaster <- function(x, ...) {
         } else { # cell approach
 
           # Create a polygon from intersected range circles
-          new_poly <- terra::buffer(region_pts[cells,],
-                                    width = paths$max_distance,
-                                    quadsegs = 180)
+          new_poly <- terra::aggregate(
+            terra::buffer(region_pts[cells,], width = paths$max_distance,
+                          quadsegs = 180))
         }
 
         # Determine new graph coverage and update total via polygons
@@ -390,7 +401,12 @@ Region.SpatRaster <- function(x, ...) {
         }
 
         # Calculate region cell indices inside new polygon
-        cell_idx <- terra::cells(x, new_poly, touches = TRUE)[,2]
+        if (is.list(aggr)) { # two-tier approach
+          aggr_idx <- terra::cells(aggr$rast, new_poly, touches = FALSE)[,2]
+          cell_idx <- paths$graphs$get_cells(aggr_idx)
+        } else {
+          cell_idx <- terra::cells(x, new_poly, touches = TRUE)[,2]
+        }
         if (length(cell_idx)) {
 
           # Find adjacency of region cells
