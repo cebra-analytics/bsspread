@@ -213,8 +213,8 @@ Region.SpatRaster <- function(x, ...) {
         paths$perms[[length(paths$perms) + 1]] <<- permeability
         permeability$set_id(length(paths$perms))
       }
-      if (is.null(paths$dist_mult)) {
-        paths$dist_mult <<- list()
+      if (is.null(paths$perm_dist)) {
+        paths$perm_dist <<- list()
       }
     }
   }
@@ -360,7 +360,8 @@ Region.SpatRaster <- function(x, ...) {
             cell_adj_df <- igraph::as_data_frame(paths$graphs$aggr)
 
             # Calculate path weights for aggregate base/permeability layers
-            paths$weights$aggr <<- list(base = cell_adj_df$weight) # faster
+            paths$weights$aggr <<- list(base = cell_adj_df$weight,
+                                        perms = list()) # faster
             for (perm in paths$perms) {
 
               # Aggregate the permeability raster layer
@@ -376,12 +377,8 @@ Region.SpatRaster <- function(x, ...) {
               perm_weight[which(is.na(perm_weight))] <- Inf
 
               # Add to list
-              if (is.null(paths$weights$aggr$perms)) {
-                paths$weights$aggr$perms <<- list(perm_weight)
-              } else {
-                index <- length(paths$weights$aggr$perms) + 1
-                paths$weights$aggr$perms[[index]] <<- perm_weight
-              }
+              index <- length(paths$weights$aggr$perms) + 1
+              paths$weights$aggr$perms[[index]] <<- perm_weight
             }
           }
 
@@ -455,7 +452,8 @@ Region.SpatRaster <- function(x, ...) {
           }
 
           # Create or update path weights for base and permeability layers
-          paths$weights$cell <<- list(base = cell_adj_df$weight) # faster
+          paths$weights$cell <<- list(base = cell_adj_df$weight,
+                                      perms = list()) # faster
           for (perm in paths$perms) {
 
             # Calculate permeability weights
@@ -466,12 +464,8 @@ Region.SpatRaster <- function(x, ...) {
             perm_weight[which(is.na(perm_weight))] <- Inf
 
             # Add to list
-            if (is.null(paths$weights$cell$perms)) {
-              paths$weights$cell$perms <<- list(perm_weight)
-            } else {
-              index <- length(paths$weights$cell$perms) + 1
-              paths$weights$cell$perms[[index]] <<- perm_weight
-            }
+            index <- length(paths$weights$cell$perms) + 1
+            paths$weights$cell$perms[[index]] <<- perm_weight
           }
         }
 
@@ -494,7 +488,8 @@ Region.SpatRaster <- function(x, ...) {
         cell_adj_df <- igraph::as_data_frame(paths$graphs$cell)
 
         # Create path weights for base and permeability layers
-        paths$weights$cell <<- list(base = cell_adj_df$weight) # faster
+        paths$weights$cell <<- list(base = cell_adj_df$weight,
+                                    perms = list()) # faster
         for (perm in paths$perms) {
 
           # Calculate permeability weights
@@ -505,26 +500,22 @@ Region.SpatRaster <- function(x, ...) {
           perm_weight[which(is.na(perm_weight))] <- Inf
 
           # Add to list
-          if (is.null(paths$weights$cell$perms)) {
-            paths$weights$cell$perms <<- list(perm_weight)
-          } else {
-            index <- length(paths$weights$cell$perms) + 1
-            paths$weights$cell$perms[[index]] <<- perm_weight
-          }
+          index <- length(paths$weights$cell$perms) + 1
+          paths$weights$cell$perms[[index]] <<- perm_weight
         }
       }
 
-      # Calculate permeability-based distance multipliers for reachable cells
+      # Calculate permeability-modified distances for reachable cells
       for (cell in cells) {
 
         # Map path lists use cells as characters
         cell_char <- as.character(cell)
 
-        # Calculate distance modifiers when not present
-        if (!cell_char %in% names(paths$dist_mult)) {
+        # Calculate modified distances when not present
+        if (!cell_char %in% names(paths$perm_dist)) {
 
-          # List for distance multipliers
-          paths$dist_mult[[cell_char]] <<- list()
+          # List for modified distances
+          paths$perm_dist[[cell_char]] <<- list()
 
           # Get base (no permeability) weight distance to reachable inner cells
           base_dist <- as.vector(igraph::distances(
@@ -533,7 +524,8 @@ Region.SpatRaster <- function(x, ...) {
             to = as.character(indices[paths$idx[[cell_char]]$cell]),
             weights = paths$weights$cell$base))
 
-          # Calculate multipliers for each permeability layer
+          # Calculate modified distances for each permeability layer
+          paths$perm_dist[[cell_char]]$cell <<- list()
           for (perm_id in 1:length(paths$perms)) {
 
             # Get permeability weight distance to reachable inner cells
@@ -543,16 +535,13 @@ Region.SpatRaster <- function(x, ...) {
               to = as.character(indices[paths$idx[[cell_char]]$cell]),
               weights = paths$weights$cell$perms[[perm_id]]))
 
-            # Calculate the distance multipliers
-            distance_mult <- as.vector(perm_dist/base_dist)
+            # Calculate the distance modifiers
+            perm_dist <- perm_dist/base_dist
+            perm_dist[which(!is.finite(perm_dist))] <- NA
 
-            # Add to list
-            if (is.null(paths$dist_mult[[cell_char]]$cell)) {
-              paths$dist_mult[[cell_char]]$cell <<- list(distance_mult)
-            } else {
-              index <- length(paths$dist_mult$cell) + 1
-              paths$dist_mult[[cell_char]]$cell[[index]] <<- distance_mult
-            }
+            # Scale the distance to (otherwise) reachable inner cells
+            paths$perm_dist[[cell_char]]$cell[[perm_id]] <<- as.integer(
+              round(paths$distances[[cell_char]]$cell*perm_dist))
           }
 
           # Aggregate distance multipliers when applicable
@@ -570,6 +559,7 @@ Region.SpatRaster <- function(x, ...) {
               weights = paths$weights$aggr$base))
 
             # Calculate multipliers for each permeability layer
+            paths$perm_dist[[cell_char]]$aggr <<- list()
             for (perm_id in 1:length(paths$perms)) {
 
               # Get permeability weight distance to reachable aggregate cells
@@ -579,16 +569,13 @@ Region.SpatRaster <- function(x, ...) {
                 to = as.character(aggr$indices[paths$idx[[cell_char]]$aggr]),
                 weights = paths$weights$aggr$perms[[perm_id]]))
 
-              # Calculate the distance multipliers
-              distance_mult <- as.vector(perm_dist/base_dist)
+              # Calculate the distance modifiers
+              perm_dist <- perm_dist/base_dist
+              perm_dist[which(!is.finite(perm_dist))] <- NA
 
-              # Add to list
-              if (is.null(paths$dist_mult[[cell_char]]$aggr)) {
-                paths$dist_mult[[cell_char]]$aggr <<- list(distance_mult)
-              } else {
-                index <- length(paths$dist_mult$aggr) + 1
-                paths$dist_mult[[cell_char]]$aggr[[index]] <<- distance_mult
-              }
+              # Scale the distance to (otherwise) reachable inner cells
+              paths$perm_dist[[cell_char]]$aggr[[perm_id]] <<- as.integer(
+                round(paths$distances[[cell_char]]$aggr*perm_dist))
             }
           }
         }
