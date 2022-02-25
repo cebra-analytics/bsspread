@@ -30,8 +30,10 @@ either zeros in non-NA locations (default), or with no values when
 included in the simulation.}
 \item{\code{get_locations()}}{Get the number of locations (cells or
 patches) that are included in the simulation.}
-\item{\code{get_type()}}{Get the type of spatial representation: grid
-(raster cells) or patch (network).}
+\item{\code{get_type()}}{Get the type of spatial representation: "grid"
+(raster cells) or "patch" (network).}
+\item{\code{get_res()}}{Get the spatial cell resolution (in m) of the
+region when the \code{type} is "grid".}
 \item{\code{is_compatible(y)}}{Check the compatibility of object
 \code{y} with the region defined by \code{x}.}
 \item{\code{is_included(indices)}}{Check if cell \code{indices} of grid
@@ -60,18 +62,20 @@ in dispersal calculations. Defaults infer non-inclusion.}
 \item{\code{calculate_paths(cells)}}{Calculate the indices, distances
 (in m), and directions (0-360 degrees) when required, of cells that
 are reachable for each cell index in \code{cells}, including local and
-aggregate cells when using two-tier configuration, and a graph
-connecting these paths when configured with permeability layers.
-The reachable cells are limited via a maximum distance (in m) and/or
-permeability layers when either are configured.}
+aggregate cells when using a two-tier configuration. Paths are
+optionally limited via a maximum distance (in m). When configured with
+permeability layers, a graph of path connections is derived and used
+to calculate modified distances and accessibility to reachable cells
+for each permeability layer.}
 \item{\code{get_paths(cells, directions = FALSE, max_distance = NULL,
       perm_id = NULL)}}{Get a list of indices of, and distances (in m) and
 (optional) directions (0-360 degrees) to, reachable cells for each
 cell index in \code{cells}, including local (\code{$cell}) and
 aggregate (\code{$aggr}) cells when configured, and optionally
-(further) limited via a maximum distance (in m). Distances, and thus
-reachable cells, are optionally modified via weighted paths specified
-by a configured permeability object id.}
+(further) limited via a maximum distance (in m) and permeability.
+When a permeability layer (object id) is specified, modified distances
+(and accessibility) to reachable cells is included in the returned
+list (with name (\code{perm_dist}).}
 }
 }
 \description{

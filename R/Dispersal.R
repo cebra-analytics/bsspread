@@ -90,9 +90,9 @@
 #'       (indices), the \code{original} occupied populations, the
 #'       \code{remaining} occupied populations, and the \code{relocated}
 #'       populations (at all region cells), and return the transformed list of
-#'       vectors or matrices. The separation of original, remaining and relocated
-#'       populations enables multiple models for different dispersal vectors to
-#'       run in sequence.}
+#'       vectors or matrices. The separation of original, remaining and
+#'       relocated populations enables multiple models for different dispersal
+#'       vectors to run in sequence.}
 #'   }
 #' @include Region.R
 #' @export
@@ -164,10 +164,10 @@ Dispersal.Region <- function(region, population_model,
   # Check the attractors
   if (!is.list(attractors) ||
       length(attractors) && !all(sapply(1:length(attractors), function(i) {
-    (inherits(attractors[[i]], "Attractor") ||
-     (is.numeric(attractors[[i]]) & attractors[[i]] > 0 &&
-      names(attractors)[i] == "source_density"))
-  }))) {
+        (inherits(attractors[[i]], "Attractor") ||
+         (is.numeric(attractors[[i]]) & attractors[[i]] > 0 &&
+          names(attractors)[i] == "source_density"))
+      }))) {
     stop("Attractors must be a list containing zero or more 'Attractor' or ",
          "inherited class objects, and/or a numeric attractor (> 0) named ",
          "'source_density'.", call. = FALSE)
@@ -254,21 +254,46 @@ Dispersal.Region <- function(region, population_model,
       ## Relative dispersal probabilities for source cell and destination cells
       source_p <- 1
       destination_p <- list(cell = rep(1, length(paths$idx[[cell_char]]$cell)))
-      if (region$two_tier()) {
+      if (region$two_tier()) { # multiple cells
         destination_p$aggr <- region$get_aggr()$rast[
           region$get_aggr()$indices[paths$idx[[cell_char]]$aggr]][,1]
       }
 
       ## Adjust destination (relative) probabilities based on distance
       if (is.function(distance_function)) {
-        destination_p$cell <-
-          (destination_p$cell*
-             distance_function(paths$distances[[cell_char]]$cell))
-        if (region$two_tier()) {
-          destination_p$aggr <-
-            (destination_p$aggr*
-               distance_function(paths$distances[[cell_char]]$aggr))
+
+        # Additional adjustment given (approx.) cells at each distance
+        dist_p_adj <- list(cell = 1, aggr = 1)
+        if (region$get_type() == "grid") {
+          dist_p_adj$cell <- (region$get_res()/
+                                (2*pi*paths$distances[[cell_char]]$cell))
+          if (region$two_tier()) {
+            dist_p_adj$aggr <- (region$get_res()/
+                                  (2*pi*paths$distances[[cell_char]]$aggr))
+          }
         }
+
+        # Adjust via distance function using appropriate distances
+        if (is.numeric(perm_id) && "perm_dist" %in% names(paths)) {
+          destination_p$cell <-
+            (distance_function(paths$perm_dist[[cell_char]]$cell[[perm_id]])*
+               dist_p_adj$cell*destination_p$cell)
+          if (region$two_tier()) {
+            destination_p$aggr <-
+              (distance_function(paths$perm_dist[[cell_char]]$aggr[[perm_id]])*
+                 dist_p_adj$aggr*destination_p$aggr)
+          }
+        } else {
+          destination_p$cell <-
+            (distance_function(paths$distances[[cell_char]]$cell)*
+               dist_p_adj$cell*destination_p$cell)
+          if (region$two_tier()) {
+            destination_p$aggr <-
+              (distance_function(paths$distances[[cell_char]]$aggr)*
+                 dist_p_adj$aggr*destination_p$aggr)
+          }
+        }
+        rm(dist_p_adj)
       }
 
       ## Adjust destination (relative) probabilities based on direction

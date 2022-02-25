@@ -29,8 +29,10 @@
 #'       included in the simulation.}
 #'     \item{\code{get_locations()}}{Get the number of locations (cells or
 #'       patches) that are included in the simulation.}
-#'     \item{\code{get_type()}}{Get the type of spatial representation: grid
-#'       (raster cells) or patch (network).}
+#'     \item{\code{get_type()}}{Get the type of spatial representation: "grid"
+#'       (raster cells) or "patch" (network).}
+#'     \item{\code{get_res()}}{Get the spatial cell resolution (in m) of the
+#'       region when the \code{type} is "grid".}
 #'     \item{\code{is_compatible(y)}}{Check the compatibility of object
 #'       \code{y} with the region defined by \code{x}.}
 #'     \item{\code{is_included(indices)}}{Check if cell \code{indices} of grid
@@ -59,18 +61,20 @@
 #'     \item{\code{calculate_paths(cells)}}{Calculate the indices, distances
 #'       (in m), and directions (0-360 degrees) when required, of cells that
 #'       are reachable for each cell index in \code{cells}, including local and
-#'       aggregate cells when using two-tier configuration, and a graph
-#'       connecting these paths when configured with permeability layers.
-#'       The reachable cells are limited via a maximum distance (in m) and/or
-#'       permeability layers when either are configured.}
+#'       aggregate cells when using a two-tier configuration. Paths are
+#'       optionally limited via a maximum distance (in m). When configured with
+#'       permeability layers, a graph of path connections is derived and used
+#'       to calculate modified distances and accessibility to reachable cells
+#'       for each permeability layer.}
 #'     \item{\code{get_paths(cells, directions = FALSE, max_distance = NULL,
 #'       perm_id = NULL)}}{Get a list of indices of, and distances (in m) and
 #'       (optional) directions (0-360 degrees) to, reachable cells for each
 #'       cell index in \code{cells}, including local (\code{$cell}) and
 #'       aggregate (\code{$aggr}) cells when configured, and optionally
-#'       (further) limited via a maximum distance (in m). Distances, and thus
-#'       reachable cells, are optionally modified via weighted paths specified
-#'       by a configured permeability object id.}
+#'       (further) limited via a maximum distance (in m) and permeability.
+#'       When a permeability layer (object id) is specified, modified distances
+#'       (and accessibility) to reachable cells is included in the returned
+#'       list (with name (\code{perm_dist}).}
 #'   }
 #' @export
 Region <- function(x, ...) {
@@ -121,6 +125,18 @@ Region.SpatRaster <- function(x, ...) {
     return("grid")
   }
 
+  # Get the spatial cell resolution
+  self$get_res <- function() {
+    if (terra::is.lonlat(x)) { # EPSG:4326
+      corners <- array(terra::ext(x2), c(2, 2))
+      diagonal <- terra::distance(corners[1,,drop = FALSE],
+                                  corners[2,,drop = FALSE], lonlat = TRUE)
+      return(diagonal/sqrt(terra::nrow(x2)^2 + terra::ncol(x2)^2))
+    } else {
+      return(mean(terra::res(x)[1]))
+    }
+  }
+
   # Check compatibility of a spatial raster y with the region defined by x
   self$is_compatible <- function(y) {
     y <- terra::rast(y)
@@ -131,7 +147,7 @@ Region.SpatRaster <- function(x, ...) {
 
   # Check if cell indices are included (non-NA cells) in the simulation
   self$is_included <- function(indices) {
-      return(!is.na(x[indices][,1]))
+    return(!is.na(x[indices][,1]))
   }
 
   # Check, get, and set two-tier aggregation (list) for dispersal
@@ -147,16 +163,16 @@ Region.SpatRaster <- function(x, ...) {
     idx_rast <- terra::rast(x)
     idx_rast[indices] <- 1:length(indices)
     aggr$cells <<- list()
-    aggr$rast <<- terra::aggregate(idx_rast, fact = aggr_factor,
-                                   fun = function(values) {
-      values <- values[which(is.finite(values))]
-      if (length(values)) {
-        aggr$cells <<- c(aggr$cells, list(values))
-        return(length(values))
-      } else {
-        return(NA)
-      }
-    })
+    aggr$rast <<- terra::aggregate(
+      idx_rast, fact = aggr_factor, fun = function(values) {
+        values <- values[which(is.finite(values))]
+        if (length(values)) {
+          aggr$cells <<- c(aggr$cells, list(values))
+          return(length(values))
+        } else {
+          return(NA)
+        }
+      })
     names(aggr$rast) <<- "cells"
     aggr$indices <<- which(!is.na(aggr$rast[]))
     aggr$get_cells <<- function(indices) {
@@ -362,10 +378,10 @@ Region.SpatRaster <- function(x, ...) {
             # Calculate path weights for aggregate base/permeability layers
             paths$weights$aggr <<- list(base = cell_adj_df$weight,
                                         perms = list()) # faster
-            for (perm in paths$perms) {
+            for (perm_id in 1:length(paths$perms)) {
 
               # Aggregate the permeability raster layer
-              aggr_rast <- terra::aggregate(perm$get_rast(),
+              aggr_rast <- terra::aggregate(paths$perms[[perm_id]]$get_rast(),
                                             fact = aggr$factor, fun = "mean",
                                             na.rm = TRUE)
 
@@ -373,12 +389,11 @@ Region.SpatRaster <- function(x, ...) {
               perm_weight <- rowMeans(
                 1/as.matrix(cbind(aggr_rast[as.integer(cell_adj_df$from)],
                                   aggr_rast[as.integer(cell_adj_df$to)]))
-                )*cell_adj_df$weight
+              )*cell_adj_df$weight
               perm_weight[which(is.na(perm_weight))] <- Inf
 
               # Add to list
-              index <- length(paths$weights$aggr$perms) + 1
-              paths$weights$aggr$perms[[index]] <<- perm_weight
+              paths$weights$aggr$perms[[perm_id]] <<- perm_weight
             }
           }
 
@@ -448,15 +463,16 @@ Region.SpatRaster <- function(x, ...) {
             cell_adj_df$weight[new_idx] <- cell_adj_df$new_weight[new_idx]
             igraph::edge_attr(new_graph, "weight") <- cell_adj_df$weight
             paths$graphs$cell <<- igraph::delete_edge_attr(new_graph,
-                                                          "new_weight")
+                                                           "new_weight")
           }
 
           # Create or update path weights for base and permeability layers
           paths$weights$cell <<- list(base = cell_adj_df$weight,
                                       perms = list()) # faster
-          for (perm in paths$perms) {
+          for (perm_id in 1:length(paths$perms)) {
 
             # Calculate permeability weights
+            perm <- paths$perms[[perm_id]]
             perm_weight <- rowMeans(
               1/as.matrix(cbind(perm$get_rast()[as.integer(cell_adj_df$from)],
                                 perm$get_rast()[as.integer(cell_adj_df$to)]))
@@ -464,8 +480,7 @@ Region.SpatRaster <- function(x, ...) {
             perm_weight[which(is.na(perm_weight))] <- Inf
 
             # Add to list
-            index <- length(paths$weights$cell$perms) + 1
-            paths$weights$cell$perms[[index]] <<- perm_weight
+            paths$weights$cell$perms[[perm_id]] <<- perm_weight
           }
         }
 
@@ -490,9 +505,10 @@ Region.SpatRaster <- function(x, ...) {
         # Create path weights for base and permeability layers
         paths$weights$cell <<- list(base = cell_adj_df$weight,
                                     perms = list()) # faster
-        for (perm in paths$perms) {
+        for (perm_id in 1:length(paths$perms)) {
 
           # Calculate permeability weights
+          perm <- paths$perms[[perm_id]]
           perm_weight <- rowMeans(
             1/as.matrix(cbind(perm$get_rast()[as.integer(cell_adj_df$from)],
                               perm$get_rast()[as.integer(cell_adj_df$to)]))
@@ -500,8 +516,7 @@ Region.SpatRaster <- function(x, ...) {
           perm_weight[which(is.na(perm_weight))] <- Inf
 
           # Add to list
-          index <- length(paths$weights$cell$perms) + 1
-          paths$weights$cell$perms[[index]] <<- perm_weight
+          paths$weights$cell$perms[[perm_id]] <<- perm_weight
         }
       }
 
@@ -558,7 +573,7 @@ Region.SpatRaster <- function(x, ...) {
               to = as.character(aggr$indices[paths$idx[[cell_char]]$aggr]),
               weights = paths$weights$aggr$base))
 
-            # Calculate multipliers for each permeability layer
+            # Calculate modified distances for each permeability layer
             paths$perm_dist[[cell_char]]$aggr <<- list()
             for (perm_id in 1:length(paths$perms)) {
 
@@ -585,12 +600,19 @@ Region.SpatRaster <- function(x, ...) {
 
   # Get a list of indices, distances and directions of/to reachable cells for
   # region cells (indices), optionally (further) limited via maximum distance
-  # Distances (and reachable cells) are optionally modified via permeability
+  # and/or permeability modified distances.
   self$get_paths <- function(cells, directions = FALSE, max_distance = NULL,
-                             perm_id = NULL) { # TODO multiplier and /2*pi*d strategy ####
+                             perm_id = NULL) {
+
+    # Using permeability?
+    use_perm <- (is.numeric(perm_id) && is.list(paths$perms) &&
+                   length(paths$perms) >= perm_id)
 
     # Prepare selected paths as a nested list
     selected <- list(idx = list(), distances = list())
+    if (use_perm) {
+      selected$perm_dist <- list()
+    }
 
     # Get distances and directions to reachable cells for each cell
     for (cell in cells) {
@@ -602,55 +624,15 @@ Region.SpatRaster <- function(x, ...) {
       selected$idx[[cell_char]] <- paths$idx[[cell_char]]
       selected$distances[[cell_char]] <- paths$distances[[cell_char]]
 
-      # Modify distances via permeability distance multipliers when required
+      # Get modified distances for permeability (id)
       limit_paths <- FALSE
-      if (is.numeric(perm_id) && is.list(paths$perms) &&
-          length(paths$perms) >= perm_id) {
-
-        # Get base (no permeability) weight distance to reachable inner cells
-        base_dist <- as.vector(igraph::distances(
-          paths$graphs$cell,
-          v = as.character(indices[cell]),
-          to = as.character(indices[paths$idx[[cell_char]]$cell]),
-          weights = paths$weights$cell$base))
-
-        # Get permeability weight distance to reachable inner cells
-        perm_dist <- as.vector(igraph::distances(
-          paths$graphs$cell,
-          v = as.character(indices[cell]),
-          to = as.character(indices[paths$idx[[cell_char]]$cell]),
-          weights = paths$weights$cell$perms[[perm_id]]))
-
-        # Scale the distance to (otherwise) reachable inner cells
-        selected$distances[[cell_char]]$cell <- round(
-          selected$distances[[cell_char]]$cell*as.vector(perm_dist/base_dist))
-
-        # Modify aggregate cell distances when applicable
+      if (use_perm) {
+        selected$perm_dist[[cell_char]]$cell <-
+          paths$perm_dist[[cell_char]]$cell[[perm_id]]
         if (is.list(aggr)) {
-
-          # Find the aggregate cell index that contains the region cell
-          aggr_i <- terra::cells(aggr$rast, region_pts[cell],
-                                 touches = TRUE)[, "cell"]
-
-          # Get base weight distance to reachable aggregate cells
-          base_dist <- as.vector(igraph::distances(
-            paths$graphs$aggr,
-            v = as.character(aggr_i),
-            to = as.character(aggr$indices[paths$idx[[cell_char]]$aggr]),
-            weights = paths$weights$aggr$base))
-
-          # Get permeability weight distance to reachable aggregate cells
-          perm_dist <- as.vector(igraph::distances(
-            paths$graphs$aggr,
-            v = as.character(aggr_i),
-            to = as.character(aggr$indices[paths$idx[[cell_char]]$aggr]),
-            weights = paths$weights$aggr$perms[[perm_id]]))
-
-          # Scale the distance to (otherwise) reachable inner cells
-          selected$distances[[cell_char]]$aggr <- round(
-            selected$distances[[cell_char]]$aggr*as.vector(perm_dist/base_dist))
+          selected$perm_dist[[cell_char]]$aggr <-
+            paths$perm_dist[[cell_char]]$aggr[[perm_id]]
         }
-
         limit_paths <- TRUE
       }
 
@@ -666,35 +648,61 @@ Region.SpatRaster <- function(x, ...) {
         }
 
         # Find cells within range
-        if (is.numeric(max_distance)) {
-          cell_ids <-
-            which(selected$distances[[cell_char]]$cell <= max_distance)
+        if (use_perm) {
+          if (is.numeric(max_distance)) {
+            cell_ids <-
+              which(selected$perm_dist[[cell_char]]$cell <= max_distance)
+          } else {
+            cell_ids <- which(is.finite(selected$perm_dist[[cell_char]]$cell))
+          }
         } else {
-          cell_ids <- which(is.finite(selected$distances[[cell_char]]$cell))
+          if (is.numeric(max_distance)) {
+            cell_ids <-
+              which(selected$distances[[cell_char]]$cell <= max_distance)
+          } else {
+            cell_ids <- which(is.finite(selected$distances[[cell_char]]$cell))
+          }
         }
 
         # Update selected indices and distances to in-range cells
         selected$idx[[cell_char]]$cell <-
           selected$idx[[cell_char]]$cell[cell_ids]
         selected$distances[[cell_char]]$cell <-
-          as.integer(selected$distances[[cell_char]]$cell[cell_ids])
+          selected$distances[[cell_char]]$cell[cell_ids]
+        if (use_perm) {
+          selected$perm_dist[[cell_char]]$cell <-
+            selected$perm_dist[[cell_char]]$cell[cell_ids]
+        }
 
         # Update selected aggregate indices and distances
         if (is.list(aggr)) {
 
-          # Find cells within range
-          if (is.numeric(max_distance)) {
-            aggr_ids <-
-              which(selected$distances[[cell_char]]$aggr <= max_distance)
+          # Find aggregate cells within range
+          if (use_perm) {
+            if (is.numeric(max_distance)) {
+              aggr_ids <-
+                which(selected$perm_dist[[cell_char]]$aggr <= max_distance)
+            } else {
+              aggr_ids <- which(is.finite(selected$perm_dist[[cell_char]]$aggr))
+            }
           } else {
-            aggr_ids <- which(is.finite(selected$distances[[cell_char]]$aggr))
+            if (is.numeric(max_distance)) {
+              aggr_ids <-
+                which(selected$distances[[cell_char]]$aggr <= max_distance)
+            } else {
+              aggr_ids <- which(is.finite(selected$distances[[cell_char]]$aggr))
+            }
           }
 
           # Update selected indices and distances to in-range aggregate cells
           selected$idx[[cell_char]]$aggr <-
             selected$idx[[cell_char]]$aggr[aggr_ids]
           selected$distances[[cell_char]]$aggr <-
-            as.integer(selected$distances[[cell_char]]$aggr[aggr_ids])
+            selected$distances[[cell_char]]$aggr[aggr_ids]
+          if (use_perm) {
+            selected$perm_dist[[cell_char]]$aggr <-
+              selected$perm_dist[[cell_char]]$aggr[aggr_ids]
+          }
         }
 
         limit_paths <- TRUE
