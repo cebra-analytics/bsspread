@@ -647,11 +647,15 @@ Region.SpatRaster <- function(x, ...) {
           max_distance <- paths$max_distance
         }
 
-        # Find cells within range
+        # Find cells within range (including adjacent cells)
         if (use_perm) {
           if (is.numeric(max_distance)) {
             cell_ids <-
-              which(selected$perm_dist[[cell_char]]$cell <= max_distance)
+              which(selected$perm_dist[[cell_char]]$cell <= max_distance |
+                    (selected$distances[[cell_char]]$cell <=
+                       1.6*region$get_res()))
+            cell_ids <- cell_ids[
+              which(is.finite(selected$perm_dist[[cell_char]]$cell[cell_ids]))]
           } else {
             cell_ids <- which(is.finite(selected$perm_dist[[cell_char]]$cell))
           }

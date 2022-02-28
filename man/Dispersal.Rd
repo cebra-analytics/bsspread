@@ -12,6 +12,7 @@ Dispersal(
   proportion = NULL,
   events = NULL,
   distance_function = NULL,
+  distance_adjust = NULL,
   direction_function = NULL,
   attractors = list(),
   permeability = NULL,
@@ -27,6 +28,7 @@ Dispersal(
   proportion = NULL,
   events = NULL,
   distance_function = NULL,
+  distance_adjust = NULL,
   direction_function = NULL,
   attractors = list(),
   permeability = NULL,
@@ -65,6 +67,12 @@ for presence-only populations).}
 \code{function(distances)}, that calculates the (relative) probability of
 dispersal for each distance (in m) specified as a numeric vector. Default
 is none.}
+
+\item{distance_adjust}{Logical indication of whether the (relative)
+probabilities returned by \code{distance_function} should be distributed
+across the (approximate) number of grid cells at each distance. When not
+specified (\code{NULL}), the value will resolve to \code{TRUE} for
+grid-based regions only.}
 
 \item{direction_function}{A function (or kernel) in the form
 \code{function(directions)}, that calculates the (relative) probability of
@@ -108,9 +116,9 @@ of vectors or matrices, representing the occupied \code{cells}
 (indices), the \code{original} occupied populations, the
 \code{remaining} occupied populations, and the \code{relocated}
 populations (at all region cells), and return the transformed list of
-vectors or matrices. The separation of original, remaining and relocated
-populations enables multiple models for different dispersal vectors to
-run in sequence.}
+vectors or matrices. The separation of original, remaining and
+relocated populations enables multiple models for different dispersal
+vectors to run in sequence.}
 }
 }
 \description{

@@ -55,6 +55,11 @@
 #'   \code{function(distances)}, that calculates the (relative) probability of
 #'   dispersal for each distance (in m) specified as a numeric vector. Default
 #'   is none.
+#' @param distance_adjust Logical indication of whether the (relative)
+#'   probabilities returned by \code{distance_function} should be distributed
+#'   across the (approximate) number of grid cells at each distance. When not
+#'   specified (\code{NULL}), the value will resolve to \code{TRUE} for
+#'   grid-based regions only.
 #' @param direction_function A function (or kernel) in the form
 #'   \code{function(directions)}, that calculates the (relative) probability of
 #'   dispersal for each direction (0-360 degrees) specified as an integer
@@ -101,6 +106,7 @@ Dispersal <- function(region, population_model,
                       proportion = NULL,
                       events = NULL,
                       distance_function = NULL,
+                      distance_adjust = NULL,
                       direction_function = NULL,
                       attractors = list(),
                       permeability = NULL,
@@ -116,6 +122,7 @@ Dispersal.Region <- function(region, population_model,
                              proportion = NULL,
                              events = NULL,
                              distance_function = NULL,
+                             distance_adjust = NULL,
                              direction_function = NULL,
                              attractors = list(),
                              permeability = NULL,
@@ -156,6 +163,12 @@ Dispersal.Region <- function(region, population_model,
   }
   if (!is.null(distance_function) && !is.function(distance_function)) {
     stop("The distance function must be a function.", call. = FALSE)
+  }
+  if (!is.null(distance_adjust) && !is.logical(distance_adjust)) {
+    stop("The distance adjust must be logical.", call. = FALSE)
+  }
+  if (is.null(distance_adjust)) {
+    distance_adjust <- region$get_type() == "grid"
   }
   if (!is.null(direction_function) && !is.function(direction_function)) {
     stop("The direction function must be a function.", call. = FALSE)
@@ -264,7 +277,7 @@ Dispersal.Region <- function(region, population_model,
 
         # Additional adjustment given (approx.) cells at each distance
         dist_p_adj <- list(cell = 1, aggr = 1)
-        if (region$get_type() == "grid") {
+        if (distance_adjust) {
           dist_p_adj$cell <- (region$get_res()/
                                 (2*pi*paths$distances[[cell_char]]$cell))
           if (region$two_tier()) {
@@ -276,11 +289,11 @@ Dispersal.Region <- function(region, population_model,
         # Adjust via distance function using appropriate distances
         if (is.numeric(perm_id) && "perm_dist" %in% names(paths)) {
           destination_p$cell <-
-            (distance_function(paths$perm_dist[[cell_char]]$cell[[perm_id]])*
+            (distance_function(paths$perm_dist[[cell_char]]$cell)*
                dist_p_adj$cell*destination_p$cell)
           if (region$two_tier()) {
             destination_p$aggr <-
-              (distance_function(paths$perm_dist[[cell_char]]$aggr[[perm_id]])*
+              (distance_function(paths$perm_dist[[cell_char]]$aggr)*
                  dist_p_adj$aggr*destination_p$aggr)
           }
         } else {
