@@ -225,7 +225,7 @@ Region.SpatRaster <- function(x, ...) {
       if (is.null(paths$perms)) {
         paths$perms <<- list(permeability)
         permeability$set_id(1)
-      } else {
+      } else if (is.null(permeability$get_id())) {
         paths$perms[[length(paths$perms) + 1]] <<- permeability
         permeability$set_id(length(paths$perms))
       }
