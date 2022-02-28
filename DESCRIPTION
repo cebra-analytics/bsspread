@@ -23,6 +23,7 @@ Collate:
     'Region.R'
     'Attractor.R'
     'Dispersal.R'
+    'Diffusion.R'
     'Incursions.R'
     'Initializer.R'
     'Permeability.R'

@@ -16,20 +16,21 @@
 #' \code{direction} functions, optionally combined with \code{attractor}
 #' (layer) values. Paths to reachable destinations are calculated via the
 #' \code{region} class object. Paths may be derived via \code{permeability} or
-#' constraint layers, which are used to adjust path distances and/or omit
-#' unreachable paths. Dispersal paths may also be limited to a \code{maximum}
-#' (adjusted) distance. An optional establishment likelihood (layer), which is
-#' configured via the population model, may be applied to each dispersal event,
-#' resulting in potential "deaths" of individuals or unsuccessful presence-only
-#' dispersal events. Presence-only population dispersal may also be configured
-#' without \code{events} when \code{proportion} is specified to represent a
-#' scaling multiplier for (presumed) actual (rather than relative) dispersal
-#' probabilities. Under these circumstances destination locations are sampled
-#' from all reachable destinations using the scaled probabilities. The
-#' dispersal functionality utilizes a wrapped population list of separate
-#' values for the \code{original}, \code{remaining}, and \code{relocated}
-#' populations. This separation enables multiple dispersal models, representing
-#' different dispersal vectors, to be run in sequence.
+#' constraint layers, which are used to adjust (effective) path distances
+#' and/or omit unreachable paths. Dispersal paths may also be limited to a
+#' \code{maximum} (adjusted) distance. An optional establishment likelihood
+#' (layer), which is configured via the population model, may be applied to
+#' each dispersal event, resulting in potential "deaths" of individuals or
+#' unsuccessful presence-only dispersal events. Presence-only population
+#' dispersal may also be configured without \code{events} when
+#' \code{proportion} is specified to represent a scaling multiplier for
+#' (presumed) actual (rather than relative) dispersal probabilities. Under
+#' these circumstances destination locations are sampled from all reachable
+#' destinations using the scaled probabilities. The dispersal functionality
+#' utilizes a wrapped population list of separate values for the
+#' \code{original}, \code{remaining}, and \code{relocated} populations. This
+#' separation enables multiple dispersal models, representing different
+#' dispersal vectors, to be run in sequence.
 #'
 #' @param region A \code{Region} or inherited class object representing the
 #'   spatial region (template) for spread simulations. The region object
