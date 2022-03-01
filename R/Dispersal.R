@@ -149,7 +149,7 @@ Dispersal.Region <- function(region, population_model,
     if (is.null(dispersal_stages)) {
       dispersal_stages <- 1:population_model$get_stages()
     } else if (!is.numeric(dispersal_stages) ||
-               all(!dispersal_stages %in% population_model$get_stages())) {
+               !all(dispersal_stages %in% 1:population_model$get_stages())) {
       stop("Dispersal stages must be a vector of stage indices consistent ",
            "with the population model.", call. = FALSE)
     }
