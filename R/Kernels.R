@@ -133,7 +133,7 @@ Kernels <- function(multiplier = NULL, ...) {
         idx <- which(x >= d$x1 & x < d$x2)
         d$p[idx] <- ((d$p1 + (d$x - d$x1)/(d$x2 - d$x1)*(d$p2 - d$p1))[idx])
 
-        return(d$p)
+        return(multiplier*d$p)
       }
     )
   }
