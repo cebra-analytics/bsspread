@@ -131,7 +131,7 @@ Kernels <- function(multiplier = NULL, ...) {
         # Interpolate probability values using x range when in-between
         d$p <- d$p2
         idx <- which(x >= d$x1 & x < d$x2)
-        d$p[idx] <- ((d$p1 + (d$x - d$x1)/(d$x2 - d$x1)*(d$p2 - d$p1))[idx])
+        d$p[idx] <- (d$p1 + (d$x - d$x1)/(d$x2 - d$x1)*(d$p2 - d$p1))[idx]
 
         return(multiplier*d$p)
       }
