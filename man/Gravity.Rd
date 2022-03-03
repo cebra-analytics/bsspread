@@ -30,9 +30,11 @@ defining the population representation for the spread simulations.}
 objects for spatially weighted dispersal.}
 
 \item{attractor_function}{An optional function of form
-\code{function(attractors)} for combining attractor values (specified as
-a list) at each location. Default is \code{NULL}, which results in the
-product of attractor values.}
+\code{function(attractors)} for combining attractors specified as a list
+of \code{Attractor} class objects and returning a list of transformed
+\code{Attractor} class objects. Default is \code{NULL}, which results in
+the combination (product) of attractor values for source and destination
+locations implemented in the generic \code{Dispersal} base class.}
 
 \item{beta}{Numeric constant for shaping the effect of distance within
 gravity dispersal, i.e. \code{dispersal = f(attractors)/distance^beta}.
@@ -98,7 +100,7 @@ between source and destination locations. This approach is analogous to
 Newton's law of gravitation and has the general form for calculating the
 (relative) probability of dispersal:
 \code{dispersal = f(attractors)/distance^beta}, where \code{f} is a function
-of attractor variables (typically a product) and \code{beta} is constant
+of attractor variables (typically products) and \code{beta} is constant
 (often 1). Gravity dispersal may be simulated for presence-only,
 unstructured or stage-based \code{populations}. For unstructured or
 stage-based populations, a specified \code{proportion} of the population at

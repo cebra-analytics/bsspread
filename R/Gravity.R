@@ -9,7 +9,7 @@
 #' Newton's law of gravitation and has the general form for calculating the
 #' (relative) probability of dispersal:
 #' \code{dispersal = f(attractors)/distance^beta}, where \code{f} is a function
-#' of attractor variables (typically a product) and \code{beta} is constant
+#' of attractor variables (typically products) and \code{beta} is constant
 #' (often 1). Gravity dispersal may be simulated for presence-only,
 #' unstructured or stage-based \code{populations}. For unstructured or
 #' stage-based populations, a specified \code{proportion} of the population at
@@ -42,9 +42,11 @@
 #' @param attractors List containing \code{Attractor} (or inherited) class
 #'   objects for spatially weighted dispersal.
 #' @param attractor_function An optional function of form
-#'   \code{function(attractors)} for combining attractor values (specified as
-#'   a list) at each location. Default is \code{NULL}, which results in the
-#'   product of attractor values.
+#'   \code{function(attractors)} for combining attractors specified as a list
+#'   of \code{Attractor} class objects and returning a list of transformed
+#'   \code{Attractor} class objects. Default is \code{NULL}, which results in
+#'   the combination (product) of attractor values for source and destination
+#'   locations implemented in the generic \code{Dispersal} base class.
 #' @param beta Numeric constant for shaping the effect of distance within
 #'   gravity dispersal, i.e. \code{dispersal = f(attractors)/distance^beta}.
 #'   Default is 1.
@@ -102,8 +104,6 @@ Gravity <- function(region, population_model, attractors,
                     events = NULL,
                     direction_function = NULL, ...) {
 
-# IN PROGRESS ####
-
   # Check the attractors
   if (!is.list(attractors) ||
       length(attractors) && !all(sapply(1:length(attractors), function(i) {
@@ -122,20 +122,22 @@ Gravity <- function(region, population_model, attractors,
     stop("The beta parameter must be numeric and > 0.", call. = FALSE)
   }
 
-  # Run the attractor function to calculate a single Attractor class object
+  # Run the attractor function to calculate a transformed list of Attractor
+  # class objects
   if (!is.null(attractor_function)) {
 
-    # Get a list of values only
-    attractor_values <- lapply(attractors, function(attractor) {
-      attractor$get_values()
-    })
-
     # Apply function
-    calculated_values <- attractor_function(attractor_values)
+    attractors <- attractor_function(attractors)
 
-    # Save as a single Attractor class object (in a list)
-    # Problem with source and destination - eliminate
-
+    # Check the transformed list of attractors again
+    if (!is.list(attractors) ||
+        length(attractors) && !all(sapply(1:length(attractors), function(i) {
+          inherits(attractors[[i]], "Attractor")
+        }))) {
+      stop("The attractor function should transform a list of 'Attractor' or ",
+           "inherited class objects and return another list of class objects.",
+           call. = FALSE)
+    }
   }
 
   # Set the distance function as per gravity: f(attractors)/distance^beta
