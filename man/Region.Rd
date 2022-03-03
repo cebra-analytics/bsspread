@@ -4,6 +4,8 @@
 \alias{Region}
 \alias{Region.Raster}
 \alias{Region.SpatRaster}
+\alias{Region.matrix}
+\alias{Region.data.frame}
 \title{Region class builder}
 \usage{
 Region(x, ...)
@@ -11,10 +13,17 @@ Region(x, ...)
 \method{Region}{Raster}(x, ...)
 
 \method{Region}{SpatRaster}(x, ...)
+
+\method{Region}{matrix}(x, ...)
+
+\method{Region}{data.frame}(x, ...)
 }
 \arguments{
-\item{x}{A \code{raster::RasterLayer} or \code{terra::SpatRaster}
-object representing the spatial region (template) for spread simulations.}
+\item{x}{A \code{raster::RasterLayer} or \code{terra::SpatRaster} object
+representing a grid-based spatial region (template) for spread simulations.
+Alternatively, a network of locations or patches may be defined via a data
+frame (or matrix) of location coordinates in longitude and latitude
+(WGS84) with explicitly named columns "lon" and "lat".}
 
 \item{...}{Additional parameters.}
 }
@@ -23,25 +32,26 @@ A \code{Region} class object (list) containing functions for
 accessing attributes, checking compatibility of objects with the
 region, and to maintain and calculate spatial data for dispersal:
 \describe{
-\item{\code{get_template(empty = FALSE)}}{Get the spatial template with
-either zeros in non-NA locations (default), or with no values when
-\code{empty = TRUE}.}
-\item{\code{get_indices()}}{Get cell indices of grid locations that are
-included in the simulation.}
-\item{\code{get_locations()}}{Get the number of locations (cells or
-patches) that are included in the simulation.}
 \item{\code{get_type()}}{Get the type of spatial representation: "grid"
 (raster cells) or "patch" (network).}
-\item{\code{get_res()}}{Get the spatial cell resolution (in m) of the
-region when the \code{type} is "grid".}
+\item{\code{get_locations()}}{Get the number of locations (cells or
+patches) that are included in the simulation.}
 \item{\code{is_compatible(y)}}{Check the compatibility of object
 \code{y} with the region defined by \code{x}.}
+\item{\code{get_template(empty = FALSE)}}{Get the spatial template when
+the \code{type} is "grid", with either zeros in non-NA locations
+(default), or with no values when \code{empty = TRUE}.}
+\item{\code{get_indices()}}{Get cell indices of grid locations that are
+included in the simulation when the \code{type} is "grid".}
+\item{\code{get_res()}}{Get the spatial cell resolution (in m) of the
+region when the \code{type} is "grid".}
 \item{\code{is_included(indices)}}{Check if cell \code{indices} of grid
-locations are included (non-NA cells) in the simulation (when type is
-grid), and return a logical vector indicating the inclusion of each
-index.}
+locations are included (non-NA cells) in the simulation when the
+\code{type} is "grid", and return a logical vector indicating the
+inclusion of each index.}
 \item{\code{two_tier()}}{Check if the region is configured for two-tier
-dispersal (local plus aggregate cells) when type is grid.}
+dispersal (local plus aggregate cells) when the \code{type} is
+"grid".}
 \item{\code{get_aggr()}}{Get a list of two-tier dispersal aggregation
 components \code{factor}, \code{inner_radius}, \code{rast}
 (\code{terra::SpatRaster}), \code{indices} (non-NA), \code{pts}
@@ -55,42 +65,47 @@ at the original resolution and long-distance dispersal at an aggregate
 resolution.}
 \item{\code{configure_paths(directions = FALSE, max_distance = NULL,
       permeability = NULL)}}{Configure the inclusion of path directions from
-occupied to reachable cells, an optional maximum distance (in m) for
-the paths, and an optional \code{Permeability} class object containing
-a spatial layer for calculating weighted paths, each of which are used
-in dispersal calculations. Defaults infer non-inclusion.}
-\item{\code{calculate_paths(cells)}}{Calculate the indices, distances
-(in m), and directions (0-360 degrees) when required, of cells that
-are reachable for each cell index in \code{cells}, including local and
-aggregate cells when using a two-tier configuration. Paths are
-optionally limited via a maximum distance (in m). When configured with
-permeability layers, a graph of path connections is derived and used
-to calculate modified distances and accessibility to reachable cells
-for each permeability layer.}
-\item{\code{get_paths(cells, directions = FALSE, max_distance = NULL,
-      perm_id = NULL)}}{Get a list of indices of, and distances (in m) and
-(optional) directions (0-360 degrees) to, reachable cells for each
-cell index in \code{cells}, including local (\code{$cell}) and
-aggregate (\code{$aggr}) cells when configured, and optionally
-(further) limited via a maximum distance (in m) and permeability.
-When a permeability layer (object id) is specified, modified distances
-(and accessibility) to reachable cells is included in the returned
-list (with name (\code{perm_dist}).}
+occupied to reachable locations (cells or patches), an optional
+maximum distance (in m) for the paths, and an optional
+\code{Permeability} class object containing a spatial layer (for
+grids), or weighted connectivity data (for patches), for calculating
+weighted paths, each of which are used in dispersal calculations.
+Defaults infer non-inclusion.}
+\item{\code{calculate_paths(cells|patches)}}{Calculate the indices,
+distances (in m), and directions (0-360 degrees) when required, of
+locations (cells or patches) that are reachable for each location
+index in \code{cells} or \code{patches}, including local and aggregate
+cells when using a two-tier grid configuration. Paths are optionally
+limited via a maximum distance (in m). When configured with
+permeability objects, a graph of path connections is derived and used
+to calculate modified distances and accessibility to reachable
+locations for each permeability object.}
+\item{\code{get_paths(cells|patches, directions = FALSE,
+      max_distance = NULL, perm_id = NULL)}}{Get a list of indices of, and
+distances (in m) and (optional) directions (0-360 degrees) to,
+reachable locations (cells or patches) for each location index in
+\code{cells} or \code{patches}, including local (\code{$cell}) and
+aggregate (\code{$aggr}) cells when using a two-tier grid
+configuration, and optionally (further) limited via a maximum distance
+(in m) and permeability. When a permeability object (id) is specified,
+modified distances (and accessibility) to reachable locations is
+included in the returned list (with name (\code{perm_dist}).}
 }
 }
 \description{
 Builds a class to represent a spatial region for a spread simulation,
 defined by a raster layer with active (non-NA) cells, or by a network of
-locations or patches. When defined by a raster layer, the region can be
-configured for two-tier dispersal, whereby long-distance dispersal is
+locations or patches. When defined by a grid-based raster layer, the region
+can be configured for two-tier dispersal, whereby long-distance dispersal is
 calculated using a courser (aggregate) spatial resolution for destinations
 outside of an inner radius, within which local dispersal is calculated using
 the original spatial resolution of the region. Functions for calculating
-distances and directions between (local and aggregate) cells are also
-provided, as well as functionality for calculating weighted paths (graphs)
-between cells (local and aggregate) via permeability layers. When used,
-the inverse of the permeability (0-1) of cells is used to (linearly) scale
-the actual distance between adjacent cells. The effective distance
-between any two cells in the region is thus calculated via the shortest
-weighted path between the cells.
+distances and directions between (local and aggregate) cells or patches are
+also provided, as well as functionality for calculating weighted paths
+(graphs) between cells (local and aggregate) or patches via permeability
+layers. When used, the inverse of the permeability (0-1) of cells/patches is
+used to (linearly) scale the actual distance between adjacent/connected
+cells/patched. The effective distance between any two cells/patches in the
+region is thus calculated via the shortest weighted path between the
+cells/patches.
 }
