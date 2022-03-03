@@ -24,6 +24,7 @@ Collate:
     'Attractor.R'
     'Dispersal.R'
     'Diffusion.R'
+    'Gravity.R'
     'Incursions.R'
     'Initializer.R'
     'Kernels.R'
