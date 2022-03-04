@@ -40,6 +40,7 @@ Initializer <- function(x,
 #' @name Initializer
 #' @export
 Initializer.Raster <- function(x, ...) {
+
   # Call the terra version of the function
   Initializer(terra::rast(x), ...)
 }

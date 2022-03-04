@@ -41,8 +41,8 @@ patches) that are included in the simulation.}
 \item{\code{get_template(empty = FALSE)}}{Get the spatial template when
 the \code{type} is "grid", with either zeros in non-NA locations
 (default), or with no values when \code{empty = TRUE}.}
-\item{\code{get_indices()}}{Get cell indices of grid locations that are
-included in the simulation when the \code{type} is "grid".}
+\item{\code{get_indices()}}{Get cell indices of grid or patch locations
+that are included in the simulation when the \code{type} is "grid".}
 \item{\code{get_res()}}{Get the spatial cell resolution (in m) of the
 region when the \code{type} is "grid".}
 \item{\code{is_included(indices)}}{Check if cell \code{indices} of grid
@@ -103,9 +103,9 @@ the original spatial resolution of the region. Functions for calculating
 distances and directions between (local and aggregate) cells or patches are
 also provided, as well as functionality for calculating weighted paths
 (graphs) between cells (local and aggregate) or patches via permeability
-layers. When used, the inverse of the permeability (0-1) of cells/patches is
-used to (linearly) scale the actual distance between adjacent/connected
-cells/patched. The effective distance between any two cells/patches in the
-region is thus calculated via the shortest weighted path between the
-cells/patches.
+layers/networks. When used, the inverse of the permeability (0-1) of
+cells/patches is used to (linearly) scale the actual distance between
+adjacent/connected cells/patched. The effective distance between any two
+cells/patches in the region is thus calculated via the shortest weighted
+path between the cells/patches.
 }

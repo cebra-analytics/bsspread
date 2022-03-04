@@ -35,8 +35,8 @@
 #'     \item{\code{get_template(empty = FALSE)}}{Get the spatial template when
 #'      the \code{type} is "grid", with either zeros in non-NA locations
 #'      (default), or with no values when \code{empty = TRUE}.}
-#'     \item{\code{get_indices()}}{Get cell indices of grid locations that are
-#'       included in the simulation when the \code{type} is "grid".}
+#'     \item{\code{get_indices()}}{Get cell indices of grid or patch locations
+#'       that are included in the simulation when the \code{type} is "grid".}
 #'     \item{\code{get_res()}}{Get the spatial cell resolution (in m) of the
 #'       region when the \code{type} is "grid".}
 #'     \item{\code{is_included(indices)}}{Check if cell \code{indices} of grid
@@ -93,6 +93,7 @@ Region <- function(x, ...) {
 #' @name Region
 #' @export
 Region.Raster <- function(x, ...) {
+
   # Call the terra version of the function
   Region(terra::rast(x), ...)
 }
@@ -748,6 +749,7 @@ Region.SpatRaster <- function(x, ...) {
 #' @name Region
 #' @export
 Region.matrix <- function(x, ...) {
+
   # Call the data frame version of the function
   Region(as.data.frame(x), ...)
 }
@@ -763,8 +765,7 @@ Region.data.frame <- function(x, ...) {
   }
 
   # Region points (terra::SpatVector)
-  if (names(x)[1:2] == c("lon", "lat"))
-  region_pts <- terra::vect(x, crs = "EPSG:4326")
+  region_pts <- terra::vect(x[, c("lon", "lat")], crs = "EPSG:4326")
 
   # Create a class structure
   self <- structure(list(), class = "Region")
@@ -776,14 +777,14 @@ Region.data.frame <- function(x, ...) {
 
   # Get the number of patch locations
   self$get_locations <- function() {
-    return(length(nrow(x)))
+    return(nrow(x))
   }
 
-  # Check compatibility of vector, square matrix, or adjacency data frame y
+  # Check compatibility of vector, matrix, or adjacency data frame y
   # with the region defined by x
   self$is_compatible <- function(y) {
     if (is.data.frame(y)) {
-      return(ncol(y) == 3 && all(unique(y[,1:2]) %in% 1:nrow(x)))
+      return(ncol(y) == 3 && all(unique(unlist(y[,1:2])) %in% 1:nrow(x)))
     } else {
       y <- as.matrix(y)
       return(nrow(y) == nrow(x) && ncol(y) %in% c(1, nrow(x)))
@@ -808,21 +809,12 @@ Region.data.frame <- function(x, ...) {
       paths$max_distance <<- Inf
     }
     if (inherits(permeability, "Permeability")) {
-      if (is.null(paths$graphs)) {
-        paths$graphs <<- list()
-      }
-      if (is.null(paths$weights)) {
-        paths$weights <<- list()
-      }
       if (is.null(paths$perms)) {
         paths$perms <<- list(permeability)
         permeability$set_id(1)
       } else if (is.null(permeability$get_id())) {
         paths$perms[[length(paths$perms) + 1]] <<- permeability
         permeability$set_id(length(paths$perms))
-      }
-      if (is.null(paths$perm_dist)) {
-        paths$perm_dist <<- list()
       }
     }
   }
@@ -843,244 +835,77 @@ Region.data.frame <- function(x, ...) {
           # Select patches within range when applicable
           if (is.numeric(paths$max_distance) &&
               is.finite(paths$max_distance)) {
-            # IN PROGRESS ####
             range_vect <- terra::buffer(region_pts[patch,],
                                         width = paths$max_distance,
                                         quadsegs = 180)
-            paths$idx[[patch_char]] <<- list(
-              cell = which(indices %in% terra::cells(x, range_vect,
-                                                     touches = TRUE)[,2] &
-                             indices != indices[cell]))
+            paths$idx[[patch_char]] <<- which(
+              terra::relate(region_pts, range_vect, "within")[,1] &
+                1:nrow(x) != patch)
           } else {
-            paths$idx[[patch_char]] <<- list(cell = indices[-cell])
+            paths$idx[[patch_char]] <<- (1:nrow(x))[-patch]
           }
       }
 
       # Calculate distances when not present
-      if (!cell_char %in% names(paths$distances)) {
-
-        # Calculate (local) cell distances
-        paths$distances[[cell_char]] <<- list(
-          cell = as.integer(round(as.numeric(
-            terra::distance(region_pts[cell],
-                            region_pts[paths$idx[[cell_char]]$cell])))))
-
-        # Calculate aggregate cell distances when applicable
-        if (is.list(aggr)) {
-          paths$distances[[cell_char]]$aggr <<-
-            as.integer(round(as.numeric(
-              terra::distance(region_pts[cell],
-                              aggr$pts[paths$idx[[cell_char]]$aggr]))))
-        }
+      if (!patch_char %in% names(paths$distances)) {
+        paths$distances[[patch_char]] <<- as.integer(round(as.numeric(
+            terra::distance(region_pts[patch],
+                            region_pts[paths$idx[[patch_char]]]))))
       }
 
       # Calculate directions when required and not present
       if (is.list(paths$directions) &&
-          !cell_char %in% names(paths$directions)) {
-
-        # Calculate (local) cell directions
-        xy_diff <- (terra::crds(region_pts[cell])[
-          rep(1, length(paths$idx[[cell_char]]$cell)),] -
-            terra::crds(region_pts[paths$idx[[cell_char]]$cell]))
-        paths$directions[[cell_char]] <<- list(cell = as.integer(round(
-          atan2(xy_diff[,"y"], xy_diff[,"x"])*180/pi + 180)))
-
-        # Calculate aggregate cell directions when applicable
-        if (is.list(aggr)) {
-          xy_diff <- (terra::crds(region_pts[cell])[
-            rep(1, length(paths$idx[[cell_char]]$aggr)),] -
-              terra::crds(aggr$pts[paths$idx[[cell_char]]$aggr]))
-          paths$directions[[cell_char]]$aggr <<- as.integer(round(
-            atan2(xy_diff[,"y"], xy_diff[,"x"])*180/pi + 180))
-        }
+          !patch_char %in% names(paths$directions)) {
+        xy_diff <- (terra::crds(region_pts[patch])[
+          rep(1, length(paths$idx[[patch_char]])),] -
+            terra::crds(region_pts[paths$idx[[patch_char]]]))
+        paths$directions[[patch_char]] <<- as.integer(round(
+          atan2(xy_diff[,"y"], xy_diff[,"x"])*180/pi + 180))
       }
     }
 
     # Graphs for permeability
-    if (is.list(paths$graphs)) {
+    if (is.list(paths$perms)) {
 
-      # Maintain a graph to all region cells within reach
-      if (is.list(aggr) ||
-          (is.numeric(paths$max_distance) && is.finite(paths$max_distance))) {
+      # Build a graph for all region patches (once)
+      if (is.null(paths$graphs)) {
 
-        if (is.list(aggr)) { # two-tier approach
-
-          # Select aggregate cells in/on intersected inner circles
-          inner_vect <- terra::aggregate(
-            terra::buffer(region_pts[cells,], width = aggr$inner_radius,
-                          quadsegs = 180))
-          aggr_idx <- terra::cells(aggr$rast, inner_vect, touches = TRUE)[,2]
-
-          # Create a polygon from aggregate cells in/on the inner circles
-          new_poly <- terra::rast(aggr$rast)
-          new_poly[aggr_idx] <- 0
-          new_poly <- terra::as.polygons(new_poly)
-
-          # Build a graph for the full aggregation (once)
-          if (is.null(paths$graphs$aggr)) {
-
-            # Find adjacency of aggregate cells
-            cell_adj_df <- rbind(
-              cbind(terra::adjacent(aggr$rast,
-                                    cells = 1:terra::ncell(aggr$rast),
-                                    directions = "rook", pairs = TRUE),
-                    weight = 1),
-              cbind(terra::adjacent(aggr$rast,
-                                    cells = 1:terra::ncell(aggr$rast),
-                                    directions = "bishop", pairs = TRUE),
-                    weight = sqrt(2)))
-
-            # Create graph for all aggregate cells (including NAs)
-            paths$graphs$aggr <<- igraph::graph_from_data_frame(
-              cell_adj_df, directed = FALSE)
-
-            # Extract adjacency from graph (different order than above)
-            cell_adj_df <- igraph::as_data_frame(paths$graphs$aggr)
-
-            # Calculate path weights for aggregate base/permeability layers
-            paths$weights$aggr <<- list(base = cell_adj_df$weight,
-                                        perms = list()) # faster
-            for (perm_id in 1:length(paths$perms)) {
-
-              # Aggregate the permeability raster layer
-              aggr_rast <- terra::aggregate(paths$perms[[perm_id]]$get_rast(),
-                                            fact = aggr$factor, fun = "mean",
-                                            na.rm = TRUE)
-
-              # Calculate permeability weights
-              perm_weight <- rowMeans(
-                1/as.matrix(cbind(aggr_rast[as.integer(cell_adj_df$from)],
-                                  aggr_rast[as.integer(cell_adj_df$to)]))
-              )*cell_adj_df$weight
-              perm_weight[which(is.na(perm_weight))] <- Inf
-
-              # Add to list
-              paths$weights$aggr$perms[[perm_id]] <<- perm_weight
-            }
-          }
-
-        } else { # cell approach
-
-          # Create a polygon from intersected range circles
-          new_poly <- terra::aggregate(
-            terra::buffer(region_pts[cells,], width = paths$max_distance,
-                          quadsegs = 180))
-        }
-
-        # Determine new graph coverage and update total via polygons
-        if (!is.null(paths$graphs$poly)) {
-          new_poly <- terra::erase(new_poly, paths$graphs$poly)
-          if (length(new_poly)) {
-            paths$graphs$poly <<- terra::aggregate(
-              terra::union(paths$graphs$poly, new_poly))
-          }
-        } else {
-          paths$graphs$poly <<- new_poly
-        }
-
-        # Calculate region cell indices inside new polygon
-        if (is.list(aggr)) { # two-tier approach
-          aggr_idx <- terra::cells(aggr$rast, new_poly, touches = FALSE)[,2]
-          cell_idx <- paths$graphs$get_cells(aggr_idx)
-        } else {
-          cell_idx <- terra::cells(x, new_poly, touches = TRUE)[,2]
-        }
-
-        # Build graph via cell adjacency
-        if (length(cell_idx)) {
-
-          # Find adjacency of region cells
-          cell_adj_df <- rbind(
-            cbind(terra::adjacent(x, cells = cell_idx, directions = "rook",
-                                  pairs = TRUE), weight = 1),
-            cbind(terra::adjacent(x, cells = cell_idx, directions = "bishop",
-                                  pairs = TRUE), weight = sqrt(2)))
-
-          # Create or update graph
-          if (is.null(paths$graphs$cell)) {
-
-            # Create initial graph
-            paths$graphs$cell <<-
-              igraph::graph_from_data_frame(cell_adj_df, directed = FALSE)
-
-            # Extract adjacency from graph (different order than above)
-            cell_adj_df <- igraph::as_data_frame(paths$graphs$cell)
-
-          } else { # extend via union
-
-            # Create graph for new cells
-            colnames(cell_adj_df)[3] <- "new_weight"
-            new_graph <- igraph::graph_from_data_frame(cell_adj_df,
-                                                       directed = FALSE)
-
-            # Union with existing graph (keeps both weight columns)
-            new_graph <- igraph::union(paths$graphs$cell, new_graph,
-                                       byname = TRUE)
-
-            # Extract adjacency from graph (different order than above)
-            cell_adj_df <- igraph::as_data_frame(new_graph)
-
-            # Merge new with existing weights
-            new_idx <- which(is.na(cell_adj_df$weight))
-            cell_adj_df$weight[new_idx] <- cell_adj_df$new_weight[new_idx]
-            igraph::edge_attr(new_graph, "weight") <- cell_adj_df$weight
-            paths$graphs$cell <<- igraph::delete_edge_attr(new_graph,
-                                                           "new_weight")
-          }
-
-          # Create or update path weights for base and permeability layers
-          paths$weights$cell <<- list(base = cell_adj_df$weight,
-                                      perms = list()) # faster
-          for (perm_id in 1:length(paths$perms)) {
-
-            # Calculate permeability weights
-            perm <- paths$perms[[perm_id]]
-            perm_weight <- rowMeans(
-              1/as.matrix(cbind(perm$get_rast()[as.integer(cell_adj_df$from)],
-                                perm$get_rast()[as.integer(cell_adj_df$to)]))
-            )*cell_adj_df$weight
-            perm_weight[which(is.na(perm_weight))] <- Inf
-
-            # Add to list
-            paths$weights$cell$perms[[perm_id]] <<- perm_weight
-          }
-        }
-
-      } else if (is.null(paths$graphs$cell)) { # static graph for all cells
-
-        # Find adjacency of region cells
-        cell_adj_df <- rbind(
-          cbind(terra::adjacent(x, cells = 1:terra::ncell(x),
-                                directions = "rook", pairs = TRUE),
-                weight = 1),
-          cbind(terra::adjacent(x, cells = 1:terra::ncell(x),
-                                directions = "bishop", pairs = TRUE),
-                weight = sqrt(2)))
-
-        # Create graph for all region cells (including NAs)
-        paths$graphs$cell <<- igraph::graph_from_data_frame(
-          cell_adj_df, directed = FALSE)
-
-        # Extract adjacency from graph (different order than above)
-        cell_adj_df <- igraph::as_data_frame(paths$graphs$cell)
-
-        # Create path weights for base and permeability layers
-        paths$weights$cell <<- list(base = cell_adj_df$weight,
-                                    perms = list()) # faster
+        # Create a merged graph
         for (perm_id in 1:length(paths$perms)) {
 
-          # Calculate permeability weights
+          # Get permeability
           perm <- paths$perms[[perm_id]]
-          perm_weight <- rowMeans(
-            1/as.matrix(cbind(perm$get_rast()[as.integer(cell_adj_df$from)],
-                              perm$get_rast()[as.integer(cell_adj_df$to)]))
-          )*cell_adj_df$weight
-          perm_weight[which(is.na(perm_weight))] <- Inf
 
-          # Add to list
-          paths$weights$cell$perms[[perm_id]] <<- perm_weight
+          # Create or update graph with indexed weight attribute
+          new_graph <- igraph::graph_from_data_frame(perm$get_data()[,1:2],
+                                                     directed = FALSE)
+          igraph::edge_attr(new_graph,
+                            paste0("w", perm_id)) <- perm$get_data()[,3]
+          if (is.null(paths$graphs)) {
+            paths$graphs <<- new_graph
+          } else {
+            paths$graphs <<- igraph::union(paths$graphs, new_graph)
+          }
+        }
+
+        # Get merged permeability data (in graph order)
+        graph_df <- igraph::as_data_frame(paths$graphs)
+
+        # Calculate distances between connected patches
+        graph_df$distance <- as.integer(round(
+          terra::distance(region_pts[as.integer(graph_df$from)],
+                          region_pts[as.integer(graph_df$to)],
+                          pairwise = TRUE)))
+
+        # Calculated weighted equivalent distances (used as graph weights)
+        paths$weights <<- list()
+        for (perm_id in 1:length(paths$perms)) {
+          paths$weights[[perm_id]] <<- as.integer(round(
+            graph_df$distance/graph_df[,paste0("w", perm_id)]))
         }
       }
+
+      # IN PROGRESS ####
 
       # Calculate permeability-modified distances for reachable cells
       for (cell in cells) {
@@ -1159,7 +984,6 @@ Region.data.frame <- function(x, ...) {
       }
     }
   }
-
 
   return(self)
 }
