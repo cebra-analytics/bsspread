@@ -4,10 +4,10 @@
 #' spread simulations. Dispersal may be simulated for presence-only,
 #' unstructured or stage-based \code{populations}. For unstructured or
 #' stage-based populations, a specified \code{proportion} of the population at
-#' each occupied (cell) location is selected (sampled) for dispersal at each
-#' simulation time step. Presence-only populations may disperse via specifying
-#' a (mean) number of dispersal \code{events}. Dispersal events are generated
-#' for each occupied location. Unstructured and stage-based population
+#' each occupied location (cell or patch) is selected (sampled) for dispersal
+#' at each simulation time step. Presence-only populations may disperse via
+#' specifying a (mean) number of dispersal \code{events}. Dispersal events are
+#' generated for each occupied location. Unstructured and stage-based population
 #' dispersal may also utilize specified events, otherwise an event is assigned
 #' to each dispersing individual. For each dispersal event a destination
 #' location is selected via stochastic sampling using (relative) probabilities
@@ -16,26 +16,27 @@
 #' \code{direction} functions, optionally combined with \code{attractor}
 #' (layer) values. Paths to reachable destinations are calculated via the
 #' \code{region} class object. Paths may be derived via \code{permeability} or
-#' constraint layers, which are used to adjust (effective) path distances
-#' and/or omit unreachable paths. Dispersal paths may also be limited to a
-#' \code{maximum} (adjusted) distance. An optional establishment likelihood
-#' (layer), which is configured via the population model, may be applied to
-#' each dispersal event, resulting in potential "deaths" of individuals or
-#' unsuccessful presence-only dispersal events. Presence-only population
-#' dispersal may also be configured without \code{events} when
-#' \code{proportion} is specified to represent a scaling multiplier for
-#' (presumed) actual (rather than relative) dispersal probabilities. Under
-#' these circumstances destination locations are sampled from all reachable
-#' destinations using the scaled probabilities. The dispersal functionality
-#' utilizes a wrapped population list of separate values for the
-#' \code{original}, \code{remaining}, and \code{relocated} populations. This
-#' separation enables multiple dispersal models, representing different
-#' dispersal vectors, to be run in sequence.
+#' constraint grid-based layers or patch-based data, which are used to adjust
+#' (effective) path distances and/or omit unreachable paths. Dispersal paths
+#' may also be limited to a \code{maximum} (adjusted) distance. An optional
+#' establishment likelihood (layer), which is configured via the population
+#' model, may be applied to each dispersal event, resulting in potential
+#' "deaths" of individuals or unsuccessful presence-only dispersal events.
+#' Presence-only population dispersal may also be configured without
+#' \code{events} when \code{proportion} is specified to represent a scaling
+#' multiplier for (presumed) actual (rather than relative) dispersal
+#' probabilities. Under these circumstances destination locations are sampled
+#' from all reachable destinations using the scaled probabilities. The
+#' dispersal functionality utilizes a wrapped population list of separate
+#' values for the \code{original}, \code{remaining}, and \code{relocated}
+#' populations. This separation enables multiple dispersal models, representing
+#' different dispersal vectors, to be run in sequence.
 #'
 #' @param region A \code{Region} or inherited class object representing the
-#'   spatial region (template) for spread simulations. The region object
-#'   contains functionality for calculating path distances and directions,
-#'   permeability graphs, and structures to facilitate two-tier dispersal.
+#'   grid-based spatial region (template) or patch-based network for spread
+#'   simulations. The region object contains functionality for calculating path
+#'   distances and directions, permeability graphs, and structures to
+#'   facilitate two-tier grid-based dispersal.
 #' @param population_model A \code{Population} or inherited class object
 #'   defining the population representation for the spread simulations.
 #' @param dispersal_stages Numeric vector of population stages (indices) that
@@ -83,20 +84,21 @@
 #'   dispersal:
 #'   \describe{
 #'     \item{\code{pack(n)}}{Packs a population vector or matrix \code{n} into
-#'       a list containing a vector of occupied \code{cells} (indices), the
-#'       \code{original} population values at the occupied locations only, the
-#'       \code{remaining} occupied values (initially a duplicate
-#'       \code{original}), and a vector or matrix for the \code{relocated}
-#'       population values at all locations (initially all zero).}
+#'       a list containing a vector of occupied location (cell or patch)
+#'       \code{indices}, the \code{original} population values at the occupied
+#'       locations only, the \code{remaining} occupied values (initially a
+#'       duplicate of \code{original}), and a vector or matrix for the
+#'       \code{relocated} population values at all locations (initially all
+#'       zero).}
 #'     \item{\code{unpack(n)}}{Unpacks a population list by combining the
 #'       \code{remaining} and \code{relocated} population values to form a
 #'       new post-dispersal population vector or matrix.}
 #'     \item{\code{disperse(n)}}{Perform location dispersal on a list \code{n}
-#'       of vectors or matrices, representing the occupied \code{cells}
-#'       (indices), the \code{original} occupied populations, the
+#'       of vectors or matrices, representing the occupied location (cell or
+#'       patch) \code{indices}, the \code{original} occupied populations, the
 #'       \code{remaining} occupied populations, and the \code{relocated}
-#'       populations (at all region cells), and return the transformed list of
-#'       vectors or matrices. The separation of original, remaining and
+#'       populations (at all region locations), and return the transformed list
+#'       of vectors or matrices. The separation of original, remaining and
 #'       relocated populations enables multiple models for different dispersal
 #'       vectors to run in sequence.}
 #'   }
@@ -217,10 +219,10 @@ Dispersal.Region <- function(region, population_model,
 
   # Pack population vector/matrix into a list for dispersal
   self$pack <- function(n) {
-    cells = which(rowSums(as.matrix(n)) > 0)
-    n <- list(cells = cells,
-              original = as.matrix(n)[cells,, drop = FALSE],
-              remaining = as.matrix(n)[cells,, drop = FALSE],
+    indices = which(rowSums(as.matrix(n)) > 0)
+    n <- list(indices = indices,
+              original = as.matrix(n)[indices,, drop = FALSE],
+              remaining = as.matrix(n)[indices,, drop = FALSE],
               relocated = n)
     n$relocated[] <- FALSE
     return(n)
@@ -229,11 +231,11 @@ Dispersal.Region <- function(region, population_model,
   # Unpack post-dispersal population vector/matrix from packed list
   self$unpack <- function(n) {
     if (population_type == "presence_only") {
-      n$relocated[n$cells] <- n$remaining
+      n$relocated[n$indices] <- n$remaining
     } else if (population_type == "unstructured") {
-      n$relocated[n$cells] <- n$relocated[n$cells] + n$remaining
+      n$relocated[n$indices] <- n$relocated[n$indices] + n$remaining
     } else if (population_type == "stage_structured") {
-      n$relocated[n$cells,] <- n$relocated[n$cells,] + n$remaining
+      n$relocated[n$indices,] <- n$relocated[n$indices,] + n$remaining
     }
     return(n$relocated)
   }
@@ -242,35 +244,40 @@ Dispersal.Region <- function(region, population_model,
   self$disperse <- function(n) {
 
     # Calculate paths
-    region$calculate_paths(n$cells)
+    region$calculate_paths(n$indices)
 
     # Limit to dispersal-ready when presence-only with spread delay
     if (population_type == "presence_only" &&
         "spread_delay" %in% names(attributes(n$relocated))) {
-      dispersal_ready <- which(attr(n$relocated, "spread_delay")[n$cells] == 0)
+      dispersal_ready <-
+        which(attr(n$relocated, "spread_delay")[n$indices] == 0)
     } else {
-      dispersal_ready <- 1:length(n$cells)
+      dispersal_ready <- 1:length(n$indices)
     }
 
-    # Perform dispersal for each (dispersal-ready) occupied cell
+    # Perform dispersal for each (dispersal-ready) occupied location
     for (i in dispersal_ready) {
 
-      ## Map path lists use cells as characters
-      cell <- n$cells[i]
-      cell_char <- as.character(cell)
+      ## Map path lists use location indices as characters
+      loc_i <- n$indices[i]
+      loc_char <- as.character(loc_i)
 
-      ## Get paths for cell
-      paths <- region$get_paths(cell,
+      ## Get paths for location
+      paths <- region$get_paths(loc_i,
                                 directions = is.function(direction_function),
                                 max_distance = max_distance,
                                 perm_id = perm_id)
+      if (region$get_type() == "patch") { # for code reuse
+        paths <- lapply(paths, function(p)
+          lapply(p, function(l) list(cell = l)))
+      }
 
-      ## Relative dispersal probabilities for source cell and destination cells
+      ## Relative dispersal probabilities for source and destination
       source_p <- 1
-      destination_p <- list(cell = rep(1, length(paths$idx[[cell_char]]$cell)))
+      destination_p <- list(cell = rep(1, length(paths$idx[[loc_char]]$cell)))
       if (region$two_tier()) { # multiple cells
         destination_p$aggr <- region$get_aggr()$rast[
-          region$get_aggr()$indices[paths$idx[[cell_char]]$aggr]][,1]
+          region$get_aggr()$indices[paths$idx[[loc_char]]$aggr]][,1]
       }
 
       ## Adjust destination (relative) probabilities based on distance
@@ -280,30 +287,30 @@ Dispersal.Region <- function(region, population_model,
         dist_p_adj <- list(cell = 1, aggr = 1)
         if (distance_adjust) {
           dist_p_adj$cell <- (region$get_res()/
-                                (2*pi*paths$distances[[cell_char]]$cell))
+                                (2*pi*paths$distances[[loc_char]]$cell))
           if (region$two_tier()) {
             dist_p_adj$aggr <- (region$get_res()/
-                                  (2*pi*paths$distances[[cell_char]]$aggr))
+                                  (2*pi*paths$distances[[loc_char]]$aggr))
           }
         }
 
         # Adjust via distance function using appropriate distances
         if (is.numeric(perm_id) && "perm_dist" %in% names(paths)) {
           destination_p$cell <-
-            (distance_function(paths$perm_dist[[cell_char]]$cell)*
+            (distance_function(paths$perm_dist[[loc_char]]$cell)*
                dist_p_adj$cell*destination_p$cell)
           if (region$two_tier()) {
             destination_p$aggr <-
-              (distance_function(paths$perm_dist[[cell_char]]$aggr)*
+              (distance_function(paths$perm_dist[[loc_char]]$aggr)*
                  dist_p_adj$aggr*destination_p$aggr)
           }
         } else {
           destination_p$cell <-
-            (distance_function(paths$distances[[cell_char]]$cell)*
+            (distance_function(paths$distances[[loc_char]]$cell)*
                dist_p_adj$cell*destination_p$cell)
           if (region$two_tier()) {
             destination_p$aggr <-
-              (distance_function(paths$distances[[cell_char]]$aggr)*
+              (distance_function(paths$distances[[loc_char]]$aggr)*
                  dist_p_adj$aggr*destination_p$aggr)
           }
         }
@@ -314,20 +321,22 @@ Dispersal.Region <- function(region, population_model,
       if (is.function(direction_function)) {
         destination_p$cell <-
           (destination_p$cell*
-             direction_function(paths$directions[[cell_char]]$cell))
+             direction_function(paths$directions[[loc_char]]$cell))
         if (region$two_tier()) {
           destination_p$aggr <-
             (destination_p$aggr*
-               direction_function(paths$directions[[cell_char]]$aggr))
+               direction_function(paths$directions[[loc_char]]$aggr))
         }
       }
+
+      # IN PROGRESS ####
 
       ## Adjust (relative) probabilities via attractors
       if (length(attractors)) {
 
         # Source density attractor
         if ("source_density" %in% names(attractors)) {
-          cell_k <- population_model$get_capacity(cell)
+          cell_k <- population_model$get_capacity(loc_i)
           if (is.numeric(cell_k)) {
             if (cell_k > 0) {
               source_p <- min((attractors$source_density*source_p*
@@ -345,18 +354,18 @@ Dispersal.Region <- function(region, population_model,
 
             # Source attractors
             if (attractor$get_type() %in% c("source", "both")) {
-              source_p <- (source_p*attractor$get_values(cell))
+              source_p <- (source_p*attractor$get_values(loc_i))
             }
 
             # Destination attractors
             if (attractor$get_type() %in% c("destination", "both")) {
               destination_p$cell <-
                 (destination_p$cell*
-                   attractor$get_values(paths$idx[[cell_char]]$cell))
+                   attractor$get_values(paths$idx[[loc_char]]$cell))
               if (region$two_tier()) {
                 destination_p$aggr <-
                   (destination_p$aggr*
-                     attractor$get_aggr_values(paths$idx[[cell_char]]$aggr))
+                     attractor$get_aggr_values(paths$idx[[loc_char]]$aggr))
               }
             }
           }
@@ -456,7 +465,7 @@ Dispersal.Region <- function(region, population_model,
 
             # Number or (non-NA) region cells in each aggregate cell
             aggr_cells <- region$get_aggr()$rast[
-              region$get_aggr()$indices[paths$idx[[cell_char]]$aggr]][,1]
+              region$get_aggr()$indices[paths$idx[[loc_char]]$aggr]][,1]
 
             # Sample region cell counts for aggregate cells
             aggr_cells <- stats::rbinom(
@@ -492,11 +501,11 @@ Dispersal.Region <- function(region, population_model,
 
           # Map cell destinations
           destinations[cell_dest] <-
-            paths$idx[[cell_char]]$cell[destinations[cell_dest]]
+            paths$idx[[loc_char]]$cell[destinations[cell_dest]]
 
           # Map aggregate destinations
           destinations[aggr_dest] <-
-            paths$idx[[cell_char]]$aggr[destinations[aggr_dest] -
+            paths$idx[[loc_char]]$aggr[destinations[aggr_dest] -
                                           length(destination_p$cell)]
 
           # Sample region cell(s) within each aggregate destination cell
@@ -522,7 +531,7 @@ Dispersal.Region <- function(region, population_model,
           }
 
         } else {
-          destinations <- paths$idx[[cell_char]]$cell[destinations]
+          destinations <- paths$idx[[loc_char]]$cell[destinations]
         }
       }
 

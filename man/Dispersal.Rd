@@ -39,9 +39,10 @@ Dispersal(
 }
 \arguments{
 \item{region}{A \code{Region} or inherited class object representing the
-spatial region (template) for spread simulations. The region object
-contains functionality for calculating path distances and directions,
-permeability graphs, and structures to facilitate two-tier dispersal.}
+grid-based spatial region (template) or patch-based network for spread
+simulations. The region object contains functionality for calculating path
+distances and directions, permeability graphs, and structures to
+facilitate two-tier grid-based dispersal.}
 
 \item{population_model}{A \code{Population} or inherited class object
 defining the population representation for the spread simulations.}
@@ -103,20 +104,21 @@ accessing attributes (of the function environment) and performing
 dispersal:
 \describe{
 \item{\code{pack(n)}}{Packs a population vector or matrix \code{n} into
-a list containing a vector of occupied \code{cells} (indices), the
-\code{original} population values at the occupied locations only, the
-\code{remaining} occupied values (initially a duplicate
-\code{original}), and a vector or matrix for the \code{relocated}
-population values at all locations (initially all zero).}
+a list containing a vector of occupied location (cell or patch)
+\code{indices}, the \code{original} population values at the occupied
+locations only, the \code{remaining} occupied values (initially a
+duplicate of \code{original}), and a vector or matrix for the
+\code{relocated} population values at all locations (initially all
+zero).}
 \item{\code{unpack(n)}}{Unpacks a population list by combining the
 \code{remaining} and \code{relocated} population values to form a
 new post-dispersal population vector or matrix.}
 \item{\code{disperse(n)}}{Perform location dispersal on a list \code{n}
-of vectors or matrices, representing the occupied \code{cells}
-(indices), the \code{original} occupied populations, the
+of vectors or matrices, representing the occupied location (cell or
+patch) \code{indices}, the \code{original} occupied populations, the
 \code{remaining} occupied populations, and the \code{relocated}
-populations (at all region cells), and return the transformed list of
-vectors or matrices. The separation of original, remaining and
+populations (at all region locations), and return the transformed list
+of vectors or matrices. The separation of original, remaining and
 relocated populations enables multiple models for different dispersal
 vectors to run in sequence.}
 }
@@ -126,10 +128,10 @@ Builds a generic class for representing dispersal with functionality for
 spread simulations. Dispersal may be simulated for presence-only,
 unstructured or stage-based \code{populations}. For unstructured or
 stage-based populations, a specified \code{proportion} of the population at
-each occupied (cell) location is selected (sampled) for dispersal at each
-simulation time step. Presence-only populations may disperse via specifying
-a (mean) number of dispersal \code{events}. Dispersal events are generated
-for each occupied location. Unstructured and stage-based population
+each occupied location (cell or patch) is selected (sampled) for dispersal
+at each simulation time step. Presence-only populations may disperse via
+specifying a (mean) number of dispersal \code{events}. Dispersal events are
+generated for each occupied location. Unstructured and stage-based population
 dispersal may also utilize specified events, otherwise an event is assigned
 to each dispersing individual. For each dispersal event a destination
 location is selected via stochastic sampling using (relative) probabilities
@@ -138,19 +140,19 @@ of dispersal from each occupied location to reachable destinations. These
 \code{direction} functions, optionally combined with \code{attractor}
 (layer) values. Paths to reachable destinations are calculated via the
 \code{region} class object. Paths may be derived via \code{permeability} or
-constraint layers, which are used to adjust (effective) path distances
-and/or omit unreachable paths. Dispersal paths may also be limited to a
-\code{maximum} (adjusted) distance. An optional establishment likelihood
-(layer), which is configured via the population model, may be applied to
-each dispersal event, resulting in potential "deaths" of individuals or
-unsuccessful presence-only dispersal events. Presence-only population
-dispersal may also be configured without \code{events} when
-\code{proportion} is specified to represent a scaling multiplier for
-(presumed) actual (rather than relative) dispersal probabilities. Under
-these circumstances destination locations are sampled from all reachable
-destinations using the scaled probabilities. The dispersal functionality
-utilizes a wrapped population list of separate values for the
-\code{original}, \code{remaining}, and \code{relocated} populations. This
-separation enables multiple dispersal models, representing different
-dispersal vectors, to be run in sequence.
+constraint grid-based layers or patch-based data, which are used to adjust
+(effective) path distances and/or omit unreachable paths. Dispersal paths
+may also be limited to a \code{maximum} (adjusted) distance. An optional
+establishment likelihood (layer), which is configured via the population
+model, may be applied to each dispersal event, resulting in potential
+"deaths" of individuals or unsuccessful presence-only dispersal events.
+Presence-only population dispersal may also be configured without
+\code{events} when \code{proportion} is specified to represent a scaling
+multiplier for (presumed) actual (rather than relative) dispersal
+probabilities. Under these circumstances destination locations are sampled
+from all reachable destinations using the scaled probabilities. The
+dispersal functionality utilizes a wrapped population list of separate
+values for the \code{original}, \code{remaining}, and \code{relocated}
+populations. This separation enables multiple dispersal models, representing
+different dispersal vectors, to be run in sequence.
 }

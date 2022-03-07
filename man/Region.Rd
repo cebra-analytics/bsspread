@@ -51,7 +51,7 @@ locations are included (non-NA cells) in the simulation when the
 inclusion of each index.}
 \item{\code{two_tier()}}{Check if the region is configured for two-tier
 dispersal (local plus aggregate cells) when the \code{type} is
-"grid".}
+"grid". Always \code{FALSE} when \code{type} is "patch".}
 \item{\code{get_aggr()}}{Get a list of two-tier dispersal aggregation
 components \code{factor}, \code{inner_radius}, \code{rast}
 (\code{terra::SpatRaster}), \code{indices} (non-NA), \code{pts}

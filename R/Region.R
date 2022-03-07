@@ -45,7 +45,7 @@
 #'       inclusion of each index.}
 #'     \item{\code{two_tier()}}{Check if the region is configured for two-tier
 #'       dispersal (local plus aggregate cells) when the \code{type} is
-#'       "grid".}
+#'       "grid". Always \code{FALSE} when \code{type} is "patch".}
 #'     \item{\code{get_aggr()}}{Get a list of two-tier dispersal aggregation
 #'       components \code{factor}, \code{inner_radius}, \code{rast}
 #'       (\code{terra::SpatRaster}), \code{indices} (non-NA), \code{pts}
@@ -791,6 +791,11 @@ Region.data.frame <- function(x, ...) {
     }
   }
 
+  # No two-tier dispersal for patch-based region
+  self$two_tier <- function() {
+    return(FALSE)
+  }
+
   # Path list of reachable indices and distances, and optionally configured
   # directions, maximum distance and permeability for dispersal calculations
   paths <- list(idx = list(), distances = list())
@@ -816,6 +821,9 @@ Region.data.frame <- function(x, ...) {
         paths$perms[[length(paths$perms) + 1]] <<- permeability
         permeability$set_id(length(paths$perms))
       }
+    }
+    if (is.null(paths$perm_dist)) {
+      paths$perm_dist <<- list()
     }
   }
 
@@ -905,84 +913,132 @@ Region.data.frame <- function(x, ...) {
         }
       }
 
-      # IN PROGRESS ####
+      # Calculate permeability-modified distances for reachable patches
+      for (patch in patches) {
 
-      # Calculate permeability-modified distances for reachable cells
-      for (cell in cells) {
-
-        # Map path lists use cells as characters
-        cell_char <- as.character(cell)
+        # Map path lists use patches as characters
+        patch_char <- as.character(patch)
 
         # Calculate modified distances when not present
-        if (!cell_char %in% names(paths$perm_dist)) {
+        if (!patch_char %in% names(paths$perm_dist)) {
 
-          # List for modified distances
-          paths$perm_dist[[cell_char]] <<- list()
-
-          # Get base (no permeability) weight distance to reachable inner cells
-          base_dist <- as.vector(igraph::distances(
-            paths$graphs$cell,
-            v = as.character(indices[cell]),
-            to = as.character(indices[paths$idx[[cell_char]]$cell]),
-            weights = paths$weights$cell$base))
-
-          # Calculate modified distances for each permeability layer
-          paths$perm_dist[[cell_char]]$cell <<- list()
+          # Calculate modified distances for each permeability
+          paths$perm_dist[[patch_char]] <<- list()
           for (perm_id in 1:length(paths$perms)) {
 
-            # Get permeability weight distance to reachable inner cells
+            # Get weights (distances) for permeability data (NA -> Inf)
+            perm_weights <- paths$weights[[perm_id]]
+            perm_weights[is.na(perm_weights)] <- Inf
+
+            # Get minimum weight path distance to reachable patches
             perm_dist <- as.vector(igraph::distances(
-              paths$graphs$cell,
-              v = as.character(indices[cell]),
-              to = as.character(indices[paths$idx[[cell_char]]$cell]),
-              weights = paths$weights$cell$perms[[perm_id]]))
+              paths$graphs,
+              v = as.character(patch),
+              to = as.character(paths$idx[[patch_char]]),
+              weights = perm_weights))
 
-            # Calculate the distance modifiers
-            perm_dist <- perm_dist/base_dist
+            # Store as integers
             perm_dist[which(!is.finite(perm_dist))] <- NA
-
-            # Scale the distance to (otherwise) reachable inner cells
-            paths$perm_dist[[cell_char]]$cell[[perm_id]] <<- as.integer(
-              round(paths$distances[[cell_char]]$cell*perm_dist))
-          }
-
-          # Aggregate distance multipliers when applicable
-          if (is.list(aggr)) {
-
-            # Find the aggregate cell index that contains the region cell
-            aggr_i <- terra::cells(aggr$rast, region_pts[cell],
-                                   touches = TRUE)[, "cell"]
-
-            # Get base weight distance to reachable aggregate cells
-            base_dist <- as.vector(igraph::distances(
-              paths$graphs$aggr,
-              v = as.character(aggr_i),
-              to = as.character(aggr$indices[paths$idx[[cell_char]]$aggr]),
-              weights = paths$weights$aggr$base))
-
-            # Calculate modified distances for each permeability layer
-            paths$perm_dist[[cell_char]]$aggr <<- list()
-            for (perm_id in 1:length(paths$perms)) {
-
-              # Get permeability weight distance to reachable aggregate cells
-              perm_dist <- as.vector(igraph::distances(
-                paths$graphs$aggr,
-                v = as.character(aggr_i),
-                to = as.character(aggr$indices[paths$idx[[cell_char]]$aggr]),
-                weights = paths$weights$aggr$perms[[perm_id]]))
-
-              # Calculate the distance modifiers
-              perm_dist <- perm_dist/base_dist
-              perm_dist[which(!is.finite(perm_dist))] <- NA
-
-              # Scale the distance to (otherwise) reachable inner cells
-              paths$perm_dist[[cell_char]]$aggr[[perm_id]] <<- as.integer(
-                round(paths$distances[[cell_char]]$aggr*perm_dist))
-            }
+            paths$perm_dist[[patch_char]][[perm_id]] <<- as.integer(
+              round(perm_dist))
           }
         }
       }
     }
+  }
+
+  # Get a list of indices, distances and directions of/to reachable patches for
+  # region patches (indices), optionally (further) limited via maximum distance
+  # and/or permeability modified distances.
+  self$get_paths <- function(patches, directions = FALSE, max_distance = NULL,
+                             perm_id = NULL) {
+
+    # Using permeability?
+    use_perm <- (is.numeric(perm_id) && is.list(paths$perms) &&
+                   length(paths$perms) >= perm_id)
+
+    # Prepare selected paths as a nested list
+    selected <- list(idx = list(), distances = list())
+    if (use_perm) {
+      selected$perm_dist <- list()
+    }
+
+    # Get distances and directions to reachable patches for each patch
+    for (patch in patches) {
+
+      # Map path lists use patches as characters
+      patch_char <- as.character(patch)
+
+      # Select indices and distances
+      selected$idx[[patch_char]] <- paths$idx[[patch_char]]
+      selected$distances[[patch_char]] <- paths$distances[[patch_char]]
+
+      # Get modified distances for permeability (id)
+      limit_paths <- FALSE
+      if (use_perm) {
+        selected$perm_dist[[patch_char]] <-
+          paths$perm_dist[[patch_char]][[perm_id]]
+        limit_paths <- TRUE
+      }
+
+      # Limit to paths within a maximum distance or reachable patches
+      if (limit_paths ||
+          is.numeric(max_distance) && max_distance < paths$max_distance) {
+
+        # Resolve maximum distance when present
+        if (is.numeric(max_distance) && is.numeric(paths$max_distance)) {
+          max_distance <- min(max_distance, paths$max_distance)
+        } else if (is.numeric(paths$max_distance)) {
+          max_distance <- paths$max_distance
+        }
+
+        # Find patches within range
+        if (use_perm) {
+          if (is.numeric(max_distance)) {
+            patch_ids <- which(
+              selected$perm_dist[[patch_char]] <= max_distance)
+            patch_ids <- patch_ids[which(
+              is.finite(selected$perm_dist[[patch_char]][patch_ids]))]
+          } else {
+            patch_ids <- which(
+              is.finite(selected$perm_dist[[patch_char]]))
+          }
+        } else {
+          if (is.numeric(max_distance)) {
+            patch_ids <- which(
+              selected$distances[[patch_char]] <= max_distance)
+          } else {
+            patch_ids <- which(is.finite(selected$distances[[patch_char]]))
+          }
+        }
+
+        # Update selected indices and distances to in-range cells
+        selected$idx[[patch_char]] <- selected$idx[[patch_char]][patch_ids]
+        selected$distances[[patch_char]] <-
+          selected$distances[[patch_char]][patch_ids]
+        if (use_perm) {
+          selected$perm_dist[[patch_char]] <-
+            selected$perm_dist[[patch_char]][patch_ids]
+        }
+
+        limit_paths <- TRUE
+      }
+
+      # Get directions when required
+      if (is.list(paths$directions) && directions) {
+
+        # Select directions
+        selected$directions[[patch_char]] <- paths$directions[[patch_char]]
+
+        # Limit within range paths when required
+        if (limit_paths) {
+          selected$directions[[patch_char]] <-
+            selected$directions[[patch_char]][patch_ids]
+        }
+      }
+    }
+
+    return(selected)
   }
 
   return(self)
