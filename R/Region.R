@@ -347,6 +347,9 @@ Region.SpatRaster <- function(x, ...) {
     # Graphs for permeability
     if (is.list(paths$graphs)) {
 
+      # Ensure named graph vertices are stored without scientific notation
+      options(scipen = 999)
+
       # Maintain a graph to all region cells within reach
       if (is.list(aggr) ||
           (is.numeric(paths$max_distance) && is.finite(paths$max_distance))) {
@@ -605,6 +608,10 @@ Region.SpatRaster <- function(x, ...) {
           }
         }
       }
+
+      # Reinstate default scientific notation
+      options(scipen = 0)
+
     }
   }
 
