@@ -17,6 +17,7 @@ Simulator(
   initializer = NULL,
   population_model = NULL,
   dispersal_models = list(),
+  user_function = NULL,
   ...
 )
 
@@ -34,6 +35,7 @@ Simulator(
   initializer = NULL,
   population_model = NULL,
   dispersal_models = list(),
+  user_function = NULL,
   ...
 )
 }
@@ -71,12 +73,12 @@ spread simulations.}
 objects defining the dispersal functionality for the different spread
 vectors to be simulated.}
 
-\item{...}{Additional parameters.}
-
 \item{user_function}{An optional user-defined \code{function(n)} that is
 applied to the population vector or matrix \code{n} (returning a
 transformed \code{n}) prior to collating the results at each simulation
 time step.}
+
+\item{...}{Additional parameters.}
 }
 \value{
 A \code{Simulator} class object (list) containing functions for

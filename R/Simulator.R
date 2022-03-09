@@ -53,7 +53,8 @@ Simulator <- function(region,
                       replicates = 1,
                       initializer = NULL,
                       population_model = NULL,
-                      dispersal_models = list(), ...) {
+                      dispersal_models = list(),
+                      user_function = NULL, ...) {
   UseMethod("Simulator")
 }
 
@@ -81,7 +82,8 @@ Simulator.Region <- function(region,
                              replicates = 1,
                              initializer = NULL,
                              population_model = NULL,
-                             dispersal_models = list(), ...) {
+                             dispersal_models = list(),
+                             user_function = NULL, ...) {
 
   # Validation
   time_params <- c(time_steps, step_duration, collation_steps, replicates)
