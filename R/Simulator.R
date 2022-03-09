@@ -28,6 +28,10 @@
 #' @param dispersal_models A list of \code{Dispersal} or inherited class
 #'   objects defining the dispersal functionality for the different spread
 #'   vectors to be simulated.
+#' @param user_function An optional user-defined \code{function(n)} that is
+#'   applied to the population vector or matrix \code{n} (returning a
+#'   transformed \code{n}) prior to collating the results at each simulation
+#'   time step.
 #' @param ... Additional parameters.
 #' @return A \code{Simulator} class object (list) containing functions for
 #'   setting objects (in the function environment) and running the simulations:
@@ -104,6 +108,10 @@ Simulator.Region <- function(region,
       stop("Dispersal models must be 'Dispersal' or inherited class objects.",
            call. = FALSE)
     }
+    if (!is.null(user_function) && !is.function(user_function)) {
+      stop("User-defined function must define a function for transforming ",
+           "the population at each simulation time step.", call. = FALSE)
+    }
   }
   validate_objects()
 
@@ -175,13 +183,18 @@ Simulator.Region <- function(region,
           n <- dispersal_models[[1]]$unpack(n)
         }
 
-        # Continued incursions
-        if (is.function(continued_incursions)) {
-          n <- continued_incursions(tm, n)
+        # User-defined function
+        if (is.function(user_function)) {
+          n <- user_function(n)
         }
 
         # Collate results
         results$collate(r, tm, n)
+
+        # Continued incursions
+        if (is.function(continued_incursions)) {
+          n <- continued_incursions(tm, n)
+        }
 
       } # time steps
 
