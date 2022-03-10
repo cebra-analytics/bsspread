@@ -47,6 +47,7 @@
 #'     \item{\code{run()}}{Run the simulations and return the results.}
 #'   }
 #' @include Region.R
+#' @include Results.R
 #' @export
 Simulator <- function(region,
                       time_steps = 1,
@@ -153,6 +154,7 @@ Simulator.Region <- function(region,
   }
 
   # Run simulator
+  results <- NULL # DEBUG ####
   self$run <- function() {
 
     # Should at least have an initializer and a population model
@@ -168,13 +170,13 @@ Simulator.Region <- function(region,
     continued_incursions <- initializer$continued_incursions()
 
     # Results setup
-    results <- Results(region, population_model,
-                       time_steps = time_steps,
-                       step_duration = step_duration,
-                       step_units = step_units,
-                       collation_steps = collation_steps,
-                       replicates = replicates,
-                       combine_stages = result_stages)
+    results <<- Results(region, population_model, # DEBUG ####
+                        time_steps = time_steps,
+                        step_duration = step_duration,
+                        step_units = step_units,
+                        collation_steps = collation_steps,
+                        replicates = replicates,
+                        combine_stages = result_stages)
 
     # Replicates
     for (r in 1:replicates) {

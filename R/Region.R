@@ -249,6 +249,9 @@ Region.SpatRaster <- function(x, ...) {
   # required), as well as permeability graphs (when required)
   self$calculate_paths <- function(cells) {
 
+    # Ensure cell characters are stored without scientific notation
+    options(scipen = 999)
+
     # Reachable cells
     for (cell in cells) {
 
@@ -347,9 +350,6 @@ Region.SpatRaster <- function(x, ...) {
     # Graphs for permeability
     if (is.list(paths$graphs)) {
 
-      # Ensure named graph vertices are stored without scientific notation
-      options(scipen = 999)
-
       # Maintain a graph to all region cells within reach
       if (is.list(aggr) ||
           (is.numeric(paths$max_distance) && is.finite(paths$max_distance))) {
@@ -419,6 +419,7 @@ Region.SpatRaster <- function(x, ...) {
         }
 
         # Determine new graph coverage and update total via polygons
+        paths$new_poly <<- new_poly # DEBUG ####
         if (!is.null(paths$graphs$poly)) {
           new_poly <- terra::erase(new_poly, paths$graphs$poly)
           if (length(new_poly)) {
@@ -608,11 +609,11 @@ Region.SpatRaster <- function(x, ...) {
           }
         }
       }
-
-      # Reinstate default scientific notation
-      options(scipen = 0)
-
     }
+
+    # Reinstate default scientific notation
+    options(scipen = 0)
+
   }
 
   # Get a list of indices, distances and directions of/to reachable cells for
@@ -620,6 +621,9 @@ Region.SpatRaster <- function(x, ...) {
   # and/or permeability modified distances.
   self$get_paths <- function(cells, directions = FALSE, max_distance = NULL,
                              perm_id = NULL) {
+
+    # Ensure cell characters are stored without scientific notation
+    options(scipen = 999)
 
     # Using permeability?
     use_perm <- (is.numeric(perm_id) && is.list(paths$perms) &&
@@ -747,6 +751,9 @@ Region.SpatRaster <- function(x, ...) {
       }
     }
 
+    # Reinstate default scientific notation
+    options(scipen = 0)
+
     return(selected)
   }
 
@@ -837,6 +844,9 @@ Region.data.frame <- function(x, ...) {
   # Calculate reachable region patch indices, distances, and directions (when
   # required), as well as permeability graphs (when required)
   self$calculate_paths <- function(patches) {
+
+    # Ensure cell characters are stored without scientific notation
+    options(scipen = 999)
 
     # Reachable patches
     for (patch in patches) {
@@ -952,6 +962,9 @@ Region.data.frame <- function(x, ...) {
         }
       }
     }
+
+    # Reinstate default scientific notation
+    options(scipen = 0)
   }
 
   # Get a list of indices, distances and directions of/to reachable patches for
@@ -959,6 +972,9 @@ Region.data.frame <- function(x, ...) {
   # and/or permeability modified distances.
   self$get_paths <- function(patches, directions = FALSE, max_distance = NULL,
                              perm_id = NULL) {
+
+    # Ensure cell characters are stored without scientific notation
+    options(scipen = 999)
 
     # Using permeability?
     use_perm <- (is.numeric(perm_id) && is.list(paths$perms) &&
@@ -1044,6 +1060,9 @@ Region.data.frame <- function(x, ...) {
         }
       }
     }
+
+    # Reinstate default scientific notation
+    options(scipen = 0)
 
     return(selected)
   }
