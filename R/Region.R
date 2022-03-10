@@ -421,7 +421,11 @@ Region.SpatRaster <- function(x, ...) {
         # Determine new graph coverage and update total via polygons
         paths$new_poly <<- new_poly # DEBUG ####
         if (!is.null(paths$graphs$poly)) {
-          new_poly <- terra::erase(new_poly, paths$graphs$poly)
+          if (!all(terra::relate(new_poly, paths$graphs$poly, "within"))) {
+            new_poly <- terra::erase(new_poly, paths$graphs$poly)
+          } else {
+            new_poly <- terra::erase(new_poly, new_poly)
+          }
           if (length(new_poly)) {
             paths$graphs$poly <<- terra::aggregate(
               terra::union(paths$graphs$poly, new_poly))
