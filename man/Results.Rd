@@ -13,6 +13,7 @@ Results(
   step_units = "years",
   collation_steps = 1,
   replicates = 1,
+  combine_stages = NULL,
   ...
 )
 
@@ -24,6 +25,7 @@ Results(
   step_units = "years",
   collation_steps = 1,
   replicates = 1,
+  combine_stages = NULL,
   ...
 )
 }
@@ -51,6 +53,10 @@ Default is 1, that is, results are collated at every time step.}
 Default is 1. Note that replicate simulations results are collated as
 summary statistics across simulations.}
 
+\item{combine_stages}{Optionally combine (sum) specified stages (a vector of
+stage indices) of stage-based population results. The default
+(\code{NULL}) maintains results for each stage.}
+
 \item{...}{Additional parameters.}
 }
 \value{
@@ -59,13 +65,16 @@ calculating and collating results, as well as accessing lists of results
 and the simulation parameters used to produce them:
 \describe{
 \item{\code{collate(r, tm, n)}}{Collate the results at simulation
-replicate \code{r} and time step \code{tm} using the current
-vector/array \code{n} representing the population at each location.}
-\item{\code{finalize()}}{Finalize the results collation
-(summary calculations).}
+replicate \code{r} and time step \code{tm} using the current vector or
+array \code{n} representing the population at each location.}
+\item{\code{finalize()}}{Finalize the results collation (summary
+calculations).}
 \item{\code{as_list()}}{Return the results as a list (collated, total,
 area).}
 \item{\code{get_params()}}{Get the simulation parameters used.}
+\item{\code{save_rasters(...)}}{Save the collated results as raster TIF
+files when the region is grid-based. \code{Terra} raster write options
+may be passed to the function.}
 }
 }
 \description{

@@ -18,6 +18,9 @@
 #' @param replicates The number of replicate or repeated simulations to be run.
 #'   Default is 1. Note that replicate simulations results are collated as
 #'   summary statistics across simulations.
+#' @param result_stages Optionally combine (sum) specified stages (a vector of
+#'   stage indices) of stage-based population results. The default
+#'   (\code{NULL}) maintains results for each stage.
 #' @param initializer A \code{Initializer} or inherited class object for
 #'   generating the initial invasive species population distribution or
 #'   incursion locations, as well as optionally generating subsequent
@@ -51,6 +54,7 @@ Simulator <- function(region,
                       step_units = "years",
                       collation_steps = 1,
                       replicates = 1,
+                      result_stages = NULL,
                       initializer = NULL,
                       population_model = NULL,
                       dispersal_models = list(),
@@ -80,6 +84,7 @@ Simulator.Region <- function(region,
                              step_units = "years",
                              collation_steps = 1,
                              replicates = 1,
+                             result_stages = NULL,
                              initializer = NULL,
                              population_model = NULL,
                              dispersal_models = list(),
@@ -116,6 +121,15 @@ Simulator.Region <- function(region,
     }
   }
   validate_objects()
+  if (!is.null(result_stages) &&
+      population_model$get_type() == "stage_structured") {
+    if (!is.numeric(result_stages) ||
+        !all(result_stages %in% 1:population_model$get_stages())) {
+      stop("Result stages must be a numeric vector of stage indices ",
+           "consistent with that defined in the population model.",
+           call. = FALSE)
+    }
+  }
 
   # Create a class structure
   self <- structure(list(), class = "Simulator")
@@ -159,7 +173,8 @@ Simulator.Region <- function(region,
                        step_duration = step_duration,
                        step_units = step_units,
                        collation_steps = collation_steps,
-                       replicates = replicates)
+                       replicates = replicates,
+                       combine_stages = result_stages)
 
     # Replicates
     for (r in 1:replicates) {

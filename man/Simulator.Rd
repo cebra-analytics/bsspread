@@ -14,6 +14,7 @@ Simulator(
   step_units = "years",
   collation_steps = 1,
   replicates = 1,
+  result_stages = NULL,
   initializer = NULL,
   population_model = NULL,
   dispersal_models = list(),
@@ -32,6 +33,7 @@ Simulator(
   step_units = "years",
   collation_steps = 1,
   replicates = 1,
+  result_stages = NULL,
   initializer = NULL,
   population_model = NULL,
   dispersal_models = list(),
@@ -59,6 +61,10 @@ Default is 1, that is, results are collated at every time step.}
 \item{replicates}{The number of replicate or repeated simulations to be run.
 Default is 1. Note that replicate simulations results are collated as
 summary statistics across simulations.}
+
+\item{result_stages}{Optionally combine (sum) specified stages (a vector of
+stage indices) of stage-based population results. The default
+(\code{NULL}) maintains results for each stage.}
 
 \item{initializer}{A \code{Initializer} or inherited class object for
 generating the initial invasive species population distribution or

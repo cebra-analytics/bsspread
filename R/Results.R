@@ -22,19 +22,25 @@
 #' @param replicates The number of replicate or repeated simulations to be run.
 #'   Default is 1. Note that replicate simulations results are collated as
 #'   summary statistics across simulations.
+#' @param combine_stages Optionally combine (sum) specified stages (a vector of
+#'   stage indices) of stage-based population results. The default
+#'   (\code{NULL}) maintains results for each stage.
 #' @param ... Additional parameters.
 #' @return A \code{Results} class object (list) containing functions for
 #'   calculating and collating results, as well as accessing lists of results
 #'   and the simulation parameters used to produce them:
 #'   \describe{
 #'     \item{\code{collate(r, tm, n)}}{Collate the results at simulation
-#'       replicate \code{r} and time step \code{tm} using the current
-#'       vector/array \code{n} representing the population at each location.}
-#'     \item{\code{finalize()}}{Finalize the results collation
-#'       (summary calculations).}
+#'       replicate \code{r} and time step \code{tm} using the current vector or
+#'       array \code{n} representing the population at each location.}
+#'     \item{\code{finalize()}}{Finalize the results collation (summary
+#'       calculations).}
 #'     \item{\code{as_list()}}{Return the results as a list (collated, total,
 #'       area).}
 #'     \item{\code{get_params()}}{Get the simulation parameters used.}
+#'     \item{\code{save_rasters(...)}}{Save the collated results as raster TIF
+#'       files when the region is grid-based. \code{Terra} raster write options
+#'       may be passed to the function.}
 #'   }
 #' @include Region.R
 #' @export
@@ -43,7 +49,8 @@ Results <- function(region, population_model,
                     step_duration = 1,
                     step_units = "years",
                     collation_steps = 1,
-                    replicates = 1, ...) {
+                    replicates = 1,
+                    combine_stages = NULL, ...) {
   UseMethod("Results")
 }
 
@@ -54,7 +61,8 @@ Results.Region <- function(region, population_model,
                            step_duration = 1,
                            step_units = "years",
                            collation_steps = 1,
-                           replicates = 1, ...) {
+                           replicates = 1,
+                           combine_stages = NULL, ...) {
 
   # Validate population model
   if (is.null(population_model) || !inherits(population_model, "Population")) {
@@ -69,7 +77,7 @@ Results.Region <- function(region, population_model,
   results <- list(collated = list(), total = list(), area = list())
   zeros <- list(collated = as.integer(population_model$make(initial = 0L)),
                 total = 0L, area = 0L)
-  if (is.numeric(stages)) {
+  if (is.numeric(stages) && is.null(combine_stages)) {
     zeros$collated <- matrix(zeros$collated, ncol = stages)
     zeros$total <- array(0L, c(1, stages))
   }
@@ -102,8 +110,14 @@ Results.Region <- function(region, population_model,
       n <- as.integer(n)
     }
 
+    # Combine stages when required
+    if (population_model$get_type() == "stage_structured" &&
+        is.numeric(combine_stages)) {
+      n <- rowSums(n[,combine_stages, drop = FALSE])
+    }
+
     # Shape total when population is staged
-    if (is.numeric(stages)) {
+    if (is.numeric(stages) && is.null(combine_stages)) {
       total_n <- array(colSums(n), c(1, stages))
     } else {
       total_n <- sum(n)
@@ -174,7 +188,51 @@ Results.Region <- function(region, population_model,
                 step_duration = step_duration,
                 step_units = step_units,
                 collation_steps = collation_steps,
-                replicates = replicates))
+                replicates = replicates,
+                combine_stages = combine_stages))
+  }
+
+  # Save collated results as raster files
+  if (region$get_type() == "grid") {
+    self$save_rasters  <- function(...) {
+
+      # Replicate summaries or single replicate
+      if (replicates > 1) {
+        summaries <- c("mean", "sd")
+      } else {
+        summaries <- ""
+      }
+
+      # Save rasters for each time step
+      for (tmc in names(results$collated)) {
+        for (s in summaries) {
+
+          # Create a raster with a layer per stage
+          if (is.null(stages) || is.numeric(combine_stages)) {
+            stages <- 1
+          }
+          output_rast <- list()
+          for (i in 1:stages) {
+            output_rast[[i]] <- region$get_template()
+          }
+          output_rast <- terra::rast(output_rast)
+
+          # Copy results into the raster
+          if (replicates > 1) {
+            output_rast[region$get_indices()] <- results$collated[[tmc]][[s]]
+            s <- paste0("_", s)
+          } else {
+            output_rast[region$get_indices()] <- results$collated[[tmc]]
+          }
+
+          # Write raster to file
+          filename <- sprintf(paste0("result_t%0",
+                                     nchar(as.character(time_steps)),
+                                     "d%s.tif"), as.integer(tmc), s)
+          terra::writeRaster(output_rast, filename, ...)
+        }
+      }
+    }
   }
 
   return(self)
