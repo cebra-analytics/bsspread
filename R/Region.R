@@ -534,77 +534,73 @@ Region.SpatRaster <- function(x, ...) {
       }
 
       # Calculate permeability-modified distances for reachable cells
-      for (cell in cells) {
+      for (cell in new_cells) {
 
         # Map path lists use cells as characters
         cell_char <- as.character(cell)
 
-        # Calculate modified distances when not present
-        if (!cell_char %in% names(paths$perm_dist)) {
+        # List for modified distances
+        paths$perm_dist[[cell_char]] <<- list()
 
-          # List for modified distances
-          paths$perm_dist[[cell_char]] <<- list()
+        # Get base (no permeability) weight distance to reachable inner cells
+        base_dist <- as.vector(igraph::distances(
+          paths$graphs$cell,
+          v = as.character(indices[cell]),
+          to = as.character(indices[paths$idx[[cell_char]]$cell]),
+          weights = paths$weights$cell$base))
 
-          # Get base (no permeability) weight distance to reachable inner cells
-          base_dist <- as.vector(igraph::distances(
+        # Calculate modified distances for each permeability layer
+        paths$perm_dist[[cell_char]]$cell <<- list()
+        for (perm_id in 1:length(paths$perms)) {
+
+          # Get permeability weight distance to reachable inner cells
+          perm_dist <- as.vector(igraph::distances(
             paths$graphs$cell,
             v = as.character(indices[cell]),
             to = as.character(indices[paths$idx[[cell_char]]$cell]),
-            weights = paths$weights$cell$base))
+            weights = paths$weights$cell$perms[[perm_id]]))
+
+          # Calculate the distance modifiers
+          perm_dist <- perm_dist/base_dist
+          perm_dist[which(!is.finite(perm_dist))] <- NA
+
+          # Scale the distance to (otherwise) reachable inner cells
+          paths$perm_dist[[cell_char]]$cell[[perm_id]] <<- as.integer(
+            round(paths$distances[[cell_char]]$cell*perm_dist))
+        }
+
+        # Aggregate distance multipliers when applicable
+        if (is.list(aggr)) {
+
+          # Find the aggregate cell index that contains the region cell
+          aggr_i <- terra::cells(aggr$rast, region_pts[cell],
+                                 touches = TRUE)[, "cell"]
+
+          # Get base weight distance to reachable aggregate cells
+          base_dist <- as.vector(igraph::distances(
+            paths$graphs$aggr,
+            v = as.character(aggr_i),
+            to = as.character(aggr$indices[paths$idx[[cell_char]]$aggr]),
+            weights = paths$weights$aggr$base))
 
           # Calculate modified distances for each permeability layer
-          paths$perm_dist[[cell_char]]$cell <<- list()
+          paths$perm_dist[[cell_char]]$aggr <<- list()
           for (perm_id in 1:length(paths$perms)) {
 
-            # Get permeability weight distance to reachable inner cells
+            # Get permeability weight distance to reachable aggregate cells
             perm_dist <- as.vector(igraph::distances(
-              paths$graphs$cell,
-              v = as.character(indices[cell]),
-              to = as.character(indices[paths$idx[[cell_char]]$cell]),
-              weights = paths$weights$cell$perms[[perm_id]]))
+              paths$graphs$aggr,
+              v = as.character(aggr_i),
+              to = as.character(aggr$indices[paths$idx[[cell_char]]$aggr]),
+              weights = paths$weights$aggr$perms[[perm_id]]))
 
             # Calculate the distance modifiers
             perm_dist <- perm_dist/base_dist
             perm_dist[which(!is.finite(perm_dist))] <- NA
 
             # Scale the distance to (otherwise) reachable inner cells
-            paths$perm_dist[[cell_char]]$cell[[perm_id]] <<- as.integer(
-              round(paths$distances[[cell_char]]$cell*perm_dist))
-          }
-
-          # Aggregate distance multipliers when applicable
-          if (is.list(aggr)) {
-
-            # Find the aggregate cell index that contains the region cell
-            aggr_i <- terra::cells(aggr$rast, region_pts[cell],
-                                   touches = TRUE)[, "cell"]
-
-            # Get base weight distance to reachable aggregate cells
-            base_dist <- as.vector(igraph::distances(
-              paths$graphs$aggr,
-              v = as.character(aggr_i),
-              to = as.character(aggr$indices[paths$idx[[cell_char]]$aggr]),
-              weights = paths$weights$aggr$base))
-
-            # Calculate modified distances for each permeability layer
-            paths$perm_dist[[cell_char]]$aggr <<- list()
-            for (perm_id in 1:length(paths$perms)) {
-
-              # Get permeability weight distance to reachable aggregate cells
-              perm_dist <- as.vector(igraph::distances(
-                paths$graphs$aggr,
-                v = as.character(aggr_i),
-                to = as.character(aggr$indices[paths$idx[[cell_char]]$aggr]),
-                weights = paths$weights$aggr$perms[[perm_id]]))
-
-              # Calculate the distance modifiers
-              perm_dist <- perm_dist/base_dist
-              perm_dist[which(!is.finite(perm_dist))] <- NA
-
-              # Scale the distance to (otherwise) reachable inner cells
-              paths$perm_dist[[cell_char]]$aggr[[perm_id]] <<- as.integer(
-                round(paths$distances[[cell_char]]$aggr*perm_dist))
-            }
+            paths$perm_dist[[cell_char]]$aggr[[perm_id]] <<- as.integer(
+              round(paths$distances[[cell_char]]$aggr*perm_dist))
           }
         }
       }
