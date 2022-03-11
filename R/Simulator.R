@@ -21,6 +21,9 @@
 #' @param result_stages Optionally combine (sum) specified stages (a vector of
 #'   stage indices) of stage-based population results. The default
 #'   (\code{NULL}) maintains results for each stage.
+#' @param parallel_cores Optional number of cores available for parallel
+#'   processing of dispersal path calculations. The default (\code{NULL}) runs
+#'   the simulator in serial.
 #' @param initializer A \code{Initializer} or inherited class object for
 #'   generating the initial invasive species population distribution or
 #'   incursion locations, as well as optionally generating subsequent
@@ -56,6 +59,7 @@ Simulator <- function(region,
                       collation_steps = 1,
                       replicates = 1,
                       result_stages = NULL,
+                      parallel_cores = NULL,
                       initializer = NULL,
                       population_model = NULL,
                       dispersal_models = list(),
@@ -86,6 +90,7 @@ Simulator.Region <- function(region,
                              collation_steps = 1,
                              replicates = 1,
                              result_stages = NULL,
+                             parallel_cores = NULL,
                              initializer = NULL,
                              population_model = NULL,
                              dispersal_models = list(),
@@ -130,6 +135,16 @@ Simulator.Region <- function(region,
            "consistent with that defined in the population model.",
            call. = FALSE)
     }
+  }
+  if (!is.null(parallel_cores) && (!is.numeric(parallel_cores) ||
+                                   parallel_cores <= 0)) {
+    stop("The number of parallel cores should be a numeric value > 0.",
+         call. = FALSE)
+  }
+
+  # Set parallel cores in region object
+  if (is.numeric(parallel_cores) && parallel_cores > 1) {
+    region$set_cores(as.integer(parallel_cores))
   }
 
   # Create a class structure
