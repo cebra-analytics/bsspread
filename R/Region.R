@@ -252,87 +252,82 @@ Region.SpatRaster <- function(x, ...) {
     # Ensure cell characters are stored without scientific notation
     options(scipen = 999)
 
-    # Reachable cells
-    for (cell in cells) {
+    # Newly occupied cells
+    new_cells <- cells[which(!as.character(cells) %in% names(paths$idx))]
+
+    # Calculate reachable indices, distances and directions for new cells
+    for (cell in new_cells) {
 
       # Map path lists use cells as characters
       cell_char <- as.character(cell)
 
-      # Calculate indices when not present
-      if (!cell_char %in% names(paths$idx)) {
+      # Calculate reachable indices
+      if (is.list(aggr)) { # two-tier approach
 
-        if (is.list(aggr)) { # two-tier approach
+        # Select aggregate cells in/on inner circle
+        inner_vect <- terra::buffer(region_pts[cell,],
+                                    width = aggr$inner_radius,
+                                    quadsegs = 180)
+        aggr_idx <- terra::cells(aggr$rast, inner_vect, touches = TRUE)[,2]
 
-          # Select aggregate cells in/on inner circle
-          inner_vect <- terra::buffer(region_pts[cell,],
-                                      width = aggr$inner_radius,
+        # Local cell indices within inner area
+        paths$idx[[cell_char]] <<- list(
+          cell = aggr$get_cells(which(aggr$indices %in% aggr_idx)))
+        cell_i <- which(paths$idx[[cell_char]]$cell == cell)
+        paths$idx[[cell_char]]$cell <<- paths$idx[[cell_char]]$cell[-cell_i]
+
+        # Aggregate cells outside inner area
+        if (is.numeric(paths$max_distance) &&
+            is.finite(paths$max_distance)) {
+          outer_vect <- terra::buffer(region_pts[cell,],
+                                      width = paths$max_distance,
                                       quadsegs = 180)
-          aggr_idx <- terra::cells(aggr$rast, inner_vect, touches = TRUE)[,2]
+          outer_idx <- terra::cells(aggr$rast, outer_vect,
+                                    touches = TRUE)[,2]
+          outer_idx <- outer_idx[which(!outer_idx %in% aggr_idx)]
+          paths$idx[[cell_char]]$aggr <<- which(aggr$indices %in% outer_idx)
+        } else {
+          paths$idx[[cell_char]]$aggr <<- which(!aggr$indices %in% aggr_idx)
+        }
 
-          # Local cell indices within inner area
+      } else { # cell approach
+
+        # Select cells within range when applicable
+        if (is.numeric(paths$max_distance) &&
+            is.finite(paths$max_distance)) {
+          range_vect <- terra::buffer(region_pts[cell,],
+                                      width = paths$max_distance,
+                                      quadsegs = 180)
           paths$idx[[cell_char]] <<- list(
-            cell = aggr$get_cells(which(aggr$indices %in% aggr_idx)))
-          cell_i <- which(paths$idx[[cell_char]]$cell == cell)
-          paths$idx[[cell_char]]$cell <<- paths$idx[[cell_char]]$cell[-cell_i]
-
-          # Aggregate cells outside inner area
-          if (is.numeric(paths$max_distance) &&
-              is.finite(paths$max_distance)) {
-            outer_vect <- terra::buffer(region_pts[cell,],
-                                        width = paths$max_distance,
-                                        quadsegs = 180)
-            outer_idx <- terra::cells(aggr$rast, outer_vect,
-                                      touches = TRUE)[,2]
-            outer_idx <- outer_idx[which(!outer_idx %in% aggr_idx)]
-            paths$idx[[cell_char]]$aggr <<- which(aggr$indices %in% outer_idx)
-          } else {
-            paths$idx[[cell_char]]$aggr <<- which(!aggr$indices %in% aggr_idx)
-          }
-
-        } else { # cell approach
-
-          # Select cells within range when applicable
-          if (is.numeric(paths$max_distance) &&
-              is.finite(paths$max_distance)) {
-            range_vect <- terra::buffer(region_pts[cell,],
-                                        width = paths$max_distance,
-                                        quadsegs = 180)
-            paths$idx[[cell_char]] <<- list(
-              cell = which(indices %in% terra::cells(x, range_vect,
-                                                     touches = TRUE)[,2] &
-                             indices != indices[cell]))
-          } else {
-            paths$idx[[cell_char]] <<- list(cell = indices[-cell])
-          }
+            cell = which(indices %in% terra::cells(x, range_vect,
+                                                   touches = TRUE)[,2] &
+                           indices != indices[cell]))
+        } else {
+          paths$idx[[cell_char]] <<- list(cell = indices[-cell])
         }
       }
 
-      # Calculate distances when not present
-      if (!cell_char %in% names(paths$distances)) {
+      # Calculate (local) cell distances
+      paths$distances[[cell_char]] <<- list(
+        cell = as.integer(round(as.numeric(
+          terra::distance(region_pts[cell],
+                          region_pts[paths$idx[[cell_char]]$cell])))))
 
-        # Calculate (local) cell distances
-        paths$distances[[cell_char]] <<- list(
-          cell = as.integer(round(as.numeric(
+      # Calculate aggregate cell distances when applicable
+      if (is.list(aggr)) {
+        paths$distances[[cell_char]]$aggr <<-
+          as.integer(round(as.numeric(
             terra::distance(region_pts[cell],
-                            region_pts[paths$idx[[cell_char]]$cell])))))
-
-        # Calculate aggregate cell distances when applicable
-        if (is.list(aggr)) {
-          paths$distances[[cell_char]]$aggr <<-
-            as.integer(round(as.numeric(
-              terra::distance(region_pts[cell],
-                              aggr$pts[paths$idx[[cell_char]]$aggr]))))
-        }
+                            aggr$pts[paths$idx[[cell_char]]$aggr]))))
       }
 
-      # Calculate directions when required and not present
-      if (is.list(paths$directions) &&
-          !cell_char %in% names(paths$directions)) {
+      # Calculate reachable cell directions
+      if (is.list(paths$directions)) {
 
         # Calculate (local) cell directions
         xy_diff <- (terra::crds(region_pts[cell])[
           rep(1, length(paths$idx[[cell_char]]$cell)),] -
-            terra::crds(region_pts[paths$idx[[cell_char]]$cell]))
+          terra::crds(region_pts[paths$idx[[cell_char]]$cell]))
         paths$directions[[cell_char]] <<- list(cell = as.integer(round(
           atan2(xy_diff[,"y"], xy_diff[,"x"])*180/pi + 180)))
 
@@ -340,7 +335,7 @@ Region.SpatRaster <- function(x, ...) {
         if (is.list(aggr)) {
           xy_diff <- (terra::crds(region_pts[cell])[
             rep(1, length(paths$idx[[cell_char]]$aggr)),] -
-              terra::crds(aggr$pts[paths$idx[[cell_char]]$aggr]))
+            terra::crds(aggr$pts[paths$idx[[cell_char]]$aggr]))
           paths$directions[[cell_char]]$aggr <<- as.integer(round(
             atan2(xy_diff[,"y"], xy_diff[,"x"])*180/pi + 180))
         }
