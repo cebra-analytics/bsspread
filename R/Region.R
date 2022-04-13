@@ -151,10 +151,10 @@ Region.SpatRaster <- function(x, ...) {
   # Get the spatial cell resolution
   self$get_res <- function() {
     if (terra::is.lonlat(x)) { # EPSG:4326
-      corners <- array(terra::ext(x2), c(2, 2))
+      corners <- array(terra::ext(x), c(2, 2))
       diagonal <- terra::distance(corners[1,,drop = FALSE],
                                   corners[2,,drop = FALSE], lonlat = TRUE)
-      return(diagonal/sqrt(terra::nrow(x2)^2 + terra::ncol(x2)^2))
+      return(diagonal/sqrt(terra::nrow(x)^2 + terra::ncol(x)^2))
     } else {
       return(mean(terra::res(x)[1]))
     }
