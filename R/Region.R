@@ -267,13 +267,14 @@ Region.SpatRaster <- function(x, ...) {
     new_cells <- cells[which(!as.character(cells) %in% names(paths$idx))]
 
     # Calculate reachable indices, distances and directions for new cells
-    if (is.numeric(parallel_cores)) {
+    if (is.numeric(parallel_cores) && length(new_cells) > 1) {
 
       # Get variables from "paths" to avoid copying to parallel environments
       max_distance <- paths$max_distance
       include_directions <- is.list(paths$directions)
 
-      doParallel::registerDoParallel(cores = parallel_cores)
+      doParallel::registerDoParallel(cores = min(parallel_cores,
+                                                 length(new_cells)))
       new_paths <- foreach(
         cell = new_cells,
         .errorhandling = c("stop"),
@@ -474,7 +475,7 @@ Region.SpatRaster <- function(x, ...) {
     }
 
     # Graphs for permeability
-    if (is.list(paths$graphs)) {
+    if (is.list(paths$graphs) && length(new_cells)) {
 
       # Maintain a graph to all region cells within reach
       if (is.list(aggr) ||
@@ -482,9 +483,9 @@ Region.SpatRaster <- function(x, ...) {
 
         if (is.list(aggr)) { # two-tier approach
 
-          # Select aggregate cells in/on intersected inner circles
+          # Select new aggregate cells in/on intersected inner circles
           inner_vect <- terra::aggregate(
-            terra::buffer(region_pts[cells,], width = aggr$inner_radius,
+            terra::buffer(region_pts[new_cells,], width = aggr$inner_radius,
                           quadsegs = 180))
           aggr_idx <- terra::cells(aggr$rast, inner_vect, touches = TRUE)[,2]
 
@@ -540,12 +541,12 @@ Region.SpatRaster <- function(x, ...) {
 
           # Create a polygon from intersected range circles
           new_poly <- terra::aggregate(
-            terra::buffer(region_pts[cells,], width = paths$max_distance,
+            terra::buffer(region_pts[new_cells,], width = paths$max_distance,
                           quadsegs = 180))
         }
 
         # Determine new graph coverage and update total via polygons
-        paths$new_poly <<- new_poly # DEBUG ####
+        paths$new_poly <<- new_poly # DEBUG buffer above seems to fix? ####
         if (!is.null(paths$graphs$poly)) {
           # if (!all(terra::relate(new_poly, paths$graphs$poly, "within"))) {
           new_poly <- terra::erase(new_poly, paths$graphs$poly)
@@ -665,12 +666,13 @@ Region.SpatRaster <- function(x, ...) {
       }
 
       # Calculate permeability-modified distances for reachable cells
-      if (is.numeric(parallel_cores)) {
+      if (is.numeric(parallel_cores) && length(new_cells) > 1) {
 
         # Add permeability components to new paths
         new_paths <- c(new_paths, paths[c("graphs", "weights", "perms")])
 
-        doParallel::registerDoParallel(cores = parallel_cores)
+        doParallel::registerDoParallel(cores = min(parallel_cores,
+                                                   length(new_cells)))
         new_perm_dist <- foreach(
           cell = new_cells,
           .errorhandling = c("stop"),
