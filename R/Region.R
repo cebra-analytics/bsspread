@@ -869,6 +869,12 @@ Region.data.frame <- function(x, ...) {
     return(FALSE)
   }
 
+  # Set the number of cores available for parallel processing
+  parallel_cores <- 1
+  self$set_cores <- function(cores) { # not yet used for patch-based region
+    parallel_cores <<- cores
+  }
+
   # Path list of reachable indices and distances, and optionally configured
   # directions, maximum distance and permeability for dispersal calculations
   paths <- list(idx = list(), distances = list())
