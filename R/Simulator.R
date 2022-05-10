@@ -141,10 +141,19 @@ Simulator.Region <- function(region,
          call. = FALSE)
   }
 
-  # Set parallel cores in region object
+  # Set parallel cores in region and dispersal objects
   if (is.numeric(parallel_cores)) {
     region$set_cores(as.integer(parallel_cores))
   }
+  set_cores <- function() {
+    if (is.numeric(parallel_cores)) {
+      region$set_cores(as.integer(parallel_cores))
+      for (i in 1:length(dispersal_models)) {
+        dispersal_models[[i]]$set_cores(as.integer(parallel_cores))
+      }
+    }
+  }
+  set_cores()
 
   # Create a class structure
   self <- structure(list(), class = "Simulator")
@@ -165,6 +174,7 @@ Simulator.Region <- function(region,
   self$set_dispersal_models <- function(models) {
     dispersal_models <<- models
     validate_objects()
+    set_cores()
   }
 
   # Run simulator

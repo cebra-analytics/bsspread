@@ -103,6 +103,8 @@ A \code{Dispersal} class object (list) containing functions for
 accessing attributes (of the function environment) and performing
 dispersal:
 \describe{
+\item{\code{set_cores(cores)}}{Set the number of cores available for
+parallel processing.}
 \item{\code{pack(n)}}{Packs a population vector or matrix \code{n} into
 a list containing a vector of occupied location (cell or patch)
 \code{indices}, the \code{original} population values at the occupied
