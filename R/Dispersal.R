@@ -266,6 +266,21 @@ Dispersal.Region <- function(region, population_model,
       dispersal_ready <- 1:length(n$indices)
     }
 
+    # Collect components from region to avoid passing to parallel processes
+    two_tier <- region$two_tier()
+    region_res <- region$get_res()
+    region_aggr <- region$get_aggr()
+
+    # Get paths for dispersal-ready locations
+    paths <- region$get_paths(n$indices[dispersal_ready],
+                              directions = is.function(direction_function),
+                              max_distance = max_distance,
+                              perm_id = perm_id)
+    if (region$get_type() == "patch") { # for code reuse # TODO: CHECK ####
+      paths <- lapply(paths, function(p)
+        lapply(p, function(l) list(cell = l)))
+    }
+
     # Perform dispersal for each (dispersal-ready) occupied location
     doParallel::registerDoParallel(cores = min(parallel_cores,
                                                length(dispersal_ready)))
@@ -274,29 +289,19 @@ Dispersal.Region <- function(region, population_model,
       .errorhandling = c("stop"),
       .packages = c(),
       .export = c(),
-      .noexport = c()) %dopar% {
+      .noexport = c("region")) %dopar% {
 
         ## Map path lists use location indices as characters
         loc_i <- n$indices[i]
         loc_char <- as.character(loc_i)
 
-        ## Get paths for location
-        paths <- region$get_paths(loc_i,
-                                  directions = is.function(direction_function),
-                                  max_distance = max_distance,
-                                  perm_id = perm_id)
-        if (region$get_type() == "patch") { # for code reuse
-          paths <- lapply(paths, function(p)
-            lapply(p, function(l) list(cell = l)))
-        }
-
         ## Relative dispersal probabilities for source and destination
         source_p <- 1
         destination_p <- list(cell = rep(1,
                                          length(paths$idx[[loc_char]]$cell)))
-        if (region$two_tier()) { # multiple cells
-          destination_p$aggr <- region$get_aggr()$rast[
-            region$get_aggr()$indices[paths$idx[[loc_char]]$aggr]][,1]
+        if (two_tier) { # multiple cells
+          destination_p$aggr <- region_aggr$rast[
+            region_aggr$indices[paths$idx[[loc_char]]$aggr]][,1]
         }
 
         ## Adjust destination (relative) probabilities based on distance
@@ -305,10 +310,10 @@ Dispersal.Region <- function(region, population_model,
           # Additional adjustment given (approx.) cells at each distance
           dist_p_adj <- list(cell = 1, aggr = 1)
           if (distance_adjust) {
-            dist_p_adj$cell <- (region$get_res()/
+            dist_p_adj$cell <- (region_res/
                                   (2*pi*paths$distances[[loc_char]]$cell))
-            if (region$two_tier()) {
-              dist_p_adj$aggr <- (region$get_res()/
+            if (two_tier) {
+              dist_p_adj$aggr <- (region_res/
                                     (2*pi*paths$distances[[loc_char]]$aggr))
             }
           }
@@ -318,7 +323,7 @@ Dispersal.Region <- function(region, population_model,
             destination_p$cell <-
               (distance_function(paths$perm_dist[[loc_char]]$cell)*
                  dist_p_adj$cell*destination_p$cell)
-            if (region$two_tier()) {
+            if (two_tier) {
               destination_p$aggr <-
                 (distance_function(paths$perm_dist[[loc_char]]$aggr)*
                    dist_p_adj$aggr*destination_p$aggr)
@@ -327,7 +332,7 @@ Dispersal.Region <- function(region, population_model,
             destination_p$cell <-
               (distance_function(paths$distances[[loc_char]]$cell)*
                  dist_p_adj$cell*destination_p$cell)
-            if (region$two_tier()) {
+            if (two_tier) {
               destination_p$aggr <-
                 (distance_function(paths$distances[[loc_char]]$aggr)*
                    dist_p_adj$aggr*destination_p$aggr)
@@ -341,7 +346,7 @@ Dispersal.Region <- function(region, population_model,
           destination_p$cell <-
             (destination_p$cell*
                direction_function(paths$directions[[loc_char]]$cell))
-          if (region$two_tier()) {
+          if (two_tier) {
             destination_p$aggr <-
               (destination_p$aggr*
                  direction_function(paths$directions[[loc_char]]$aggr))
@@ -379,7 +384,7 @@ Dispersal.Region <- function(region, population_model,
                 destination_p$cell <-
                   (destination_p$cell*
                      attractor$get_values(paths$idx[[loc_char]]$cell))
-                if (region$two_tier()) {
+                if (two_tier) {
                   destination_p$aggr <-
                     (destination_p$aggr*
                        attractor$get_aggr_values(paths$idx[[loc_char]]$aggr))
@@ -478,11 +483,11 @@ Dispersal.Region <- function(region, population_model,
               length(destination_p$cell), size = 1,
               prob = destination_p$cell*proportion*source_p)))
 
-            if (region$two_tier()) {
+            if (two_tier) {
 
               # Number or (non-NA) region cells in each aggregate cell
-              aggr_cells <- region$get_aggr()$rast[
-                region$get_aggr()$indices[paths$idx[[loc_char]]$aggr]][,1]
+              aggr_cells <- region_aggr$rast[
+                region_aggr$indices[paths$idx[[loc_char]]$aggr]][,1]
 
               # Sample region cell counts for aggregate cells
               aggr_cells <- stats::rbinom(
@@ -510,7 +515,7 @@ Dispersal.Region <- function(region, population_model,
 
         ## Resolve dispersal destinations as region cell indices
         if (dispersals) {
-          if (region$two_tier()) {
+          if (two_tier) {
 
             # Identify cell and aggregate cell destinations
             cell_dest <- which(destinations <= length(destination_p$cell))
@@ -529,7 +534,7 @@ Dispersal.Region <- function(region, population_model,
             for (ad_i in aggr_dest) {
 
               # Get region cell raster indices
-              aggr_cells <- region$get_aggr()$get_cells(destinations[ad_i])
+              aggr_cells <- region_aggr$get_cells(destinations[ad_i])
 
               # Perform a weighted sample via attractors when present
               aggr_p <- rep(1, length(aggr_cells))
