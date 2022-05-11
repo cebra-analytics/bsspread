@@ -10,7 +10,8 @@ StagedPopulation(
   capacity = NULL,
   capacity_stages = NULL,
   establish_pr = NULL,
-  incursion_values = NULL,
+  incursion_mean = NULL,
+  incursion_stages,
   ...
 )
 }
@@ -40,12 +41,14 @@ the \code{region}. This may be used to avoid transient/unsuccessful
 incursions or migrations from being presented in the simulation results.
 Default is \code{NULL}.}
 
-\item{incursion_values}{Defines how incursion locations are populated.
-A matrix of fixed values with a row for each region location, or a single
-row applicable for all locations, and with columns for each stage/age.
-Alternatively, a list of matrices (as before), labelled \code{min} and
-\code{max}, be used to specifying ranges of values for uniform random
-sampling of values.}
+\item{incursion_mean}{Numeric mean population size for incursion locations.
+The population size is sampled from the Poisson distribution for each
+incursion location.}
+
+\item{incursion_stages}{A vector of stage or age indices (as per the
+rows/columns of \code{growth} matrix) indicating which life-stages/ages
+are applicable for incursions. Default is \code{NULL} for when all
+stages/ages are applicable for incursions.}
 
 \item{...}{Additional parameters.}
 }

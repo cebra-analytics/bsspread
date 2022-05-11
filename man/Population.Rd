@@ -11,7 +11,7 @@ Population(
   growth = NULL,
   capacity = NULL,
   establish_pr = NULL,
-  incursion_values = NULL,
+  incursion_mean = NULL,
   class = character(),
   ...
 )
@@ -22,7 +22,7 @@ Population(
   growth = NULL,
   capacity = NULL,
   establish_pr = NULL,
-  incursion_values = NULL,
+  incursion_mean = NULL,
   class = character(),
   ...
 )
@@ -51,11 +51,9 @@ incursion or migration arrivals from being presented in the simulation
 results, and/or from subsequently contributing to spread in presence-only
 models. Default is \code{NULL}.}
 
-\item{incursion_values}{Defines how incursion locations are populated.
-Either via a fixed single value, vector, or matrix of values for each
-location (vector or matrix rows) and/or stage (matrix columns), or via a
-list specifying the range of values via \code{min} and \code{max} (single,
-vector or matrix) for uniform random sampling of values.}
+\item{incursion_mean}{Numeric mean population size for incursion locations.
+The population size is sampled from the Poisson distribution for each
+incursion location.}
 
 \item{class}{Character class name for inherited classes. Default is
 \code{NULL}.}

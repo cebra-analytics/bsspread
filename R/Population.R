@@ -21,11 +21,9 @@
 #'   incursion or migration arrivals from being presented in the simulation
 #'   results, and/or from subsequently contributing to spread in presence-only
 #'   models. Default is \code{NULL}.
-#' @param incursion_values Defines how incursion locations are populated.
-#'   Either via a fixed single value, vector, or matrix of values for each
-#'   location (vector or matrix rows) and/or stage (matrix columns), or via a
-#'   list specifying the range of values via \code{min} and \code{max} (single,
-#'   vector or matrix) for uniform random sampling of values.
+#' @param incursion_mean Numeric mean population size for incursion locations.
+#'   The population size is sampled from the Poisson distribution for each
+#'   incursion location.
 #' @param class Character class name for inherited classes. Default is
 #'   \code{NULL}.
 #' @param ... Additional parameters.
@@ -61,7 +59,7 @@ Population <- function(region,
                        growth = NULL,
                        capacity = NULL,
                        establish_pr = NULL,
-                       incursion_values = NULL,
+                       incursion_mean = NULL,
                        class = character(), ...) {
   UseMethod("Population")
 }
@@ -74,7 +72,7 @@ Population.Region <- function(region,
                               growth = NULL,
                               capacity = NULL,
                               establish_pr = NULL,
-                              incursion_values = NULL,
+                              incursion_mean = NULL,
                               class = character(), ...) {
 
   # Validate based on type and set (number of) stages
@@ -114,33 +112,11 @@ Population.Region <- function(region,
          "region location.", call. = FALSE)
   }
 
-  # Validate incursion values
-  if (!is.null(incursion_values)) {
-
-    # Check list
-    if (is.list(incursion_values)) {
-      if (length(incursion_values) != 2) {
-        stop("A range of incursion values defined by a list should have two ",
-             "entries named: 'min' and 'max'.", call. = FALSE)
-      }
-      if (!all(c("min", "max") %in% names(incursion_values))) {
-        names(incursion_values) <- c("min", "max")
-      }
-    }
-
-    # Check consistency with locations and stages
-    for (values in
-         if (is.list(incursion_values)) incursion_values
-         else list(incursion_values)) {
-      if (!nrow(as.matrix(values)) %in% c(1, region$get_locations())) {
-        stop("Incursion values must be consistent with the number of region ",
-             "locations.", call. = FALSE)
-      }
-      if (!ncol(as.matrix(values)) %in% c(1, stages)) {
-        stop("Incursion values must be consistent with the number of stages.",
-             call. = FALSE)
-      }
-    }
+  # Validate incursion mean
+  if (!is.null(incursion_mean) && (!is.numeric(incursion_mean) ||
+                                   incursion_mean <= 0)) {
+    stop("Incursion mean population size should be a numeric value greater ",
+         "than zero.", call. = FALSE)
   }
 
   # Create a class structure
@@ -222,75 +198,23 @@ Population.Region <- function(region,
                         prob = establish_pr[indices]))
       }
 
-      if (!is.null(incursion_values)) {
+      # Generate population size values
+      if (!is.null(incursion_mean)) {
 
         # Indices of incursion locations
         indices <- which(incursion)
 
-        # Sample across range
-        if (is.list(incursion_values)) {
-
-          # Columns to output
-          cols <- max(unlist(lapply(incursion_values,
-                                    function(v) ncol(as.matrix(v)))))
-
-          if (length(indices)) { # incursions present
-
-            # Shape values for incursions
-            values <- list()
-            for (key in c("min", "max")) {
-              values[[key]] <- as.matrix(incursion_values[[key]])
-              if (nrow(values[[key]]) == 1) {
-                values[[key]] <- apply(values[[key]], 2, rep, length(indices))
-              } else { # a row per location
-                values[[key]] <- values[[key]][indices, , drop = FALSE]
-              }
-            }
-
-            # Sample values
-            values <- stats::runif(length(indices)*cols, min = values$min,
-                                   max = values$max)
-            if (all(unlist(lapply(incursion_values, is.integer))) ||
-                type == "stage_structured") {
-              values <- as.integer(round(values))
-            }
-          }
-
-        } else { # fixed incursion values
-
-          # Columns to output
-          cols <- ncol(as.matrix(incursion_values))
-
-          if (length(indices)) { # incursions present
-
-            # Shape values for incursions
-            values <- as.matrix(incursion_values)
-            if (nrow(values) == 1) {
-              values <- apply(values, 2, rep, length(indices))
-            } else { # a row per location
-              values <- values[indices, , drop = FALSE]
-            }
-          }
-        }
-
-        # Shape incursions
-        if (cols > 1) {
-          incursion <- array(FALSE, c(length(incursion), cols))
-        } else {
-          incursion <- vector("logical", length(incursion))
-        }
         if (type != "presence_only") { # to integer
-          incursion <- incursion*0L
+          incursion <- as.integer(incursion)
         }
 
         if (length(indices)) { # incursions present
 
+          # Sample incursion population sizes via the Poisson distribution
+          values <- stats::rpois(length(indices), incursion_mean)
+
           # Fill values
-          if (cols > 1) {
-            incursion[indices,] <- values
-          } else {
-            incursion[indices] <- values
-          }
+          incursion[indices] <- values
         }
       }
 

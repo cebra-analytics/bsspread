@@ -9,7 +9,7 @@ UnstructPopulation(
   growth = 1,
   capacity = NULL,
   establish_pr = NULL,
-  incursion_values = NULL,
+  incursion_mean = NULL,
   ...
 )
 }
@@ -30,10 +30,9 @@ the \code{region}. This may be used to avoid transient/unsuccessful
 incursions or migrations from being presented in the simulation results.
 Default is \code{NULL}.}
 
-\item{incursion_values}{Defines how incursion locations are populated.
-Either via a fixed single value or vector of values for each location,
-or via a list specifying the range of values via \code{min} and \code{max}
-(single values or vectors) for uniform random sampling of values.}
+\item{incursion_mean}{Numeric mean population size for incursion locations.
+The population size is sampled from the Poisson distribution for each
+incursion location.}
 
 \item{...}{Additional parameters.}
 }

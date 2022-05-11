@@ -15,10 +15,9 @@
 #'   the \code{region}. This may be used to avoid transient/unsuccessful
 #'   incursions or migrations from being presented in the simulation results.
 #'   Default is \code{NULL}.
-#' @param incursion_values Defines how incursion locations are populated.
-#'   Either via a fixed single value or vector of values for each location,
-#'   or via a list specifying the range of values via \code{min} and \code{max}
-#'   (single values or vectors) for uniform random sampling of values.
+#' @param incursion_mean Numeric mean population size for incursion locations.
+#'   The population size is sampled from the Poisson distribution for each
+#'   incursion location.
 #' @param ... Additional parameters.
 #' @return A \code{UnstructPopulation} class object (list) containing functions
 #'   for accessing attributes and simulating growth:
@@ -41,7 +40,7 @@ UnstructPopulation <- function(region,
                                growth = 1.0,
                                capacity = NULL,
                                establish_pr = NULL,
-                               incursion_values = NULL, ...) {
+                               incursion_mean = NULL, ...) {
 
   # Build via base class
   self <- Population(region,
@@ -49,7 +48,7 @@ UnstructPopulation <- function(region,
                      growth = growth,
                      capacity = capacity,
                      establish_pr = establish_pr,
-                     incursion_values = incursion_values,
+                     incursion_mean = incursion_mean,
                      class = "UnstructPopulation")
 
   # Grow method - override for logistic (capacity-limited) growth

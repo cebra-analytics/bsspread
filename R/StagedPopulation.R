@@ -23,12 +23,13 @@
 #'   the \code{region}. This may be used to avoid transient/unsuccessful
 #'   incursions or migrations from being presented in the simulation results.
 #'   Default is \code{NULL}.
-#' @param incursion_values Defines how incursion locations are populated.
-#'   A matrix of fixed values with a row for each region location, or a single
-#'   row applicable for all locations, and with columns for each stage/age.
-#'   Alternatively, a list of matrices (as before), labelled \code{min} and
-#'   \code{max}, be used to specifying ranges of values for uniform random
-#'   sampling of values.
+#' @param incursion_mean Numeric mean population size for incursion locations.
+#'   The population size is sampled from the Poisson distribution for each
+#'   incursion location.
+#' @param incursion_stages A vector of stage or age indices (as per the
+#'   rows/columns of \code{growth} matrix) indicating which life-stages/ages
+#'   are applicable for incursions. Default is \code{NULL} for when all
+#'   stages/ages are applicable for incursions.
 #' @param ... Additional parameters.
 #' @return A \code{StagedPopulation} class object (list) containing functions
 #'   for accessing attributes and simulating growth:
@@ -57,7 +58,8 @@ StagedPopulation <- function(region, growth,
                              capacity = NULL,
                              capacity_stages = NULL,
                              establish_pr = NULL,
-                             incursion_values = NULL, ...) {
+                             incursion_mean = NULL,
+                             incursion_stages, ...) {
 
   # Build via base class
   self <- Population(region,
@@ -65,7 +67,7 @@ StagedPopulation <- function(region, growth,
                      growth = growth,
                      capacity = capacity,
                      establish_pr = establish_pr,
-                     incursion_values = incursion_values,
+                     incursion_mean = incursion_mean,
                      class = "StagedPopulation")
 
   # Number of stages or age classes
@@ -107,6 +109,16 @@ StagedPopulation <- function(region, growth,
     }
   }
 
+  # Validate incursion stages
+  if (!is.null(incursion_stages)) {
+    incursion_stages <- unique(incursion_stages)
+    if (!is.numeric(incursion_stages) ||
+        !all(incursion_stages %in% 1:stages)) {
+      stop(paste0("Incursion stages should specify index values between 1 and ",
+                  stages, "."), call. = FALSE)
+    }
+  }
+
   # Get capacity stages
   self$get_capacity_stages <- function() {
     return(capacity_stages)
@@ -125,6 +137,11 @@ StagedPopulation <- function(region, growth,
 
       # Calculate ratio for stable distribution of stages
       ratio <- Re((eigen(growth)$vectors)[,1])
+
+      # Select incursion stages only
+      if (!is.null(incursion) && !is.null(incursion_stages)) {
+        ratio[which(!1:stages %in% incursion_stages)] <- 0
+      }
 
       # Distribute across stages for occupied indices
       values <- array(values, c(length(values), stages))
