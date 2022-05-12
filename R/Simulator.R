@@ -142,9 +142,6 @@ Simulator.Region <- function(region,
   }
 
   # Set parallel cores in region and dispersal objects
-  if (is.numeric(parallel_cores)) {
-    region$set_cores(as.integer(parallel_cores))
-  }
   set_cores <- function() {
     if (is.numeric(parallel_cores)) {
       region$set_cores(as.integer(parallel_cores))

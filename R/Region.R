@@ -730,104 +730,82 @@ Region.SpatRaster <- function(x, ...) {
       }
 
       # Get distances and directions to reachable cells for each cell
-      doParallel::registerDoParallel(cores = min(parallel_cores,
-                                                 length(cells)))
-      in_range_list <- foreach(
-        cell_char = cells_char,
-        .errorhandling = c("stop"),
-        .packages = c(),
-        .export = c(),
-        .noexport = c("paths", "aggr")) %dopar% {
+      for (cell_char in cells_char) {
 
-          # Find cells within range (including adjacent cells)
+        # Find cells within range (including adjacent cells)
+        if (use_perm) {
+          if (is.numeric(max_distance)) {
+            cell_ids <-
+              which(selected$perm_dist[[cell_char]]$cell <= max_distance |
+                      (selected$distances[[cell_char]]$cell <=
+                         1.6*region$get_res()))
+            cell_ids <- cell_ids[
+              which(is.finite(selected$perm_dist[[cell_char]]$cell[cell_ids]))]
+          } else {
+            cell_ids <- which(is.finite(selected$perm_dist[[cell_char]]$cell))
+          }
+        } else {
+          if (is.numeric(max_distance)) {
+            cell_ids <-
+              which(selected$distances[[cell_char]]$cell <= max_distance)
+          } else {
+            cell_ids <- which(is.finite(selected$distances[[cell_char]]$cell))
+          }
+        }
+
+        # Update selected indices and distances to in-range cells
+        selected$idx[[cell_char]]$cell <-
+          selected$idx[[cell_char]]$cell[cell_ids]
+        selected$distances[[cell_char]]$cell <-
+          selected$distances[[cell_char]]$cell[cell_ids]
+        if (use_perm) {
+          selected$perm_dist[[cell_char]]$cell <-
+            selected$perm_dist[[cell_char]]$cell[cell_ids]
+        }
+
+        # Aggregate cells
+        if (has_aggr) {
+
+          # Find aggregate cells within range
           if (use_perm) {
             if (is.numeric(max_distance)) {
-              cell_ids <-
-                which(selected$perm_dist[[cell_char]]$cell <= max_distance |
-                        (selected$distances[[cell_char]]$cell <=
-                           1.6*region$get_res()))
-              cell_ids <- cell_ids[
-                which(is.finite(selected$perm_dist[[cell_char]]$cell[cell_ids]))]
+              aggr_ids <-
+                which(selected$perm_dist[[cell_char]]$aggr <= max_distance)
             } else {
-              cell_ids <- which(is.finite(selected$perm_dist[[cell_char]]$cell))
+              aggr_ids <-
+                which(is.finite(selected$perm_dist[[cell_char]]$aggr))
             }
           } else {
             if (is.numeric(max_distance)) {
-              cell_ids <-
-                which(selected$distances[[cell_char]]$cell <= max_distance)
+              aggr_ids <-
+                which(selected$distances[[cell_char]]$aggr <= max_distance)
             } else {
-              cell_ids <- which(is.finite(selected$distances[[cell_char]]$cell))
+              aggr_ids <-
+                which(is.finite(selected$distances[[cell_char]]$aggr))
             }
           }
 
-          # Find aggregate cells within range
-          if (has_aggr) {
-            if (use_perm) {
-              if (is.numeric(max_distance)) {
-                aggr_ids <-
-                  which(selected$perm_dist[[cell_char]]$aggr <= max_distance)
-              } else {
-                aggr_ids <-
-                  which(is.finite(selected$perm_dist[[cell_char]]$aggr))
-              }
-            } else {
-              if (is.numeric(max_distance)) {
-                aggr_ids <-
-                  which(selected$distances[[cell_char]]$aggr <= max_distance)
-              } else {
-                aggr_ids <-
-                  which(is.finite(selected$distances[[cell_char]]$aggr))
-              }
-            }
-          }
-
-          # Return list of indices and distances for in-range cells
-          in_range <- list(
-            idx = list(cell = selected$idx[[cell_char]]$cell[cell_ids]),
-            distances = list(
-              cell = selected$distances[[cell_char]]$cell[cell_ids])
-          )
+          # Update selected indices and distances to in-range aggregate cells
+          selected$idx[[cell_char]]$aggr <-
+            selected$idx[[cell_char]]$aggr[aggr_ids]
+          selected$distances[[cell_char]]$aggr <-
+            selected$distances[[cell_char]]$aggr[aggr_ids]
           if (use_perm) {
-            in_range$perm_dist <- list(
-              cell = selected$perm_dist[[cell_char]]$cell[cell_ids])
+            selected$perm_dist[[cell_char]]$aggr <-
+              selected$perm_dist[[cell_char]]$aggr[aggr_ids]
           }
+        }
 
-          # Update list with indices and distances for in-range aggregate cells
-          if (has_aggr) {
-            in_range$idx$aggr <- selected$idx[[cell_char]]$aggr[aggr_ids]
-            in_range$distances$aggr <-
-              selected$distances[[cell_char]]$aggr[aggr_ids]
-            if (use_perm) {
-              in_range$perm_dist$aggr <-
-                selected$perm_dist[[cell_char]]$aggr[aggr_ids]
-            }
+        # Update selected with directions to in-range cells
+        if (directions) {
+          selected$directions[[cell_char]]$cell <-
+            selected$directions[[cell_char]]$cell[cell_ids]
+          if (is.list(aggr)) {
+            selected$directions[[cell_char]]$aggr <-
+              selected$directions[[cell_char]]$aggr[aggr_ids]
           }
-
-          # Update list with directions to in-range cells
-          if (directions) {
-            in_range$directions <- list(
-              cell = selected$directions[[cell_char]]$cell[cell_ids])
-            if (has_aggr) {
-              in_range$directions$aggr <-
-                selected$directions[[cell_char]]$aggr[aggr_ids]
-            }
-          }
-
-          return(in_range)
-
-        } # end loop
-      doParallel::stopImplicitCluster()
-      names(in_range_list) <- cells_char
-
-      # Update path selection for in-range only
-      selected$idx <- lapply(in_range_list, function(l) l$idx)
-      selected$distances <- lapply(in_range_list, function(l) l$distances)
-      if (use_perm) {
-        selected$perm_dist <- lapply(in_range_list, function(l) l$perm_dist)
-      }
-      if (directions) {
-        selected$directions <- lapply(in_range_list, function(l) l$directions)
-      }
+        }
+      } # end loop
     }
 
     # Reinstate default scientific notation
