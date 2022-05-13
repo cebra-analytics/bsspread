@@ -58,7 +58,8 @@
 #'       at the original resolution and long-distance dispersal at an aggregate
 #'       resolution.}
 #'     \item{\code{set_cores(cores)}}{Set the number of cores available for
-#'       parallel processing when calculating path distances and directions.}
+#'       parallel processing and thus enable parallel processing for
+#'       calculating path distances and directions.}
 #'     \item{\code{configure_paths(directions = FALSE, max_distance = NULL,
 #'       permeability = NULL)}}{Configure the inclusion of path directions from
 #'       occupied to reachable locations (cells or patches), an optional
@@ -197,7 +198,7 @@ Region.SpatRaster <- function(x, ...) {
   }
 
   # Set the number of cores available for parallel processing
-  parallel_cores <- 1
+  parallel_cores <- NULL
   self$set_cores <- function(cores) {
     parallel_cores <<- cores
   }
@@ -272,116 +273,141 @@ Region.SpatRaster <- function(x, ...) {
       max_distance <- paths$max_distance
       include_directions <- is.list(paths$directions)
 
-      doParallel::registerDoParallel(cores = min(parallel_cores,
-                                                 length(new_cells)))
-      new_paths <- foreach(
-        cell = new_cells,
-        .errorhandling = c("stop"),
-        .packages = c(),
-        .export = c(),
-        .noexport = c("paths")) %dopar% {
+      # Function for calculating paths for each cell
+      calculate_cell_paths <- function(cell) {
 
-          # Map path lists use cells as characters
-          cell_char <- as.character(cell)
+        # Map path lists use cells as characters
+        cell_char <- as.character(cell)
 
-          # Cell paths
-          cell_paths <- list()
+        # Calculate reachable indices
+        if (is.list(aggr)) { # two-tier approach
 
-          # Calculate reachable indices
-          if (is.list(aggr)) { # two-tier approach
+          # Select aggregate cells in/on inner circle
+          inner_vect <- terra::buffer(region_pts[cell,],
+                                      width = aggr$inner_radius,
+                                      quadsegs = 180)
+          aggr_idx <- terra::cells(aggr$rast, inner_vect, touches = TRUE)[,2]
 
-            # Select aggregate cells in/on inner circle
-            inner_vect <- terra::buffer(region_pts[cell,],
-                                        width = aggr$inner_radius,
+          # Local cell indices within inner area
+          paths$idx[[cell_char]] <<- list(
+            cell = aggr$get_cells(which(aggr$indices %in% aggr_idx)))
+          cell_i <- which(paths$idx[[cell_char]]$cell == cell)
+          paths$idx[[cell_char]]$cell <<- paths$idx[[cell_char]]$cell[-cell_i]
+
+          # Aggregate cells outside inner area
+          if (is.numeric(max_distance) &&
+              is.finite(max_distance)) {
+            outer_vect <- terra::buffer(region_pts[cell,],
+                                        width = max_distance,
                                         quadsegs = 180)
-            aggr_idx <- terra::cells(aggr$rast, inner_vect, touches = TRUE)[,2]
-
-            # Local cell indices within inner area
-            cell_paths$idx <- list(
-              cell = aggr$get_cells(which(aggr$indices %in% aggr_idx)))
-            cell_i <- which(cell_paths$idx$cell == cell)
-            cell_paths$idx$cell <- cell_paths$idx$cell[-cell_i]
-
-            # Aggregate cells outside inner area
-            if (is.numeric(max_distance) &&
-                is.finite(max_distance)) {
-              outer_vect <- terra::buffer(region_pts[cell,],
-                                          width = max_distance,
-                                          quadsegs = 180)
-              outer_idx <- terra::cells(aggr$rast, outer_vect,
-                                        touches = TRUE)[,2]
-              outer_idx <- outer_idx[which(!outer_idx %in% aggr_idx)]
-              cell_paths$idx$aggr <- which(aggr$indices %in% outer_idx)
-            } else {
-              cell_paths$idx$aggr <- which(!aggr$indices %in% aggr_idx)
-            }
-
-          } else { # cell approach
-
-            # Select cells within range when applicable
-            if (is.numeric(max_distance) &&
-                is.finite(max_distance)) {
-              range_vect <- terra::buffer(region_pts[cell,],
-                                          width = max_distance,
-                                          quadsegs = 180)
-              cell_paths$idx <- list(
-                cell = which(indices %in% terra::cells(x, range_vect,
-                                                       touches = TRUE)[,2] &
-                               indices != indices[cell]))
-            } else {
-              cell_paths$idx <- list(cell = indices[-cell])
-            }
+            outer_idx <- terra::cells(aggr$rast, outer_vect,
+                                      touches = TRUE)[,2]
+            outer_idx <- outer_idx[which(!outer_idx %in% aggr_idx)]
+            paths$idx[[cell_char]]$aggr <<- which(aggr$indices %in% outer_idx)
+          } else {
+            paths$idx[[cell_char]]$aggr <<- which(!aggr$indices %in% aggr_idx)
           }
 
-          # Calculate (local) cell distances
-          cell_paths$distances <- list(
-            cell = as.integer(round(as.numeric(
-              terra::distance(region_pts[cell],
-                              region_pts[cell_paths$idx$cell])))))
+        } else { # cell approach
 
-          # Calculate aggregate cell distances when applicable
-          if (is.list(aggr)) {
-            cell_paths$distances$aggr <-
-              as.integer(round(as.numeric(
-                terra::distance(region_pts[cell],
-                                aggr$pts[cell_paths$idx$aggr]))))
+          # Select cells within range when applicable
+          if (is.numeric(max_distance) &&
+              is.finite(max_distance)) {
+            range_vect <- terra::buffer(region_pts[cell,],
+                                        width = max_distance,
+                                        quadsegs = 180)
+            paths$idx[[cell_char]] <<- list(
+              cell = which(indices %in% terra::cells(x, range_vect,
+                                                     touches = TRUE)[,2] &
+                             indices != indices[cell]))
+          } else {
+            paths$idx[[cell_char]] <<- list(cell = indices[-cell])
           }
-
-          # Calculate reachable cell directions
-          if (include_directions) {
-
-            # Calculate (local) cell directions
-            xy_diff <- (terra::crds(region_pts[cell])[
-              rep(1, length(cell_paths$idx$cell)),] -
-                terra::crds(region_pts[cell_paths$idx$cell]))
-            cell_paths$directions <- list(cell = as.integer(round(
-              atan2(xy_diff[,"y"], xy_diff[,"x"])*180/pi + 180)))
-
-            # Calculate aggregate cell directions when applicable
-            if (is.list(aggr)) {
-              xy_diff <- (terra::crds(region_pts[cell])[
-                rep(1, length(cell_paths$idx$aggr)),] -
-                  terra::crds(aggr$pts[cell_paths$idx$aggr]))
-              cell_paths$directions$aggr <- as.integer(round(
-                atan2(xy_diff[,"y"], xy_diff[,"x"])*180/pi + 180))
-            }
-          }
-          cell_paths
         }
-      doParallel::stopImplicitCluster()
 
-      # Merge new paths (which were gathered in parallel)
-      names(new_paths) <- as.character(new_cells)
-      new_paths <- list(
-        idx = lapply(new_paths, function(p) p$idx),
-        distances = lapply(new_paths, function(p) p$distances),
-        directions = if (is.list(paths$directions)) {
-          lapply(new_paths, function(p) p$directions)
-        })
-      paths$idx <<- c(paths$idx, new_paths$idx)
-      paths$distances <<- c(paths$distances, new_paths$distances)
-      if (is.list(paths$directions)) {
-        paths$directions <<- c(paths$directions, new_paths$directions)
+        # Calculate (local) cell distances
+        paths$distances[[cell_char]] <<- list(
+          cell = as.integer(round(as.numeric(
+            terra::distance(region_pts[cell],
+                            region_pts[paths$idx[[cell_char]]$cell])))))
+
+        # Calculate aggregate cell distances when applicable
+        if (is.list(aggr)) {
+          paths$distances[[cell_char]]$aggr <<-
+            as.integer(round(as.numeric(
+              terra::distance(region_pts[cell],
+                              aggr$pts[paths$idx[[cell_char]]$aggr]))))
+        }
+
+        # Calculate reachable cell directions
+        if (include_directions) {
+
+          # Calculate (local) cell directions
+          xy_diff <- (terra::crds(region_pts[cell])[
+            rep(1, length(paths$idx[[cell_char]]$cell)),] -
+              terra::crds(region_pts[paths$idx[[cell_char]]$cell]))
+          paths$directions[[cell_char]] <<- list(cell = as.integer(round(
+            atan2(xy_diff[,"y"], xy_diff[,"x"])*180/pi + 180)))
+
+          # Calculate aggregate cell directions when applicable
+          if (is.list(aggr)) {
+            xy_diff <- (terra::crds(region_pts[cell])[
+              rep(1, length(paths$idx[[cell_char]]$aggr)),] -
+                terra::crds(aggr$pts[paths$idx[[cell_char]]$aggr]))
+            paths$directions[[cell_char]]$aggr <<- as.integer(round(
+              atan2(xy_diff[,"y"], xy_diff[,"x"])*180/pi + 180))
+          }
+        }
+      }
+
+      # Calculate paths for each cell in parallel or serial
+      if (is.numeric(parallel_cores) &&
+          min(parallel_cores, length(new_cells)) > 1) {
+
+        # Get the body of the calculation function for defining locally
+        calculate_cell_paths_body <- body(calculate_cell_paths)
+
+        # Calculate and gather new paths
+        doParallel::registerDoParallel(cores = min(parallel_cores,
+                                                   length(new_cells)))
+        new_paths <- foreach(
+          cell = new_cells,
+          .errorhandling = c("stop"),
+          .noexport = c("paths", "calculate_cell_paths")) %dopar% {
+
+            # Initialize paths for cell
+            paths <- list(idx = list(), distances = list(),
+                          directions = list())
+
+            # Define and run local function to calculate cell paths
+            calculate_cell_paths <- function(cells) {}
+            body(calculate_cell_paths) <- calculate_cell_paths_body
+            calculate_cell_paths(cell)
+
+            return(paths)
+          }
+        doParallel::stopImplicitCluster()
+
+        # Merge new paths (which were gathered in parallel)
+        names(new_paths) <- as.character(new_cells)
+        new_paths <- list(
+          idx = lapply(new_paths, function(p) p$idx[[1]]),
+          distances = lapply(new_paths, function(p) p$distances[[1]]),
+          directions = if (is.list(paths$directions)) {
+            lapply(new_paths, function(p) p$directions[[1]])
+          })
+        paths$idx <<- c(paths$idx, new_paths$idx)
+        paths$distances <<- c(paths$distances, new_paths$distances)
+        if (is.list(paths$directions)) {
+          paths$directions <<- c(paths$directions, new_paths$directions)
+        }
+
+      } else { # serial
+
+        # Calculate and set new paths
+        for (cell in new_cells) {
+          calculate_cell_paths(cell)
+        }
       }
     }
 
@@ -576,96 +602,105 @@ Region.SpatRaster <- function(x, ...) {
         }
       }
 
-      # Calculate permeability-modified distances for reachable cells
+      # Function for calculating permeability distances for each cell
+      calculate_cell_perm_dist <- function(cell) {
 
-      # Add permeability components to new paths
-      new_paths <- c(new_paths, paths[c("graphs", "weights", "perms")])
+        # Map path lists use cells as characters
+        cell_char <- as.character(cell)
 
-      doParallel::registerDoParallel(cores = min(parallel_cores,
-                                                 length(new_cells)))
-      new_perm_dist <- foreach(
-        cell = new_cells,
-        .errorhandling = c("stop"),
-        .packages = c(),
-        .export = c(),
-        .noexport = c("paths")) %dopar% {
+        # List for modified distances
+        cell_perm_dist <- list()
 
-          # Map path lists use cells as characters
-          cell_char <- as.character(cell)
+        # Get base (no perm) weight distance to reachable inner cells
+        base_dist <- as.vector(igraph::distances(
+          paths$graphs$cell,
+          v = as.character(indices[cell]),
+          to = as.character(indices[paths$idx[[cell_char]]$cell]),
+          weights = paths$weights$cell$base))
 
-          # List for modified distances
-          cell_perm_dist <- list()
+        # Calculate modified distances for each permeability layer
+        cell_perm_dist$cell <- list()
+        for (perm_id in 1:length(paths$perms)) {
 
-          # Get base (no perm) weight distance to reachable inner cells
-          base_dist <- as.vector(igraph::distances(
-            new_paths$graphs$cell,
+          # Get permeability weight distance to reachable inner cells
+          perm_dist <- as.vector(igraph::distances(
+            paths$graphs$cell,
             v = as.character(indices[cell]),
-            to = as.character(indices[new_paths$idx[[cell_char]]$cell]),
-            weights = new_paths$weights$cell$base))
+            to = as.character(indices[paths$idx[[cell_char]]$cell]),
+            weights = paths$weights$cell$perms[[perm_id]]))
+
+          # Calculate the distance modifiers
+          perm_dist <- perm_dist/base_dist
+          perm_dist[which(!is.finite(perm_dist))] <- NA
+
+          # Scale the distance to (otherwise) reachable inner cells
+          cell_perm_dist$cell[[perm_id]] <- as.integer(
+            round(paths$distances[[cell_char]]$cell*perm_dist))
+        }
+
+        # Aggregate distance multipliers when applicable
+        if (is.list(aggr)) {
+
+          # Find the aggregate cell index that contains the region cell
+          aggr_i <- terra::cells(aggr$rast, region_pts[cell],
+                                 touches = TRUE)[, "cell"]
+
+          # Get base weight distance to reachable aggregate cells
+          base_dist <- as.vector(igraph::distances(
+            paths$graphs$aggr,
+            v = as.character(aggr_i),
+            to = as.character(aggr$indices[paths$idx[[cell_char]]$aggr]),
+            weights = paths$weights$aggr$base))
 
           # Calculate modified distances for each permeability layer
-          cell_perm_dist$cell <- list()
-          for (perm_id in 1:length(new_paths$perms)) {
+          cell_perm_dist$aggr <- list()
+          for (perm_id in 1:length(paths$perms)) {
 
-            # Get permeability weight distance to reachable inner cells
+            # Get permeability weight distance to reachable aggregate cells
             perm_dist <- as.vector(igraph::distances(
-              new_paths$graphs$cell,
-              v = as.character(indices[cell]),
-              to = as.character(indices[new_paths$idx[[cell_char]]$cell]),
-              weights = new_paths$weights$cell$perms[[perm_id]]))
+              paths$graphs$aggr,
+              v = as.character(aggr_i),
+              to = as.character(aggr$indices[paths$idx[[cell_char]]$aggr]),
+              weights = paths$weights$aggr$perms[[perm_id]]))
 
             # Calculate the distance modifiers
             perm_dist <- perm_dist/base_dist
             perm_dist[which(!is.finite(perm_dist))] <- NA
 
             # Scale the distance to (otherwise) reachable inner cells
-            cell_perm_dist$cell[[perm_id]] <- as.integer(
-              round(new_paths$distances[[cell_char]]$cell*perm_dist))
+            cell_perm_dist$aggr[[perm_id]] <- as.integer(
+              round(paths$distances[[cell_char]]$aggr*perm_dist))
           }
-
-          # Aggregate distance multipliers when applicable
-          if (is.list(aggr)) {
-
-            # Find the aggregate cell index that contains the region cell
-            aggr_i <- terra::cells(aggr$rast, region_pts[cell],
-                                   touches = TRUE)[, "cell"]
-
-            # Get base weight distance to reachable aggregate cells
-            base_dist <- as.vector(igraph::distances(
-              new_paths$graphs$aggr,
-              v = as.character(aggr_i),
-              to = as.character(aggr$indices[
-                new_paths$idx[[cell_char]]$aggr]),
-              weights = new_paths$weights$aggr$base))
-
-            # Calculate modified distances for each permeability layer
-            cell_perm_dist$aggr <- list()
-            for (perm_id in 1:length(new_paths$perms)) {
-
-              # Get permeability weight distance to reachable aggregate cells
-              perm_dist <- as.vector(igraph::distances(
-                new_paths$graphs$aggr,
-                v = as.character(aggr_i),
-                to = as.character(aggr$indices[
-                  new_paths$idx[[cell_char]]$aggr]),
-                weights = new_paths$weights$aggr$perms[[perm_id]]))
-
-              # Calculate the distance modifiers
-              perm_dist <- perm_dist/base_dist
-              perm_dist[which(!is.finite(perm_dist))] <- NA
-
-              # Scale the distance to (otherwise) reachable inner cells
-              cell_perm_dist$aggr[[perm_id]] <- as.integer(
-                round(new_paths$distances[[cell_char]]$aggr*perm_dist))
-            }
-          }
-
-          cell_perm_dist
         }
-      doParallel::stopImplicitCluster()
 
-      # Merge new permeability distances (which were gathered in parallel)
-      names(new_perm_dist) <- as.character(new_cells)
+        return(cell_perm_dist)
+      }
+
+      # Calculate permeability-modified distances for new reachable cells
+      if (is.numeric(parallel_cores) &&
+          min(parallel_cores, length(new_cells)) > 1) {
+
+        # Calculate and collect in parallel
+        doParallel::registerDoParallel(cores = min(parallel_cores,
+                                                   length(new_cells)))
+        new_perm_dist <- foreach(
+          cell = new_cells,
+          .errorhandling = c("stop")) %dopar% {
+            calculate_cell_perm_dist(cell)
+          }
+        doParallel::stopImplicitCluster()
+        names(new_perm_dist) <- as.character(new_cells)
+
+      } else {
+
+        # Calculate and collect in serial
+        new_perm_dist <- list()
+        for (cell in new_cells) {
+          new_perm_dist[[as.character(cell)]] <- calculate_cell_perm_dist(cell)
+        }
+      }
+
+      # Merge new permeability distances
       paths$perm_dist <<- c(paths$perm_dist, new_perm_dist)
 
     }

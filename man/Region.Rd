@@ -64,7 +64,8 @@ an inner radius (in m) to define the boundary between local dispersal
 at the original resolution and long-distance dispersal at an aggregate
 resolution.}
 \item{\code{set_cores(cores)}}{Set the number of cores available for
-parallel processing when calculating path distances and directions.}
+parallel processing and thus enable parallel processing for
+calculating path distances and directions.}
 \item{\code{configure_paths(directions = FALSE, max_distance = NULL,
       permeability = NULL)}}{Configure the inclusion of path directions from
 occupied to reachable locations (cells or patches), an optional

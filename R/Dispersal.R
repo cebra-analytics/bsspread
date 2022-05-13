@@ -84,7 +84,8 @@
 #'   dispersal:
 #'   \describe{
 #'     \item{\code{set_cores(cores)}}{Set the number of cores available for
-#'       parallel processing.}
+#'       parallel processing and thus enable parallel processing for
+#'       calculating path distances and directions.}
 #'     \item{\code{pack(n)}}{Packs a population vector or matrix \code{n} into
 #'       a list containing a vector of occupied location (cell or patch)
 #'       \code{indices}, the \code{original} population values at the occupied
@@ -220,7 +221,7 @@ Dispersal.Region <- function(region, population_model,
   self <- structure(list(), class = c(class, "Dispersal"))
 
   # Set the number of cores available for parallel processing
-  parallel_cores <- 1
+  parallel_cores <- NULL
   self$set_cores <- function(cores) {
     parallel_cores <<- cores
   }
@@ -266,331 +267,346 @@ Dispersal.Region <- function(region, population_model,
       dispersal_ready <- 1:length(n$indices)
     }
 
-    # Perform dispersal for each (dispersal-ready) occupied location
-    doParallel::registerDoParallel(cores = min(parallel_cores,
-                                               length(dispersal_ready)))
-    dispersal_list <- foreach(
-      i = dispersal_ready,
-      .errorhandling = c("stop"),
-      .packages = c(),
-      .export = c(),
-      .noexport = c()) %dopar% {
+    # Function to calculate dispersals from a single occupied location (index)
+    calculate_dispersals <- function(i) {
 
-        ## Map path lists use location indices as characters
-        loc_i <- n$indices[i]
-        loc_char <- as.character(loc_i)
+      ## Map path lists use location indices as characters
+      loc_i <- n$indices[i]
+      loc_char <- as.character(loc_i)
 
-        ## Get paths for location
-        paths <- region$get_paths(loc_i,
-                                  directions = is.function(direction_function),
-                                  max_distance = max_distance,
-                                  perm_id = perm_id)
-        if (region$get_type() == "patch") { # for code reuse
-          paths <- lapply(paths, function(p)
-            lapply(p, function(l) list(cell = l)))
-        }
+      ## Get paths for location
+      paths <- region$get_paths(loc_i,
+                                directions = is.function(direction_function),
+                                max_distance = max_distance,
+                                perm_id = perm_id)
+      if (region$get_type() == "patch") { # for code reuse
+        paths <- lapply(paths, function(p)
+          lapply(p, function(l) list(cell = l)))
+      }
 
-        ## Relative dispersal probabilities for source and destination
-        source_p <- 1
-        destination_p <- list(cell = rep(1,
-                                         length(paths$idx[[loc_char]]$cell)))
-        if (region$two_tier()) { # multiple cells
-          destination_p$aggr <- region$get_aggr()$rast[
-            region$get_aggr()$indices[paths$idx[[loc_char]]$aggr]][,1]
-        }
+      ## Relative dispersal probabilities for source and destination
+      source_p <- 1
+      destination_p <- list(cell = rep(1,
+                                       length(paths$idx[[loc_char]]$cell)))
+      if (region$two_tier()) { # multiple cells
+        destination_p$aggr <- region$get_aggr()$rast[
+          region$get_aggr()$indices[paths$idx[[loc_char]]$aggr]][,1]
+      }
 
-        ## Adjust destination (relative) probabilities based on distance
-        if (is.function(distance_function)) {
+      ## Adjust destination (relative) probabilities based on distance
+      if (is.function(distance_function)) {
 
-          # Additional adjustment given (approx.) cells at each distance
-          dist_p_adj <- list(cell = 1, aggr = 1)
-          if (distance_adjust) {
-            dist_p_adj$cell <- (region$get_res()/
-                                  (2*pi*paths$distances[[loc_char]]$cell))
-            if (region$two_tier()) {
-              dist_p_adj$aggr <- (region$get_res()/
-                                    (2*pi*paths$distances[[loc_char]]$aggr))
-            }
+        # Additional adjustment given (approx.) cells at each distance
+        dist_p_adj <- list(cell = 1, aggr = 1)
+        if (distance_adjust) {
+          dist_p_adj$cell <- (region$get_res()/
+                                (2*pi*paths$distances[[loc_char]]$cell))
+          if (region$two_tier()) {
+            dist_p_adj$aggr <- (region$get_res()/
+                                  (2*pi*paths$distances[[loc_char]]$aggr))
           }
-
-          # Adjust via distance function using appropriate distances
-          if (is.numeric(perm_id) && "perm_dist" %in% names(paths)) {
-            destination_p$cell <-
-              (distance_function(paths$perm_dist[[loc_char]]$cell)*
-                 dist_p_adj$cell*destination_p$cell)
-            if (region$two_tier()) {
-              destination_p$aggr <-
-                (distance_function(paths$perm_dist[[loc_char]]$aggr)*
-                   dist_p_adj$aggr*destination_p$aggr)
-            }
-          } else {
-            destination_p$cell <-
-              (distance_function(paths$distances[[loc_char]]$cell)*
-                 dist_p_adj$cell*destination_p$cell)
-            if (region$two_tier()) {
-              destination_p$aggr <-
-                (distance_function(paths$distances[[loc_char]]$aggr)*
-                   dist_p_adj$aggr*destination_p$aggr)
-            }
-          }
-          rm(dist_p_adj)
         }
 
-        ## Adjust destination (relative) probabilities based on direction
-        if (is.function(direction_function)) {
+        # Adjust via distance function using appropriate distances
+        if (is.numeric(perm_id) && "perm_dist" %in% names(paths)) {
           destination_p$cell <-
-            (destination_p$cell*
-               direction_function(paths$directions[[loc_char]]$cell))
+            (distance_function(paths$perm_dist[[loc_char]]$cell)*
+               dist_p_adj$cell*destination_p$cell)
           if (region$two_tier()) {
             destination_p$aggr <-
-              (destination_p$aggr*
-                 direction_function(paths$directions[[loc_char]]$aggr))
+              (distance_function(paths$perm_dist[[loc_char]]$aggr)*
+                 dist_p_adj$aggr*destination_p$aggr)
+          }
+        } else {
+          destination_p$cell <-
+            (distance_function(paths$distances[[loc_char]]$cell)*
+               dist_p_adj$cell*destination_p$cell)
+          if (region$two_tier()) {
+            destination_p$aggr <-
+              (distance_function(paths$distances[[loc_char]]$aggr)*
+                 dist_p_adj$aggr*destination_p$aggr)
+          }
+        }
+        rm(dist_p_adj)
+      }
+
+      ## Adjust destination (relative) probabilities based on direction
+      if (is.function(direction_function)) {
+        destination_p$cell <-
+          (destination_p$cell*
+             direction_function(paths$directions[[loc_char]]$cell))
+        if (region$two_tier()) {
+          destination_p$aggr <-
+            (destination_p$aggr*
+               direction_function(paths$directions[[loc_char]]$aggr))
+        }
+      }
+
+      ## Adjust (relative) probabilities via attractors
+      if (length(attractors)) {
+
+        # Source density attractor
+        if ("source_density" %in% names(attractors)) {
+          cell_k <- population_model$get_capacity(loc_i)
+          if (is.numeric(cell_k)) {
+            if (cell_k > 0) {
+              source_p <- min((attractors$source_density*source_p*
+                                 sum(n$original[i, capacity_stages])/cell_k),
+                              1)
+            } else {
+              source_p <- 0
+            }
           }
         }
 
-        ## Adjust (relative) probabilities via attractors
-        if (length(attractors)) {
+        # Other attractors
+        for (attractor in attractors) {
+          if (inherits(attractor, "Attractor")) {
 
-          # Source density attractor
-          if ("source_density" %in% names(attractors)) {
-            cell_k <- population_model$get_capacity(loc_i)
-            if (is.numeric(cell_k)) {
-              if (cell_k > 0) {
-                source_p <- min((attractors$source_density*source_p*
-                                   sum(n$original[i, capacity_stages])/cell_k),
-                                1)
-              } else {
-                source_p <- 0
-              }
+            # Source attractors
+            if (attractor$get_type() %in% c("source", "both")) {
+              source_p <- (source_p*attractor$get_values(loc_i))
             }
-          }
 
-          # Other attractors
-          for (attractor in attractors) {
-            if (inherits(attractor, "Attractor")) {
-
-              # Source attractors
-              if (attractor$get_type() %in% c("source", "both")) {
-                source_p <- (source_p*attractor$get_values(loc_i))
-              }
-
-              # Destination attractors
-              if (attractor$get_type() %in% c("destination", "both")) {
-                destination_p$cell <-
-                  (destination_p$cell*
-                     attractor$get_values(paths$idx[[loc_char]]$cell))
-                if (region$two_tier()) {
-                  destination_p$aggr <-
-                    (destination_p$aggr*
-                       attractor$get_aggr_values(paths$idx[[loc_char]]$aggr))
-                }
+            # Destination attractors
+            if (attractor$get_type() %in% c("destination", "both")) {
+              destination_p$cell <-
+                (destination_p$cell*
+                   attractor$get_values(paths$idx[[loc_char]]$cell))
+              if (region$two_tier()) {
+                destination_p$aggr <-
+                  (destination_p$aggr*
+                     attractor$get_aggr_values(paths$idx[[loc_char]]$aggr))
               }
             }
           }
         }
+      }
 
-        ## Calculate dispersers from (original) cell population
-        dispersers <- FALSE
-        if (population_type == "presence_only") {
-          dispersers <- TRUE
-        } else if (is.numeric(proportion) && proportion  > 0) {
+      ## Calculate dispersers from (original) cell population
+      dispersers <- FALSE
+      if (population_type == "presence_only") {
+        dispersers <- TRUE
+      } else if (is.numeric(proportion) && proportion  > 0) {
 
-          # Generate dispersers
-          dispersers <- stats::rbinom(length(dispersal_stages),
-                                      size = n$original[i, dispersal_stages],
-                                      prob = proportion*source_p)
+        # Generate dispersers
+        dispersers <- stats::rbinom(length(dispersal_stages),
+                                    size = n$original[i, dispersal_stages],
+                                    prob = proportion*source_p)
 
-          # Ensure there are sufficient remaining (after other dispersals)
-          dispersers <- pmin(dispersers, n$remaining[i, dispersal_stages])
-        }
+        # Ensure there are sufficient remaining (after other dispersals)
+        dispersers <- pmin(dispersers, n$remaining[i, dispersal_stages])
+      }
 
-        ## Distribute dispersers across dispersal events
-        dispersals <- FALSE
-        if (sum(dispersers) > 0) {
+      ## Distribute dispersers across dispersal events
+      dispersals <- FALSE
+      if (sum(dispersers) > 0) {
 
-          if (is.numeric(events)) {
+        if (is.numeric(events)) {
 
-            # Generate the number of events via Poisson distribution
-            dispersals <- stats::rpois(1, events*source_p)
+          # Generate the number of events via Poisson distribution
+          dispersals <- stats::rpois(1, events*source_p)
 
-            # Distribute dispersers
-            if (dispersals > 0) {
-
-              if (population_type == "presence_only") {
-
-                # Distribute logical presence
-                dispersers <- as.matrix(rep(TRUE, dispersals))
-
-              } else {
-
-                # Distribute dispersers via a multinomial generation
-                dispersers <- t(array(dispersers,
-                                      c(length(dispersers), dispersals)))
-                for (stage in dispersal_stages) {
-                  dispersers[, stage] <-
-                    stats::rmultinom(1, size = dispersers[1, stage],
-                                     prob = rep(1, dispersals))
-                }
-
-                # Remove any empty events
-                dispersers <- dispersers[which(rowSums(dispersers) > 0),,
-                                         drop = FALSE]
-                dispersals <- nrow(dispersers)
-              }
-            }
-
-          } else {
+          # Distribute dispersers
+          if (dispersals > 0) {
 
             if (population_type == "presence_only") {
 
-              # Probabilistic dispersal to each reachable destination
-              if (is.numeric(proportion) && proportion  > 0) {
-                dispersals <- TRUE
+              # Distribute logical presence
+              dispersers <- as.matrix(rep(TRUE, dispersals))
+
+            } else {
+
+              # Distribute dispersers via a multinomial generation
+              dispersers <- t(array(dispersers,
+                                    c(length(dispersers), dispersals)))
+              for (stage in dispersal_stages) {
+                dispersers[, stage] <-
+                  stats::rmultinom(1, size = dispersers[1, stage],
+                                   prob = rep(1, dispersals))
               }
 
-            } else if (population_type == "unstructured") {
-
-              # Dispersal event per individual
-              dispersals <- dispersers
-              dispersers <- as.matrix(rep(1, dispersals))
-
-            } else if (population_type == "stage_structured") {
-
-              # Dispersal event per individual
-              dispersals <- sum(dispersers)
-              dispersers <- +(
-                array(unlist(sapply(1:length(dispersers),
-                                    function(j) rep(j, dispersers[j]))),
-                      c(dispersals, length(dispersers))) ==
-                  matrix(rep(1:length(dispersers), each = dispersals),
-                         nrow = dispersals))
+              # Remove any empty events
+              dispersers <- dispersers[which(rowSums(dispersers) > 0),,
+                                       drop = FALSE]
+              dispersals <- nrow(dispersers)
             }
           }
-        }
-
-        ## Sample dispersal destinations
-        if (dispersals) {
-
-          if (population_type == "presence_only" && is.null(events)) {
-
-            # Probabilistic dispersal to each reachable destination
-            destinations <- which(as.logical(stats::rbinom(
-              length(destination_p$cell), size = 1,
-              prob = destination_p$cell*proportion*source_p)))
-
-            if (region$two_tier()) {
-
-              # Number or (non-NA) region cells in each aggregate cell
-              aggr_cells <- region$get_aggr()$rast[
-                region$get_aggr()$indices[paths$idx[[loc_char]]$aggr]][,1]
-
-              # Sample region cell counts for aggregate cells
-              aggr_cells <- stats::rbinom(
-                length(destination_p$aggr), size = aggr_cells,
-                prob = destination_p$aggr*proportion*source_p/aggr_cells)
-
-              # Replicate aggregate destination cells using cell counts
-              aggr_dest <- which(as.logical(aggr_cells))
-              aggr_dest <- unlist(sapply(aggr_dest,
-                                         function(d) rep(d, aggr_cells[d])))
-
-              # Append aggregate destinations
-              destinations <- c(destinations,
-                                aggr_dest + length(destination_p$cell))
-            }
-
-          } else {
-
-            # Sample specified number of dispersal event destinations
-            destinations <- sample(1:length(unlist(destination_p)),
-                                   size = dispersals, replace = TRUE,
-                                   prob = unlist(destination_p))
-          }
-        }
-
-        ## Resolve dispersal destinations as region cell indices
-        if (dispersals) {
-          if (region$two_tier()) {
-
-            # Identify cell and aggregate cell destinations
-            cell_dest <- which(destinations <= length(destination_p$cell))
-            aggr_dest <- which(destinations > length(destination_p$cell))
-
-            # Map cell destinations
-            destinations[cell_dest] <-
-              paths$idx[[loc_char]]$cell[destinations[cell_dest]]
-
-            # Map aggregate destinations
-            destinations[aggr_dest] <-
-              paths$idx[[loc_char]]$aggr[destinations[aggr_dest] -
-                                           length(destination_p$cell)]
-
-            # Sample region cell(s) within each aggregate destination cell
-            for (ad_i in aggr_dest) {
-
-              # Get region cell raster indices
-              aggr_cells <- region$get_aggr()$get_cells(destinations[ad_i])
-
-              # Perform a weighted sample via attractors when present
-              aggr_p <- rep(1, length(aggr_cells))
-              for (attractor in attractors) {
-                if (inherits(attractor, "Attractor")) {
-                  if (attractor$get_type() %in% c("destination", "both")) {
-                    aggr_p <- aggr_p*attractor$get_values(aggr_cells)
-                  }
-                }
-              }
-              aggr_i <- aggr_cells[sample(1:length(aggr_cells), size = 1,
-                                          prob = aggr_p)]
-
-              # Substitute region cell for aggregate destination
-              destinations[ad_i] <- aggr_i
-            }
-
-          } else {
-            destinations <- paths$idx[[loc_char]]$cell[destinations]
-          }
-        }
-
-        ## Perform dispersal to cell destinations
-        if (dispersals) {
-
-          # Calculate remaining population
-          if (population_type %in% c("unstructured", "stage_structured")) {
-            remaining <- n$remaining[i, dispersal_stages] - colSums(dispersers)
-          } else {
-            remaining <- n$remaining[i, dispersal_stages]
-          }
-
-          # Apply establishment survival to dispersers (some deaths)
-          establish_p <- population_model$get_establish_pr(destinations)
-          if (population_type == "presence_only" && is.null(events)) {
-            destinations <- destinations[which(as.logical(
-              stats::rbinom(length(destinations), size = 1,
-                            prob = establish_p)))]
-          } else {
-            for (stage in dispersal_stages) {
-              dispersers[, stage] <- stats::rbinom(dispersals,
-                                                   size = dispersers[, stage],
-                                                   prob = establish_p)
-            }
-            destinations <- destinations[which(rowSums(dispersers) > 0)]
-            dispersers <- dispersers[which(rowSums(dispersers) > 0),,
-                                     drop = FALSE]
-            dispersals <- nrow(dispersers)
-          }
-
-          # Return population relocation components
-          list(i = i, dispersals = dispersals, remaining = remaining,
-               destinations = destinations, dispersers = dispersers)
 
         } else {
 
-          # Return empty dispersals
-          list(i = i, dispersals = dispersals)
+          if (population_type == "presence_only") {
+
+            # Probabilistic dispersal to each reachable destination
+            if (is.numeric(proportion) && proportion  > 0) {
+              dispersals <- TRUE
+            }
+
+          } else if (population_type == "unstructured") {
+
+            # Dispersal event per individual
+            dispersals <- dispersers
+            dispersers <- as.matrix(rep(1, dispersals))
+
+          } else if (population_type == "stage_structured") {
+
+            # Dispersal event per individual
+            dispersals <- sum(dispersers)
+            dispersers <- +(
+              array(unlist(sapply(1:length(dispersers),
+                                  function(j) rep(j, dispersers[j]))),
+                    c(dispersals, length(dispersers))) ==
+                matrix(rep(1:length(dispersers), each = dispersals),
+                       nrow = dispersals))
+          }
         }
       }
-    doParallel::stopImplicitCluster()
+
+      ## Sample dispersal destinations
+      if (dispersals) {
+
+        if (population_type == "presence_only" && is.null(events)) {
+
+          # Probabilistic dispersal to each reachable destination
+          destinations <- which(as.logical(stats::rbinom(
+            length(destination_p$cell), size = 1,
+            prob = destination_p$cell*proportion*source_p)))
+
+          if (region$two_tier()) {
+
+            # Number or (non-NA) region cells in each aggregate cell
+            aggr_cells <- region$get_aggr()$rast[
+              region$get_aggr()$indices[paths$idx[[loc_char]]$aggr]][,1]
+
+            # Sample region cell counts for aggregate cells
+            aggr_cells <- stats::rbinom(
+              length(destination_p$aggr), size = aggr_cells,
+              prob = destination_p$aggr*proportion*source_p/aggr_cells)
+
+            # Replicate aggregate destination cells using cell counts
+            aggr_dest <- which(as.logical(aggr_cells))
+            aggr_dest <- unlist(sapply(aggr_dest,
+                                       function(d) rep(d, aggr_cells[d])))
+
+            # Append aggregate destinations
+            destinations <- c(destinations,
+                              aggr_dest + length(destination_p$cell))
+          }
+
+        } else {
+
+          # Sample specified number of dispersal event destinations
+          destinations <- sample(1:length(unlist(destination_p)),
+                                 size = dispersals, replace = TRUE,
+                                 prob = unlist(destination_p))
+        }
+      }
+
+      ## Resolve dispersal destinations as region cell indices
+      if (dispersals) {
+        if (region$two_tier()) {
+
+          # Identify cell and aggregate cell destinations
+          cell_dest <- which(destinations <= length(destination_p$cell))
+          aggr_dest <- which(destinations > length(destination_p$cell))
+
+          # Map cell destinations
+          destinations[cell_dest] <-
+            paths$idx[[loc_char]]$cell[destinations[cell_dest]]
+
+          # Map aggregate destinations
+          destinations[aggr_dest] <-
+            paths$idx[[loc_char]]$aggr[destinations[aggr_dest] -
+                                         length(destination_p$cell)]
+
+          # Sample region cell(s) within each aggregate destination cell
+          for (ad_i in aggr_dest) {
+
+            # Get region cell raster indices
+            aggr_cells <- region$get_aggr()$get_cells(destinations[ad_i])
+
+            # Perform a weighted sample via attractors when present
+            aggr_p <- rep(1, length(aggr_cells))
+            for (attractor in attractors) {
+              if (inherits(attractor, "Attractor")) {
+                if (attractor$get_type() %in% c("destination", "both")) {
+                  aggr_p <- aggr_p*attractor$get_values(aggr_cells)
+                }
+              }
+            }
+            aggr_i <- aggr_cells[sample(1:length(aggr_cells), size = 1,
+                                        prob = aggr_p)]
+
+            # Substitute region cell for aggregate destination
+            destinations[ad_i] <- aggr_i
+          }
+
+        } else {
+          destinations <- paths$idx[[loc_char]]$cell[destinations]
+        }
+      }
+
+      ## Perform dispersal to cell destinations
+      if (dispersals) {
+
+        # Calculate remaining population
+        if (population_type %in% c("unstructured", "stage_structured")) {
+          remaining <- n$remaining[i, dispersal_stages] - colSums(dispersers)
+        } else {
+          remaining <- n$remaining[i, dispersal_stages]
+        }
+
+        # Apply establishment survival to dispersers (some deaths)
+        establish_p <- population_model$get_establish_pr(destinations)
+        if (population_type == "presence_only" && is.null(events)) {
+          destinations <- destinations[which(as.logical(
+            stats::rbinom(length(destinations), size = 1,
+                          prob = establish_p)))]
+        } else {
+          for (stage in dispersal_stages) {
+            dispersers[, stage] <- stats::rbinom(dispersals,
+                                                 size = dispersers[, stage],
+                                                 prob = establish_p)
+          }
+          destinations <- destinations[which(rowSums(dispersers) > 0)]
+          dispersers <- dispersers[which(rowSums(dispersers) > 0),,
+                                   drop = FALSE]
+          dispersals <- nrow(dispersers)
+        }
+
+        # Return population relocation components
+        list(i = i, dispersals = dispersals, remaining = remaining,
+             destinations = destinations, dispersers = dispersers)
+
+      } else {
+
+        # Return empty dispersals
+        list(i = i, dispersals = dispersals)
+      }
+    }
+
+    # Calculate dispersal for each (dispersal-ready) occupied location
+    if (is.numeric(parallel_cores) &&
+        min(parallel_cores, length(dispersal_ready)) > 1) {
+
+      # Calculate and collect in parallel
+      doParallel::registerDoParallel(cores = min(parallel_cores,
+                                                 length(dispersal_ready)))
+      dispersal_list <- foreach(
+        i = dispersal_ready,
+        .errorhandling = c("stop")) %dopar% {
+          calculate_dispersals(i)
+        }
+      doParallel::stopImplicitCluster()
+
+    } else {
+
+      # Calculate and collect in serial
+      dispersal_list <- list()
+      for (i in dispersal_ready) {
+        dispersal_list[[length(dispersal_list) + 1]] <- calculate_dispersals(i)
+      }
+    }
 
     # Perform dispersal to cell destinations
     for (d in dispersal_list) {
