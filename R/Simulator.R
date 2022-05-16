@@ -21,8 +21,8 @@
 #' @param result_stages Optionally combine (sum) specified stages (a vector of
 #'   stage indices) of stage-based population results. The default
 #'   (\code{NULL}) maintains results for each stage.
-#' @param parallel_cores Number of cores available for parallel processing of
-#'   dispersal calculations. The default is 1.
+#' @param parallel_cores Number of cores available for parallel processing.
+#'   The default NULL implies no parallel processing.
 #' @param initializer A \code{Initializer} or inherited class object for
 #'   generating the initial invasive species population distribution or
 #'   incursion locations, as well as optionally generating subsequent
@@ -58,7 +58,7 @@ Simulator <- function(region,
                       collation_steps = 1,
                       replicates = 1,
                       result_stages = NULL,
-                      parallel_cores = 1,
+                      parallel_cores = NULL,
                       initializer = NULL,
                       population_model = NULL,
                       dispersal_models = list(),
@@ -89,7 +89,7 @@ Simulator.Region <- function(region,
                              collation_steps = 1,
                              replicates = 1,
                              result_stages = NULL,
-                             parallel_cores = 1,
+                             parallel_cores = NULL,
                              initializer = NULL,
                              population_model = NULL,
                              dispersal_models = list(),
@@ -142,15 +142,15 @@ Simulator.Region <- function(region,
   }
 
   # Set parallel cores in region and dispersal objects
-  set_cores <- function() {
-    if (is.numeric(parallel_cores)) {
-      region$set_cores(as.integer(parallel_cores))
-      for (i in 1:length(dispersal_models)) {
-        dispersal_models[[i]]$set_cores(as.integer(parallel_cores))
-      }
+  current_cores <- parallel_cores
+  set_cores <- function(cores = NULL) {
+    region$set_cores(cores)
+    for (i in 1:length(dispersal_models)) {
+      dispersal_models[[i]]$set_cores(cores)
     }
+    current_cores <<- cores
   }
-  set_cores()
+  set_cores(cores = parallel_cores)
 
   # Create a class structure
   self <- structure(list(), class = "Simulator")
@@ -171,7 +171,7 @@ Simulator.Region <- function(region,
   self$set_dispersal_models <- function(models) {
     dispersal_models <<- models
     validate_objects()
-    set_cores()
+    set_cores(cores = parallel_cores)
   }
 
   # Run simulator
@@ -205,6 +205,10 @@ Simulator.Region <- function(region,
       # Initialize population array
       n <- initializer$initialize()
 
+      # Set/reset to serial
+      set_cores(cores = NULL)
+      min_parallel_disp_time <- NULL
+
       # Initial results (t = 0)
       results$collate(r, 0, n)
 
@@ -216,12 +220,52 @@ Simulator.Region <- function(region,
 
         # Dispersal for each spread vector
         if (length(dispersal_models)) {
+
+          # Pack into list of original, remaining and relocated populations
           n <- dispersal_models[[1]]$pack(n)
-          for (i in 1:length(dispersal_models)) {
-            n <- dispersal_models[[i]]$disperse(n)
+
+          # Perform dispersal for each spread vector
+          dispersal_time <- system.time({
+            for (i in 1:length(dispersal_models)) {
+              n <- dispersal_models[[i]]$disperse(n)
+            }
+          })["elapsed"]
+          # print(dispersal_time)
+          # print(length(n$indices))
+          # print(current_cores)
+
+          # Switch between parallel and serial based on dispersal times
+          if (is.numeric(parallel_cores) &&
+              length(n$indices) >= parallel_cores) {
+
+            # Determine minimum parallel dispersal time
+            if (is.null(min_parallel_disp_time)) { # parallel for first time
+              if (is.null(current_cores)) {
+                set_cores(cores = parallel_cores) # switch to parallel
+              } else {
+                min_parallel_disp_time <- dispersal_time
+                set_cores(cores = NULL) # switch to serial
+              }
+            } else if (is.numeric(current_cores)) {
+              min_parallel_disp_time <- min(min_parallel_disp_time,
+                                            dispersal_time)
+            }
+
+            # Switch to serial when minimum parallel is slower
+            if (is.numeric(min_parallel_disp_time)) {
+              if (is.numeric(current_cores) &&
+                  dispersal_time <= min_parallel_disp_time) {
+                set_cores(cores = NULL) # switch to serial
+              } else if (is.null(current_cores) &&
+                         dispersal_time > min_parallel_disp_time) {
+                set_cores(cores = parallel_cores) # switch to parallel
+              }
+            }
           }
-          n <- dispersal_models[[1]]$unpack(n)
         }
+
+        # Unpack population array from separated list
+          n <- dispersal_models[[1]]$unpack(n)
 
         # User-defined function
         if (is.function(user_function)) {

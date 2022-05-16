@@ -15,7 +15,7 @@ Simulator(
   collation_steps = 1,
   replicates = 1,
   result_stages = NULL,
-  parallel_cores = 1,
+  parallel_cores = NULL,
   initializer = NULL,
   population_model = NULL,
   dispersal_models = list(),
@@ -35,7 +35,7 @@ Simulator(
   collation_steps = 1,
   replicates = 1,
   result_stages = NULL,
-  parallel_cores = 1,
+  parallel_cores = NULL,
   initializer = NULL,
   population_model = NULL,
   dispersal_models = list(),
@@ -68,8 +68,8 @@ summary statistics across simulations.}
 stage indices) of stage-based population results. The default
 (\code{NULL}) maintains results for each stage.}
 
-\item{parallel_cores}{Number of cores available for parallel processing of
-dispersal calculations. The default is 1.}
+\item{parallel_cores}{Number of cores available for parallel processing.
+The default NULL implies no parallel processing.}
 
 \item{initializer}{A \code{Initializer} or inherited class object for
 generating the initial invasive species population distribution or
