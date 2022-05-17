@@ -150,7 +150,6 @@ Simulator.Region <- function(region,
     }
     current_cores <<- cores
   }
-  set_cores(cores = parallel_cores)
 
   # Create a class structure
   self <- structure(list(), class = "Simulator")
@@ -190,6 +189,9 @@ Simulator.Region <- function(region,
     # Continued incursions function
     continued_incursions <- initializer$continued_incursions()
 
+    # Initial serial to parallel switching threshold (occupied locations)
+    switch_to_parallel_n <- parallel_cores
+
     # Results setup
     results <<- Results(region, population_model, # DEBUG ####
                         time_steps = time_steps,
@@ -205,9 +207,10 @@ Simulator.Region <- function(region,
       # Initialize population array
       n <- initializer$initialize()
 
-      # Set/reset to serial
-      set_cores(cores = NULL)
-      min_parallel_disp_time <- NULL
+      # Set/reset serial-parallel switching based on dispersal times
+      set_cores(cores = NULL) # serial
+      serial_disp_times <- c()
+      switch_to_parallel_added <- FALSE
 
       # Initial results (t = 0)
       results$collate(r, 0, n)
@@ -230,42 +233,35 @@ Simulator.Region <- function(region,
               n <- dispersal_models[[i]]$disperse(n)
             }
           })["elapsed"]
-          # print(dispersal_time)
-          # print(length(n$indices))
-          # print(current_cores)
 
-          # Switch between parallel and serial based on dispersal times
-          if (is.numeric(parallel_cores) &&
-              length(n$indices) >= parallel_cores) {
+          # Switch to parallel based on dispersal time per occupied location
+          if (is.numeric(parallel_cores)) {
 
-            # Determine minimum parallel dispersal time
-            if (is.null(min_parallel_disp_time)) { # parallel for first time
-              if (is.null(current_cores)) {
+            # Collect serial times and switch to parallel when threshold met
+            if (is.null(current_cores)) { # serial
+              serial_disp_times <- c(serial_disp_times,
+                                     dispersal_time/length(n$indices))
+              if (length(n$indices) >= stats::median(switch_to_parallel_n)) {
                 set_cores(cores = parallel_cores) # switch to parallel
-              } else {
-                min_parallel_disp_time <- dispersal_time
-                set_cores(cores = NULL) # switch to serial
               }
-            } else if (is.numeric(current_cores)) {
-              min_parallel_disp_time <- min(min_parallel_disp_time,
-                                            dispersal_time)
-            }
 
-            # Switch to serial when minimum parallel is slower
-            if (is.numeric(min_parallel_disp_time)) {
-              if (is.numeric(current_cores) &&
-                  dispersal_time <= min_parallel_disp_time) {
-                set_cores(cores = NULL) # switch to serial
-              } else if (is.null(current_cores) &&
-                         dispersal_time > min_parallel_disp_time) {
-                set_cores(cores = parallel_cores) # switch to parallel
+            } else { # parallel
+
+              # Add switch threshold when parallel matches median serial speed
+              if (!switch_to_parallel_added) {
+                if (dispersal_time/length(n$indices) <=
+                    stats::median(serial_disp_times)) {
+                  switch_to_parallel_n <- c(switch_to_parallel_n,
+                                            length(n$indices))
+                  switch_to_parallel_added <- TRUE
+                }
               }
             }
           }
         }
 
         # Unpack population array from separated list
-          n <- dispersal_models[[1]]$unpack(n)
+        n <- dispersal_models[[1]]$unpack(n)
 
         # User-defined function
         if (is.function(user_function)) {
