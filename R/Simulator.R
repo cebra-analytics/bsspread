@@ -23,6 +23,10 @@
 #'   (\code{NULL}) maintains results for each stage.
 #' @param parallel_cores Number of cores available for parallel processing.
 #'   The default NULL implies no parallel processing.
+#' @param parallel_switching Logical to enable switching between serial and
+#'   parallel processing for dispersal, which estimates the threshold of
+#'   occupied locations at which processing in parallel becomes quicker than
+#'   serial using median dispersal times. The default is FALSE.
 #' @param initializer A \code{Initializer} or inherited class object for
 #'   generating the initial invasive species population distribution or
 #'   incursion locations, as well as optionally generating subsequent
@@ -59,6 +63,7 @@ Simulator <- function(region,
                       replicates = 1,
                       result_stages = NULL,
                       parallel_cores = NULL,
+                      parallel_switching = FALSE,
                       initializer = NULL,
                       population_model = NULL,
                       dispersal_models = list(),
@@ -90,6 +95,7 @@ Simulator.Region <- function(region,
                              replicates = 1,
                              result_stages = NULL,
                              parallel_cores = NULL,
+                             parallel_switching = FALSE,
                              initializer = NULL,
                              population_model = NULL,
                              dispersal_models = list(),
@@ -140,6 +146,9 @@ Simulator.Region <- function(region,
     stop("The number of parallel cores should be a numeric value > 0.",
          call. = FALSE)
   }
+  if (!is.logical(parallel_switching)) {
+    stop("The parallel switching should be logical.", call. = FALSE)
+  }
 
   # Set parallel cores in region and dispersal objects
   current_cores <- parallel_cores
@@ -150,6 +159,7 @@ Simulator.Region <- function(region,
     }
     current_cores <<- cores
   }
+  set_cores(cores = parallel_cores)
 
   # Create a class structure
   self <- structure(list(), class = "Simulator")
@@ -190,7 +200,9 @@ Simulator.Region <- function(region,
     continued_incursions <- initializer$continued_incursions()
 
     # Initial serial to parallel switching threshold (occupied locations)
-    switch_to_parallel_n <- parallel_cores
+    if (is.numeric(parallel_cores) && parallel_switching) {
+      switch_to_parallel_n <- parallel_cores
+    }
 
     # Results setup
     results <<- Results(region, population_model, # DEBUG ####
@@ -208,9 +220,11 @@ Simulator.Region <- function(region,
       n <- initializer$initialize()
 
       # Set/reset serial-parallel switching based on dispersal times
-      set_cores(cores = NULL) # serial
-      serial_disp_times <- c()
-      switch_to_parallel_added <- FALSE
+      if (is.numeric(parallel_cores) && parallel_switching) {
+        set_cores(cores = NULL) # serial
+        serial_disp_times <- c()
+        switch_to_parallel_added <- FALSE
+      }
 
       # Initial results (t = 0)
       results$collate(r, 0, n)
@@ -228,14 +242,20 @@ Simulator.Region <- function(region,
           n <- dispersal_models[[1]]$pack(n)
 
           # Perform dispersal for each spread vector
-          dispersal_time <- system.time({
+          if (is.numeric(parallel_cores) && parallel_switching) { # record time
+            dispersal_time <- system.time({
+              for (i in 1:length(dispersal_models)) {
+                n <- dispersal_models[[i]]$disperse(n)
+              }
+            })["elapsed"]
+          } else { # no time required
             for (i in 1:length(dispersal_models)) {
               n <- dispersal_models[[i]]$disperse(n)
             }
-          })["elapsed"]
+          }
 
           # Switch to parallel based on dispersal time per occupied location
-          if (is.numeric(parallel_cores)) {
+          if (is.numeric(parallel_cores) && parallel_switching) {
 
             # Collect serial times and switch to parallel when threshold met
             if (is.null(current_cores)) { # serial
