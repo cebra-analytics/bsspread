@@ -218,6 +218,9 @@ Simulator.Region <- function(region,
           # Pack into list of original, remaining and relocated populations
           n <- dispersal_models[[1]]$pack(n)
 
+          # Calculate paths to dispersal locations
+          region$calculate_paths(n$indices)
+
           # Perform dispersal for each spread vector
           for (i in 1:length(dispersal_models)) {
             n <- dispersal_models[[i]]$disperse(n)

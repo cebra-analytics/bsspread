@@ -255,9 +255,6 @@ Dispersal.Region <- function(region, population_model,
     # Ensure cell characters are stored without scientific notation
     options(scipen = 999)
 
-    # Calculate paths
-    region$calculate_paths(n$indices)
-
     # Limit to dispersal-ready when presence-only with spread delay
     if (population_type == "presence_only" &&
         "spread_delay" %in% names(attributes(n$relocated))) {
