@@ -16,7 +16,6 @@ Simulator(
   replicates = 1,
   result_stages = NULL,
   parallel_cores = NULL,
-  parallel_replicates = TRUE,
   initializer = NULL,
   population_model = NULL,
   dispersal_models = list(),
@@ -37,7 +36,6 @@ Simulator(
   replicates = 1,
   result_stages = NULL,
   parallel_cores = NULL,
-  parallel_replicates = TRUE,
   initializer = NULL,
   population_model = NULL,
   dispersal_models = list(),
@@ -72,15 +70,6 @@ stage indices) of stage-based population results. The default
 
 \item{parallel_cores}{Number of cores available for parallel processing.
 The default NULL implies no parallel processing.}
-
-\item{parallel_replicates}{Logical to indicate that, when \code{TRUE},
-replicates are to be run in parallel (when \code{parallel_cores} is
-numeric) for each time step. Alternatively, when \code{FALSE}, dispersal
-is run in parallel (across locations) for individual simulations (at each
-time step and replicate). The default is \code{TRUE}, which is typically
-faster, but limits the interactive use of user-defined functions defined
-by the \code{user_function} parameter (below), such as real-time plotting
-of the simulations.}
 
 \item{initializer}{A \code{Initializer} or inherited class object for
 generating the initial invasive species population distribution or

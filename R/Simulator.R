@@ -23,14 +23,6 @@
 #'   (\code{NULL}) maintains results for each stage.
 #' @param parallel_cores Number of cores available for parallel processing.
 #'   The default NULL implies no parallel processing.
-#' @param parallel_replicates Logical to indicate that, when \code{TRUE},
-#'   replicates are to be run in parallel (when \code{parallel_cores} is
-#'   numeric) for each time step. Alternatively, when \code{FALSE}, dispersal
-#'   is run in parallel (across locations) for individual simulations (at each
-#'   time step and replicate). The default is \code{TRUE}, which is typically
-#'   faster, but limits the interactive use of user-defined functions defined
-#'   by the \code{user_function} parameter (below), such as real-time plotting
-#'   of the simulations.
 #' @param initializer A \code{Initializer} or inherited class object for
 #'   generating the initial invasive species population distribution or
 #'   incursion locations, as well as optionally generating subsequent
@@ -67,7 +59,6 @@ Simulator <- function(region,
                       replicates = 1,
                       result_stages = NULL,
                       parallel_cores = NULL,
-                      parallel_replicates = TRUE,
                       initializer = NULL,
                       population_model = NULL,
                       dispersal_models = list(),
@@ -99,7 +90,6 @@ Simulator.Region <- function(region,
                              replicates = 1,
                              result_stages = NULL,
                              parallel_cores = NULL,
-                             parallel_replicates = TRUE,
                              initializer = NULL,
                              population_model = NULL,
                              dispersal_models = list(),
@@ -150,18 +140,12 @@ Simulator.Region <- function(region,
     stop("The number of parallel cores should be a numeric value > 0.",
          call. = FALSE)
   }
-  if (!is.logical(parallel_replicates)) {
-    stop("The parallel replicates indicator should logical.",
-         call. = FALSE)
-  }
 
-  # Set parallel cores in region and dispersal objects when required
+  # Set parallel cores in region and dispersal objects
   set_cores <- function(cores = NULL) {
     region$set_cores(cores)
-    if (!parallel_replicates) {
-      for (i in 1:length(dispersal_models)) {
-        dispersal_models[[i]]$set_cores(cores)
-      }
+    for (i in 1:length(dispersal_models)) {
+      dispersal_models[[i]]$set_cores(cores)
     }
   }
   set_cores(cores = parallel_cores)
@@ -196,8 +180,8 @@ Simulator.Region <- function(region,
     object_absence <- c(is.null(initializer), is.null(population_model))
     if (any(object_absence)) {
       stop(sprintf("The simulator requires the %s to be set.",
-                 paste(c("initializer", "population model")[object_absence],
-                       collapse = " and ")),
+                   paste(c("initializer", "population model")[object_absence],
+                         collapse = " and ")),
            call. = FALSE)
     }
 
@@ -213,135 +197,55 @@ Simulator.Region <- function(region,
                         replicates = replicates,
                         combine_stages = result_stages)
 
-    # Parallel replicates strategy
-    if (is.numeric(parallel_cores) && parallel_replicates && replicates > 1) {
+    # Replicates
+    for (r in 1:replicates) {
 
-      # Initialize a population array for each replicate
-      doParallel::registerDoParallel(cores = min(parallel_cores,
-                                                 length(replicates)))
-      n_list <- foreach(
-        r = 1:replicates,
-        .errorhandling = c("stop"),
-        .noexport = c()) %dopar% {
-          return(initializer$initialize())
-        }
-      doParallel::stopImplicitCluster()
+      # Initialize population array
+      n <- initializer$initialize()
 
       # Initial results (t = 0)
-      # results$collate(r, 0, n) # TODO in Results.R ####
-      results_list <- results$get_list()$collated
-      results_list[["0"]]$mean <- rowMeans(as.data.frame(n_list))
+      results$collate(r, 0, n)
 
       # Time steps
       for (tm in 1:time_steps) {
 
-        # Calculate paths to dispersal locations
-        n_indices <- unique(unlist(
-          lapply(n_list, function (n) which(rowSums(as.matrix(n)) > 0))))
-        region$calculate_paths(n_indices)
-        print(paste("tm = ", tm, "indices", length(n_indices)))
+        # Population growth
+        n <- population_model$grow(n)
 
-        # Simulate time step for each replicate
-        doParallel::registerDoParallel(cores = min(parallel_cores,
-                                                   length(replicates)))
-        n_list <- foreach(
-          n = n_list,
-          .errorhandling = c("stop"),
-          .noexport = c("n_indices")) %dopar% {
+        # Dispersal for each spread vector
+        if (length(dispersal_models)) {
 
-            # Population growth
-            n <- population_model$grow(n)
+          # Pack into list of original, remaining and relocated populations
+          n <- dispersal_models[[1]]$pack(n)
 
-            # Dispersal for each spread vector
-            if (length(dispersal_models)) {
-
-              # Pack into list of original, remaining and relocated populations
-              n <- dispersal_models[[1]]$pack(n)
-
-              # Perform dispersal for each spread vector
-              for (i in 1:length(dispersal_models)) {
-                n <- dispersal_models[[i]]$disperse(n)
-              }
-
-              # Unpack population array from separated list
-              n <- dispersal_models[[1]]$unpack(n)
-            }
-
-            # User-defined function
-            if (is.function(user_function)) {
-              n <- user_function(n)
-            }
-
-            # Continued incursions
-            if (is.function(continued_incursions)) {
-              n <- continued_incursions(tm, n)
-            }
-
-            return(n)
+          # Perform dispersal for each spread vector
+          for (i in 1:length(dispersal_models)) {
+            n <- dispersal_models[[i]]$disperse(n)
           }
-        doParallel::stopImplicitCluster()
+
+          # Unpack population array from separated list
+          n <- dispersal_models[[1]]$unpack(n)
+        }
+
+        # User-defined function
+        if (is.function(user_function)) {
+          n <- user_function(n)
+        }
 
         # Collate results
-        # results$collate(r, tm, n) # TODO in Results.R ####
-        results_list[[as.character(tm)]]$mean <- rowMeans(as.data.frame(n_list))
+        results$collate(r, tm, n)
 
-      }
+        # Continued incursions
+        if (is.function(continued_incursions)) {
+          n <- continued_incursions(tm, n)
+        }
 
-    } else { # typical nested loop approach with serial or parallel dispersal
+      } # time steps
 
-      # Replicates
-      for (r in 1:replicates) {
-
-        # Initialize population array
-        n <- initializer$initialize()
-
-        # Initial results (t = 0)
-        results$collate(r, 0, n)
-
-        # Time steps
-        for (tm in 1:time_steps) {
-
-          # Population growth
-          n <- population_model$grow(n)
-
-          # Dispersal for each spread vector
-          if (length(dispersal_models)) {
-
-            # Pack into list of original, remaining and relocated populations
-            n <- dispersal_models[[1]]$pack(n)
-
-            # Calculate paths to dispersal locations
-            region$calculate_paths(n$indices)
-
-            # Perform dispersal for each spread vector
-            for (i in 1:length(dispersal_models)) {
-              n <- dispersal_models[[i]]$disperse(n)
-            }
-
-            # Unpack population array from separated list
-            n <- dispersal_models[[1]]$unpack(n)
-          }
-
-          # User-defined function
-          if (is.function(user_function)) {
-            n <- user_function(n)
-          }
-
-          # Collate results
-          results$collate(r, tm, n)
-
-          # Continued incursions
-          if (is.function(continued_incursions)) {
-            n <- continued_incursions(tm, n)
-          }
-
-        } # time steps
-
-      } # replicates
-    }
+    } # replicates
 
     # Finalize results
-    results$finalize() # TODO update in Results.R ####
+    results$finalize()
 
     # Return results
     return(results)
