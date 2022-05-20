@@ -773,7 +773,7 @@ Region.SpatRaster <- function(x, ...) {
             cell_ids <-
               which(selected$perm_dist[[cell_char]]$cell <= max_distance |
                       (selected$distances[[cell_char]]$cell <=
-                         1.6*region$get_res()))
+                         1.6*self$get_res()))
             cell_ids <- cell_ids[
               which(is.finite(selected$perm_dist[[cell_char]]$cell[cell_ids]))]
           } else {
