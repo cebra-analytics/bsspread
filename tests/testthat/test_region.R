@@ -95,3 +95,52 @@ test_that("modifies paths via permeability layer", {
   expect_true(all(paths2$perm_dist$`5922`$cell <= 40000))
   expect_true(all(paths2$perm_dist$`5922`$aggr <= 40000))
 })
+
+test_that("creates paths to city patches", {
+  TEST_DIRECTORY <- test_path("test_inputs")
+  locations <- utils::read.csv(file.path(TEST_DIRECTORY, "vic_cities.csv"))
+  region <- Region(locations)
+  expect_silent(region$configure_paths(directions = TRUE,
+                                       max_distance = 150000))
+  expect_silent(region$calculate_paths(1))
+  expect_silent(paths <- region$get_paths(1, directions = TRUE))
+  expect_equal(locations$name[paths$idx$`1`],
+               c("Geelong", "Ballarat", "Bendigo"))
+  expect_true(all(paths$distances$`1` <= 150000))
+  expect_true(all(paths$directions$`1` <= 360))
+})
+
+test_that("creates permeability paths to city patches", {
+  TEST_DIRECTORY <- test_path("test_inputs")
+  locations <- utils::read.csv(file.path(TEST_DIRECTORY, "vic_cities.csv"))
+  region <- Region(locations)
+  perm_data <- matrix(c( 1,  2, 0.8,
+                         1,  3, 0.7,
+                         1,  4, 0.7,
+                         1,  6, 0.6,
+                         1, 10, 0.8,
+                         2,  5, 0.6,
+                         3, 12, 0.6,
+                         3, 14, 0.5,
+                         4, 13, 0.5,
+                         5,  8, 0.6,
+                         6,  9, 0.6,
+                         7, 10, 0.5,
+                         10, 11, 0.8), ncol = 3, byrow = TRUE)
+  colnames(perm_data) <- c("i", "j", "weight")
+  perm <- Permeability(perm_data, region)
+  expect_silent(region$configure_paths(permeability = perm))
+  expect_silent(region$calculate_paths(1:2))
+  paths1 <- region$get_paths(1:2, max_distance = 400000)
+  paths2 <- region$get_paths(1, max_distance = 400000, perm_id = 1)
+  expect_true(length(paths2$idx$`1`) < length(paths1$idx$`1`))
+  expect_true(all(paths2$perm_dist$`1` > paths2$distances$`1`))
+  geelong <- which(paths2$idx$`1` == 2)
+  expect_true(paths2$perm_dist$`1`[geelong] ==
+                round(paths2$distances$`1`[geelong]/0.8))
+  warrn1 <- which(paths1$idx$`2` == 5)
+  warrn2 <- which(paths2$idx$`1` == 5)
+  expect_true(paths2$perm_dist$`1`[warrn1] ==
+                (round(paths2$distances$`1`[geelong]/0.8) +
+                   round(paths1$distances$`2`[warrn2]/0.6)))
+})
