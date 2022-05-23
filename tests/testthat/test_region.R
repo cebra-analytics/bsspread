@@ -36,6 +36,7 @@ test_that("creates two tier aggregation", {
   TEST_DIRECTORY <- test_path("test_inputs")
   template <- terra::rast(file.path(TEST_DIRECTORY, "greater_melb.tif"))
   region <- Region(template)
+  expect_is(region, "Region")
   expect_false(region$two_tier())
   expect_silent(region$set_aggr(aggr_factor = 5, inner_radius = 10000))
   expect_true(region$two_tier())

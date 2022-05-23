@@ -11,7 +11,7 @@ StagedPopulation(
   capacity_stages = NULL,
   establish_pr = NULL,
   incursion_mean = NULL,
-  incursion_stages,
+  incursion_stages = NULL,
   ...
 )
 }

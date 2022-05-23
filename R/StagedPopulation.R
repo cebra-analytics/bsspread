@@ -59,7 +59,7 @@ StagedPopulation <- function(region, growth,
                              capacity_stages = NULL,
                              establish_pr = NULL,
                              incursion_mean = NULL,
-                             incursion_stages, ...) {
+                             incursion_stages = NULL, ...) {
 
   # Build via base class
   self <- Population(region,
