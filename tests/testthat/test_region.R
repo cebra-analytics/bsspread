@@ -83,7 +83,7 @@ test_that("modifies paths via permeability layer", {
   perm_rast <- region$get_template()
   perm_rast[region$get_indices()] <- round(region$get_indices()/1560)/10
   perm <- Permeability(perm_rast, region)
-  expect_equal(perm$get_id(), NULL)
+  expect_null(perm$get_id())
   expect_silent(region$configure_paths(permeability = perm))
   expect_equal(perm$get_id(), 1)
   expect_silent(region$calculate_paths(5922))

@@ -179,9 +179,13 @@ Attractor.numeric <- function(x, region,
 
   # Get the attractor raster
   self$get_rast <- function() {
-    x_rast <- region$get_template(empty = TRUE)
-    x_rast[region$get_indices()] <- x*multiplier
-    return(x_rast)
+    if (region$get_type() == "grid") {
+      x_rast <- region$get_template(empty = TRUE)
+      x_rast[region$get_indices()] <- x*multiplier
+      return(x_rast)
+    } else {
+      return(NULL)
+    }
   }
 
   # Get the values for specified region cell indices
