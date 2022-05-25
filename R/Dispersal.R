@@ -558,20 +558,22 @@ Dispersal.Region <- function(region, population_model,
 
         # Apply establishment survival to dispersers (some deaths)
         establish_p <- population_model$get_establish_pr(destinations)
-        if (population_type == "presence_only" && is.null(events)) {
-          destinations <- destinations[which(as.logical(
-            stats::rbinom(length(destinations), size = 1,
-                          prob = establish_p)))]
-        } else {
-          for (stage in dispersal_stages) {
-            dispersers[, stage] <- stats::rbinom(dispersals,
-                                                 size = dispersers[, stage],
-                                                 prob = establish_p)
+        if (is.numeric(establish_p)) {
+          if (population_type == "presence_only" && is.null(events)) {
+            destinations <- destinations[which(as.logical(
+              stats::rbinom(length(destinations), size = 1,
+                            prob = establish_p)))]
+          } else {
+            for (stage in dispersal_stages) {
+              dispersers[, stage] <- stats::rbinom(dispersals,
+                                                   size = dispersers[, stage],
+                                                   prob = establish_p)
+            }
+            destinations <- destinations[which(rowSums(dispersers) > 0)]
+            dispersers <- dispersers[which(rowSums(dispersers) > 0),,
+                                     drop = FALSE]
+            dispersals <- nrow(dispersers)
           }
-          destinations <- destinations[which(rowSums(dispersers) > 0)]
-          dispersers <- dispersers[which(rowSums(dispersers) > 0),,
-                                   drop = FALSE]
-          dispersals <- nrow(dispersers)
         }
 
         # Return population relocation components
