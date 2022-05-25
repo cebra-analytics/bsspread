@@ -321,7 +321,7 @@ Region.SpatRaster <- function(x, ...) {
                                                      touches = TRUE)[,2] &
                              indices != indices[cell]))
           } else {
-            paths$idx[[cell_char]] <<- list(cell = indices[-cell])
+            paths$idx[[cell_char]] <<- list(cell = (1:length(indices))[-cell])
           }
         }
 
