@@ -519,11 +519,23 @@ Dispersal.Region <- function(region, population_model,
             paths$idx[[loc_char]]$aggr[destinations[aggr_dest] -
                                          length(destination_p$cell)]
 
+          # Collect consecutive repeated values in a list
+          aggr_dest_rep <- list(destinations[aggr_dest][1])
+          for (ag_i in destinations[aggr_dest][-1]) {
+            if (ag_i == unlist(aggr_dest_rep)[length(unlist(aggr_dest_rep))]) {
+              aggr_dest_rep[[length(aggr_dest_rep)]] <-
+                c(aggr_dest_rep[[length(aggr_dest_rep)]], ag_i)
+            } else {
+              aggr_dest_rep <- c(aggr_dest_rep, list(ag_i))
+            }
+          }
+
           # Sample region cell(s) within each aggregate destination cell
-          for (ad_i in aggr_dest) {
+          for (rep_i in 1:length(aggr_dest_rep)) {
 
             # Get region cell raster indices
-            aggr_cells <- region$get_aggr()$get_cells(destinations[ad_i])
+            aggr_cells <-
+              region$get_aggr()$get_cells(aggr_dest_rep[[rep_i]][1])
 
             # Perform a weighted sample via attractors when present
             aggr_p <- rep(1, length(aggr_cells))
@@ -534,12 +546,16 @@ Dispersal.Region <- function(region, population_model,
                 }
               }
             }
-            aggr_i <- aggr_cells[sample(1:length(aggr_cells), size = 1,
+            aggr_i <- aggr_cells[sample(1:length(aggr_cells),
+                                        size = length(aggr_dest_rep[[rep_i]]),
                                         prob = aggr_p)]
 
-            # Substitute region cell for aggregate destination
-            destinations[ad_i] <- aggr_i
+            # Substitute region cells for repeated aggregate destinations
+            aggr_dest_rep[[rep_i]] <- aggr_i
           }
+
+          # Substitute region cells for all aggregate destinations
+          destinations[aggr_dest] <- unlist(aggr_dest_rep)
 
         } else {
           destinations <- paths$idx[[loc_char]]$cell[destinations]
