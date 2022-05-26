@@ -636,11 +636,14 @@ Dispersal.Region <- function(region, population_model,
 
         # Update relocated population
         if (population_type == "presence_only") {
-          n$relocated[d$destinations] <- TRUE
+          n$relocated[unique(d$destinations)] <- TRUE
         } else if (population_type == "unstructured") {
-          n$relocated[d$destinations] <-
-            n$relocated[d$destinations] + d$dispersers
-        } else if (population_type == "stage_structured") {
+          destinations <- unique(d$destinations)
+          dispersers <- sapply(destinations,
+                 function(di) sum(d$dispersers[which(d$destinations == di)]))
+          n$relocated[destinations] <-
+            n$relocated[destinations] + dispersers
+        } else if (population_type == "stage_structured") { # TODO as above ###
           n$relocated[d$destinations, dispersal_stages] <-
             n$relocated[d$destinations, dispersal_stages] + d$dispersers
         }
