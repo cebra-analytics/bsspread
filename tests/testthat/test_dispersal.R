@@ -101,8 +101,9 @@ test_that("disperses population in a raster grid region", {
   dispersal <- Dispersal(region, population_model = population,
                          proportion = 1, max_distance = 10000)
   idx <- region$get_paths(5922, max_distance = 10000)$idx[["5922"]]$cell
-  expect_equal(sum(dispersal$unpack(dispersal$disperse(n))), length(idx) + 1)
-  expect_true(all(dispersal$unpack(dispersal$disperse(n))[c(5922, idx)]))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_equal(sum(new_n), length(idx) + 1)
+  expect_true(all(new_n[c(5922, idx)]))
 })
 
 test_that("disperses grid population with distance and direction functions", {
@@ -123,10 +124,9 @@ test_that("disperses grid population with distance and direction functions", {
   directions <-
     region$get_paths(5922, directions = TRUE,
                      max_distance = 10000)$directions[["5922"]]$cell
-  expect_equal(sum(dispersal$unpack(dispersal$disperse(n))),
-               length(which(directions <= 180)) + 1)
-  expect_true(all(
-    dispersal$unpack(dispersal$disperse(n))[idx[which(directions <= 180)]]))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_equal(sum(new_n), length(which(directions <= 180)) + 1)
+  expect_true(all(new_n[idx[which(directions <= 180)]]))
 })
 
 test_that("disperses grid population with attractors", {
@@ -145,10 +145,9 @@ test_that("disperses grid population with attractors", {
   n <- dispersal$pack(n)
   region$calculate_paths(5922)
   idx <- region$get_paths(5922, max_distance = 10000)$idx[["5922"]]$cell
-  expect_equal(sum(dispersal$unpack(dispersal$disperse(n))),
-               length(which(idx < 5922)) + 1)
-  expect_true(all(
-    dispersal$unpack(dispersal$disperse(n))[idx[which(idx < 5922)]]))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_equal(sum(new_n), length(which(idx < 5922)) + 1)
+  expect_true(all(new_n[idx[which(idx < 5922)]]))
 })
 
 test_that("disperses grid population with permeability", {
@@ -172,9 +171,117 @@ test_that("disperses grid population with permeability", {
   idx <- paths$idx[["5922"]]$cell[which(perm_dist <= 20000)]
   distances <- paths$distances[["5922"]]$cell[which(perm_dist <= 20000)]
   expect_true(all(distances <= 20000*0.5))
-  expect_true(all(which(dispersal$unpack(dispersal$disperse(n))) <= 5922))
-  expect_equal(sum(dispersal$unpack(dispersal$disperse(n))), length(idx) + 1)
-  expect_true(all(dispersal$unpack(dispersal$disperse(n))[idx]))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_true(all(which(new_n) <= 5922))
+  expect_equal(sum(new_n), length(idx) + 1)
+  expect_true(all(new_n[idx]))
+})
+
+test_that("disperses population in a two-tier raster grid region", {
+  TEST_DIRECTORY <- test_path("test_inputs")
+  template <- terra::rast(file.path(TEST_DIRECTORY, "greater_melb.tif"))
+  region <- Region(template)
+  region$configure_paths(max_distance = 80000)
+  region$set_aggr(aggr_factor = 5, inner_radius = 10000)
+  population <- Population(region)
+  n <- rep(FALSE, region$get_locations())
+  n[5922] <- TRUE
+  perm_rast <- region$get_template()
+  perm_rast[region$get_indices()[1:5922]] <- 0.5
+  permeability <- Permeability(perm_rast, region)
+  expect_silent(dispersal <- Dispersal(region, population_model = population,
+                                       proportion = 1, max_distance = 60000,
+                                       permeability = permeability))
+  n <- dispersal$pack(n)
+  region$calculate_paths(5922)
+  paths <- region$get_paths(5922, perm_id = 1)
+  perm_dist <- paths$perm_dist[["5922"]]$aggr
+  distances <- paths$distances[["5922"]]$aggr[which(perm_dist <= 60000)]
+  expect_true(all(distances <= 60000*0.5))
+  idx <- c(paths$idx$`5922`$cell,
+           region$get_aggr()$get_cells(
+             paths$idx$`5922`$aggr[which(perm_dist <= 60000)]))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_equal(sort(which(new_n)), sort(c(5922, idx)))
+  expect_true(all(which(new_n) <= 5922))
+  expect_silent(dispersal <- Dispersal(region, population_model = population,
+                         events = 400, max_distance = 60000,
+                         permeability = permeability))
+  expect_true(
+    all(which(dispersal$unpack(dispersal$disperse(n))) %in% c(5922, idx)))
+})
+
+test_that("disperses unstructured population in a two-tier grid region", {
+  TEST_DIRECTORY <- test_path("test_inputs")
+  template <- terra::rast(file.path(TEST_DIRECTORY, "greater_melb.tif"))
+  region <- Region(template)
+  region$set_aggr(aggr_factor = 5, inner_radius = 10000)
+  establish_pr = template[region$get_indices()][,1]
+  population <- UnstructPopulation(region, establish_pr = establish_pr)
+  n <- rep(0, region$get_locations())
+  n[5922] <- 2000
+  expect_silent(dispersal <- Dispersal(region, population_model = population,
+                                       proportion = 1, max_distance = 30000))
+  n <- dispersal$pack(n)
+  region$calculate_paths(5922)
+  paths <- region$get_paths(5922)
+  idx <- c(paths$idx$`5922`$cell,
+           region$get_aggr()$get_cells(paths$idx$`5922`$aggr))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_true(sum(new_n) < 2000)
+  expect_true(new_n[5922] == 0)
+  expect_true(length(which(new_n > 0)) <= sum(new_n))
+  expect_true(all(which(new_n > 0) %in% idx))
+  expect_silent(dispersal <- Dispersal(region, population_model = population,
+                                       proportion = 0.7, events = 100,
+                                       max_distance = 30000))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_true(sum(new_n[-5922]) <= (2000 - new_n[5922]))
+  expect_true(round(new_n[5922]/2000, 1) == 0.3)
+  expect_true(length(which(new_n > 0)) <= 101)
+  expect_true(all(which(new_n > 0) %in% c(5922, idx)))
+})
+
+test_that("disperses staged population in a two-tier raster grid region", {
+  TEST_DIRECTORY <- test_path("test_inputs")
+  template <- terra::rast(file.path(TEST_DIRECTORY, "greater_melb.tif"))
+  region <- Region(template)
+  region$set_aggr(aggr_factor = 5, inner_radius = 10000)
+  establish_pr = template[region$get_indices()][,1]
+  stage_matrix <- matrix(c(0.0, 2.0, 5.0,
+                           0.3, 0.0, 0.0,
+                           0.0, 0.6, 0.8),
+                         nrow = 3, ncol = 3, byrow = TRUE)
+  population <- StagedPopulation(region,
+                                 growth = stage_matrix,
+                                 establish_pr = establish_pr)
+  n <- rep(0, region$get_locations())
+  n[5922] <- 2000
+  n <- population$make(initial = n)
+  expect_equal(sum(n[5922,]), 2000)
+  expect_silent(dispersal <- Dispersal(region, population_model = population,
+                                       dispersal_stages = 1:2,
+                                       proportion = 1, max_distance = 30000))
+  expect_silent(n <- dispersal$pack(n))
+  region$calculate_paths(5922)
+  paths <- region$get_paths(5922)
+  idx <- c(paths$idx$`5922`$cell,
+           region$get_aggr()$get_cells(paths$idx$`5922`$aggr))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_true(all(new_n[5922,] == c(0, 0, n$original[3])))
+  expect_true(all(colSums(new_n)[1:2] < n$original[,1:2]))
+  expect_true(all(which(rowSums(new_n) > 0) %in% c(5922, idx)))
+  expect_silent(dispersal <- Dispersal(region, population_model = population,
+                                       dispersal_stages = 1:2,
+                                       proportion = 0.7, events = 100,
+                                       max_distance = 30000))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_true(all(new_n[5922, 3] == n$original[3]))
+  expect_true(all(colSums(new_n)[1:2] < n$original[,1:2]))
+  expect_true(all(colSums(new_n[-5922,]) <= (n$original - new_n[5922,])))
+  expect_true(all(round(new_n[5922,1:2]/n$original[,1:2], 1) == 0.3))
+  expect_true(length(which(rowSums(new_n) > 0)) <= 101)
+  expect_true(all(which(rowSums(new_n) > 0) %in% c(5922, idx)))
 })
 
 test_that("next", {
