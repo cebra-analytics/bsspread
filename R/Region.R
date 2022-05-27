@@ -263,6 +263,12 @@ Region.SpatRaster <- function(x, ...) {
     # Ensure cell characters are stored without scientific notation
     options(scipen = 999)
 
+    # Only include two-tier aggregate when inner radius within maximum distance
+    include_aggr <- is.list(aggr)
+    if (is.list(aggr) && aggr$inner_radius >= paths$max_distance) {
+      include_aggr <- FALSE
+    }
+
     # Newly occupied cells
     new_cells <- cells[which(!as.character(cells) %in% names(paths$idx))]
 
@@ -280,7 +286,7 @@ Region.SpatRaster <- function(x, ...) {
         cell_char <- as.character(cell)
 
         # Calculate reachable indices
-        if (is.list(aggr)) { # two-tier approach
+        if (include_aggr) { # two-tier approach
 
           # Select aggregate cells in/on inner circle
           inner_vect <- terra::buffer(region_pts[cell,],
@@ -332,7 +338,7 @@ Region.SpatRaster <- function(x, ...) {
                             region_pts[paths$idx[[cell_char]]$cell])))))
 
         # Calculate aggregate cell distances when applicable
-        if (is.list(aggr)) {
+        if (include_aggr) {
           paths$distances[[cell_char]]$aggr <<-
             as.integer(round(as.numeric(
               terra::distance(region_pts[cell],
@@ -350,7 +356,7 @@ Region.SpatRaster <- function(x, ...) {
             atan2(xy_diff[,"y"], xy_diff[,"x"])*180/pi + 180)))
 
           # Calculate aggregate cell directions when applicable
-          if (is.list(aggr)) {
+          if (include_aggr) {
             xy_diff <- (terra::crds(region_pts[cell])[
               rep(1, length(paths$idx[[cell_char]]$aggr)),] -
                 terra::crds(aggr$pts[paths$idx[[cell_char]]$aggr]))
@@ -415,10 +421,10 @@ Region.SpatRaster <- function(x, ...) {
     if (is.list(paths$graphs) && length(new_cells)) {
 
       # Maintain a graph to all region cells within reach
-      if (is.list(aggr) ||
+      if (include_aggr ||
           (is.numeric(paths$max_distance) && is.finite(paths$max_distance))) {
 
-        if (is.list(aggr)) { # two-tier approach
+        if (include_aggr) { # two-tier approach
 
           # Select new aggregate cells in/on intersected inner circles
           inner_vect <- terra::aggregate(
@@ -499,7 +505,7 @@ Region.SpatRaster <- function(x, ...) {
         }
 
         # Calculate region cell indices inside new polygon
-        if (is.list(aggr)) { # two-tier approach
+        if (include_aggr) { # two-tier approach
           aggr_idx <- terra::cells(aggr$rast, new_poly, touches = FALSE)[,2]
           cell_idx <- paths$graphs$get_cells(aggr_idx)
         } else {
@@ -639,7 +645,7 @@ Region.SpatRaster <- function(x, ...) {
         }
 
         # Aggregate distance multipliers when applicable
-        if (is.list(aggr)) {
+        if (include_aggr) {
 
           # Find the aggregate cell index that contains the region cell
           aggr_i <- terra::cells(aggr$rast, region_pts[cell],
@@ -723,9 +729,6 @@ Region.SpatRaster <- function(x, ...) {
     use_perm <- (is.numeric(perm_id) && is.list(paths$perms) &&
                    length(paths$perms) >= perm_id)
 
-    # Two-tier with aggregation
-    has_aggr <- is.list(aggr)
-
     # Map path lists use cells as characters
     cells_char <- as.character(cells)
 
@@ -733,12 +736,30 @@ Region.SpatRaster <- function(x, ...) {
     selected <- list(idx = paths$idx[cells_char],
                      distances = paths$distances[cells_char])
 
-    # Get modified distances for permeability (id)
+    # Limit to paths within a maximum distance
     limit_paths <- FALSE
+    if (is.numeric(max_distance) && max_distance < paths$max_distance) {
+      limit_paths <- TRUE
+    }
+
+    # Resolve maximum distance when present
+    if (is.numeric(max_distance) && is.numeric(paths$max_distance)) {
+      max_distance <- min(max_distance, paths$max_distance)
+    } else if (is.numeric(paths$max_distance)) {
+      max_distance <- paths$max_distance
+    }
+
+    # Only include two-tier aggregate when inner radius within maximum distance
+    include_aggr <- is.list(aggr)
+    if (is.list(aggr) && aggr$inner_radius >= max_distance) {
+      include_aggr <- FALSE
+    }
+
+    # Get modified distances for permeability (id)
     if (use_perm) {
       selected$perm_dist <- lapply(paths$perm_dist[cells_char], function(d) {
         l <- list(cell = d$cell[[perm_id]])
-        if (has_aggr) {
+        if (include_aggr) {
           l$aggr <- d$aggr[[perm_id]]
         }
         return(l)
@@ -753,9 +774,8 @@ Region.SpatRaster <- function(x, ...) {
       directions <- FALSE
     }
 
-    # Limit to paths within a maximum distance or reachable cells if required
-    if (limit_paths ||
-        is.numeric(max_distance) && max_distance < paths$max_distance) {
+    # Limit to paths within reachable cells if required
+    if (limit_paths) {
 
       # Resolve maximum distance when present
       if (is.numeric(max_distance) && is.numeric(paths$max_distance)) {
@@ -799,7 +819,7 @@ Region.SpatRaster <- function(x, ...) {
         }
 
         # Aggregate cells
-        if (has_aggr) {
+        if (include_aggr) {
 
           # Find aggregate cells within range
           if (use_perm) {
@@ -835,7 +855,7 @@ Region.SpatRaster <- function(x, ...) {
         if (directions) {
           selected$directions[[cell_char]]$cell <-
             selected$directions[[cell_char]]$cell[cell_ids]
-          if (is.list(aggr)) {
+          if (include_aggr) {
             selected$directions[[cell_char]]$aggr <-
               selected$directions[[cell_char]]$aggr[aggr_ids]
           }

@@ -284,11 +284,20 @@ Dispersal.Region <- function(region, population_model,
           lapply(p, function(l) list(cell = l)))
       }
 
+      ## Check that dispersal paths are present
+      if (length(unlist(paths$idx[[loc_char]])) == 0) {
+        return(list(i = i, dispersals = FALSE))
+      }
+      aggr_paths_present <- region$two_tier()
+      if (length(paths$idx[[loc_char]]$aggr) == 0) {
+        aggr_paths_present <- FALSE
+      }
+
       ## Relative dispersal probabilities for source and destination
       source_p <- 1
       destination_p <- list(cell = rep(1,
                                        length(paths$idx[[loc_char]]$cell)))
-      if (region$two_tier()) { # multiple cells
+      if (aggr_paths_present) {
         destination_p$aggr <- region$get_aggr()$rast[
           region$get_aggr()$indices[paths$idx[[loc_char]]$aggr]][,1]
       }
@@ -301,7 +310,7 @@ Dispersal.Region <- function(region, population_model,
         if (distance_adjust) {
           dist_p_adj$cell <- (region$get_res()/
                                 (2*pi*paths$distances[[loc_char]]$cell))
-          if (region$two_tier()) {
+          if (aggr_paths_present) {
             dist_p_adj$aggr <- (region$get_res()/
                                   (2*pi*paths$distances[[loc_char]]$aggr))
           }
@@ -312,7 +321,7 @@ Dispersal.Region <- function(region, population_model,
           destination_p$cell <-
             (distance_function(paths$perm_dist[[loc_char]]$cell)*
                dist_p_adj$cell*destination_p$cell)
-          if (region$two_tier()) {
+          if (aggr_paths_present) {
             destination_p$aggr <-
               (distance_function(paths$perm_dist[[loc_char]]$aggr)*
                  dist_p_adj$aggr*destination_p$aggr)
@@ -321,7 +330,7 @@ Dispersal.Region <- function(region, population_model,
           destination_p$cell <-
             (distance_function(paths$distances[[loc_char]]$cell)*
                dist_p_adj$cell*destination_p$cell)
-          if (region$two_tier()) {
+          if (aggr_paths_present) {
             destination_p$aggr <-
               (distance_function(paths$distances[[loc_char]]$aggr)*
                  dist_p_adj$aggr*destination_p$aggr)
@@ -335,7 +344,7 @@ Dispersal.Region <- function(region, population_model,
         destination_p$cell <-
           (destination_p$cell*
              direction_function(paths$directions[[loc_char]]$cell))
-        if (region$two_tier()) {
+        if (aggr_paths_present) {
           destination_p$aggr <-
             (destination_p$aggr*
                direction_function(paths$directions[[loc_char]]$aggr))
@@ -373,7 +382,7 @@ Dispersal.Region <- function(region, population_model,
               destination_p$cell <-
                 (destination_p$cell*
                    attractor$get_values(paths$idx[[loc_char]]$cell))
-              if (region$two_tier()) {
+              if (aggr_paths_present) {
                 destination_p$aggr <-
                   (destination_p$aggr*
                      attractor$get_aggr_values(paths$idx[[loc_char]]$aggr))
@@ -472,7 +481,7 @@ Dispersal.Region <- function(region, population_model,
             length(destination_p$cell), size = 1,
             prob = destination_p$cell*proportion*source_p)))
 
-          if (region$two_tier()) {
+          if (aggr_paths_present) {
 
             # Number or (non-NA) region cells in each aggregate cell
             aggr_cells <- region$get_aggr()$rast[
@@ -504,7 +513,7 @@ Dispersal.Region <- function(region, population_model,
 
       ## Resolve dispersal destinations as region cell indices
       if (dispersals) {
-        if (region$two_tier()) {
+        if (aggr_paths_present) {
 
           # Identify cell and aggregate cell destinations
           cell_dest <- which(destinations <= length(destination_p$cell))
@@ -599,7 +608,7 @@ Dispersal.Region <- function(region, population_model,
       } else {
 
         # Return empty dispersals
-        list(i = i, dispersals = dispersals)
+        list(i = i, dispersals = FALSE)
       }
     }
 
