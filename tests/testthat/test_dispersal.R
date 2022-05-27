@@ -238,7 +238,6 @@ test_that("disperses unstructured population in a two-tier grid region", {
   expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
   expect_true(sum(new_n[-5922]) <= (2000 - new_n[5922]))
   expect_true(round(new_n[5922]/2000, 1) == 0.3)
-  expect_true(length(which(new_n > 0)) <= 101)
   expect_true(all(which(new_n > 0) %in% c(5922, idx)))
 })
 
@@ -280,8 +279,182 @@ test_that("disperses staged population in a two-tier raster grid region", {
   expect_true(all(colSums(new_n)[1:2] < n$original[,1:2]))
   expect_true(all(colSums(new_n[-5922,]) <= (n$original - new_n[5922,])))
   expect_true(all(round(new_n[5922,1:2]/n$original[,1:2], 1) == 0.3))
-  expect_true(length(which(rowSums(new_n) > 0)) <= 101)
   expect_true(all(which(rowSums(new_n) > 0) %in% c(5922, idx)))
+})
+
+test_that("disperses population in a patch/network region", {
+  TEST_DIRECTORY <- test_path("test_inputs")
+  locations <- utils::read.csv(file.path(TEST_DIRECTORY, "vic_cities.csv"))
+  region <- Region(locations)
+  population <- Population(region)
+  n <- rep(FALSE, region$get_locations())
+  n[1] <- TRUE
+  expect_silent(dispersal <- Dispersal(region, population_model = population))
+  n <- dispersal$pack(n)
+  expect_equal(dispersal$unpack(dispersal$disperse(n)), dispersal$unpack(n))
+  dispersal <- Dispersal(region, population_model = population,
+                         proportion = 1)
+  expect_true(all(dispersal$unpack(dispersal$disperse(n))))
+  dispersal <- Dispersal(region, population_model = population,
+                         proportion = 0.5)
+  set.seed(4321); new_locs <- sum(stats::rbinom(13, size = 1, prob = 0.5))
+  set.seed(4321)
+  expect_equal(sum(dispersal$unpack(dispersal$disperse(n))), new_locs + 1)
+  dispersal <- Dispersal(region, population_model = population,
+                         events = 8)
+  set.seed(4321); new_locs <- stats::rpois(1, 8); set.seed(4321)
+  expect_true(sum(dispersal$unpack(dispersal$disperse(n))) <= new_locs + 1)
+  dispersal <- Dispersal(region, population_model = population,
+                         proportion = 1, max_distance = 200000)
+  idx <- region$get_paths(1, max_distance = 200000)$idx[["1"]]
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_equal(sum(new_n), length(idx) + 1)
+  expect_true(all(new_n[c(1, idx)]))
+})
+
+test_that("disperses in patch/network with distance and direction functions", {
+  TEST_DIRECTORY <- test_path("test_inputs")
+  locations <- utils::read.csv(file.path(TEST_DIRECTORY, "vic_cities.csv"))
+  region <- Region(locations)
+  population <- Population(region)
+  n <- rep(FALSE, region$get_locations())
+  n[1] <- TRUE
+  expect_silent(dispersal <-
+                  Dispersal(region, population_model = population,
+                            proportion = 1, distance_adjust = FALSE,
+                            distance_function = function(d) +(d <= 200000),
+                            direction_function = function(d) +(d <= 150)))
+  n <- dispersal$pack(n)
+  region$calculate_paths(1)
+  idx <- region$get_paths(1, max_distance = 200000)$idx[["1"]]
+  directions <- region$get_paths(1, directions = TRUE, max_distance = 200000)$directions[["1"]]
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_equal(sum(new_n), length(which(directions <= 150)) + 1)
+  expect_true(all(new_n[idx[which(directions <= 150)]]))
+})
+
+test_that("disperses in patch/network with attractors", {
+  TEST_DIRECTORY <- test_path("test_inputs")
+  locations <- utils::read.csv(file.path(TEST_DIRECTORY, "vic_cities.csv"))
+  region <- Region(locations)
+  population <- Population(region)
+  n <- rep(FALSE, region$get_locations())
+  n[1] <- TRUE
+  attractor_vect <- rep(0, region$get_locations())
+  attractor_vect[1:8] <- 1
+  attractor <- Attractor(attractor_vect, region, type = "destination")
+  expect_silent(dispersal <- Dispersal(region, population_model = population,
+                                       proportion = 1, max_distance = 200000,
+                                       attractors = list(attractor)))
+  n <- dispersal$pack(n)
+  region$calculate_paths(1)
+  idx <- region$get_paths(1, max_distance = 200000)$idx[["1"]]
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_equal(sum(new_n), length(which(idx <= 8)) + 1)
+  expect_true(all(new_n[idx[which(idx <= 8)]]))
+})
+
+test_that("disperses in patch/network with permeability", {
+  TEST_DIRECTORY <- test_path("test_inputs")
+  locations <- utils::read.csv(file.path(TEST_DIRECTORY, "vic_cities.csv"))
+  region <- Region(locations)
+  region$configure_paths(max_distance = 300000)
+  population <- Population(region)
+  n <- rep(FALSE, region$get_locations())
+  n[1] <- TRUE
+  perm_data <- matrix(c( 1,  2, 0.8,
+                         1,  3, 0.7,
+                         1,  4, 0.7,
+                         1,  6, 0.6,
+                         1, 10, 0.8,
+                         2,  5, 0.6,
+                         3, 12, 0.6,
+                         3, 14, 0.5,
+                         4, 13, 0.5,
+                         5,  8, 0.6,
+                         6,  9, 0.6,
+                         7, 10, 0.5,
+                         10, 11, 0.8), ncol = 3, byrow = TRUE)
+  colnames(perm_data) <- c("i", "j", "weight")
+  permeability <- Permeability(perm_data, region)
+  expect_silent(dispersal <- Dispersal(region, population_model = population,
+                                       proportion = 1, max_distance = 200000,
+                                       permeability = permeability))
+  n <- dispersal$pack(n)
+  region$calculate_paths(1)
+  paths <- region$get_paths(1, perm_id = 1)
+  perm_dist <- paths$perm_dist[["1"]]
+  idx <- paths$idx[["1"]][which(perm_dist <= 200000)]
+  distances <- paths$distances[["1"]][which(perm_dist <= 200000)]
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_equal(sum(new_n), length(idx) + 1)
+  expect_true(all(new_n[idx]))
+})
+
+test_that("disperses unstructured population in patch/network", {
+  TEST_DIRECTORY <- test_path("test_inputs")
+  locations <- utils::read.csv(file.path(TEST_DIRECTORY, "vic_cities.csv"))
+  region <- Region(locations)
+  establish_pr = c(1, rep(0.8, 4), rep(0.6, 9))
+  population <- UnstructPopulation(region, establish_pr = establish_pr)
+  n <- rep(0, region$get_locations())
+  n[1] <- 2000
+  expect_silent(dispersal <- Dispersal(region, population_model = population,
+                                       proportion = 1, max_distance = 200000))
+  n <- dispersal$pack(n)
+  region$calculate_paths(1)
+  paths <- region$get_paths(1)
+  idx <- paths$idx$`1`
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_true(sum(new_n) < 2000)
+  expect_true(new_n[1] == 0)
+  expect_true(all(which(new_n > 0) %in% idx))
+  expect_silent(dispersal <- Dispersal(region, population_model = population,
+                                       proportion = 0.7, events = 3,
+                                       max_distance = 200000))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_true(sum(new_n[-1]) <= (2000 - new_n[1]))
+  expect_true(round(new_n[1]/2000, 1) == 0.3)
+  expect_true(all(which(new_n > 0) %in% c(1, idx)))
+})
+
+test_that("disperses staged population in patch/network", {
+  TEST_DIRECTORY <- test_path("test_inputs")
+  locations <- utils::read.csv(file.path(TEST_DIRECTORY, "vic_cities.csv"))
+  region <- Region(locations)
+  establish_pr = c(1, rep(0.8, 4), rep(0.6, 9))
+  stage_matrix <- matrix(c(0.0, 2.0, 5.0,
+                           0.3, 0.0, 0.0,
+                           0.0, 0.6, 0.8),
+                         nrow = 3, ncol = 3, byrow = TRUE)
+  population <- StagedPopulation(region,
+                                 growth = stage_matrix,
+                                 establish_pr = establish_pr)
+  n <- rep(0, region$get_locations())
+  n[1] <- 2000
+  n <- population$make(initial = n)
+  sum(n[1,]) # 2000
+  expect_silent(dispersal <- Dispersal(region, population_model = population,
+                                       dispersal_stages = 2:3,
+                                       proportion = 1, max_distance = 200000))
+  expect_silent(n <- dispersal$pack(n))
+  region$calculate_paths(1)
+  paths <- region$get_paths(1)
+  idx <- paths$idx$`1`
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_true(all(new_n[1,] == c(n$original[1], 0, 0)))
+  expect_true(all(colSums(new_n)[2:3] < n$original[,2:3]))
+  expect_true(all(which(rowSums(new_n) > 0) %in% c(1, idx)))
+  expect_silent(dispersal <- Dispersal(region, population_model = population,
+                                       dispersal_stages = 2:3,
+                                       proportion = 0.7, events = 100,
+                                       max_distance = 200000))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_true(all(new_n[1,1] == n$original[1]))
+  expect_true(all(colSums(new_n)[2:3] < n$original[,2:3]))
+  expect_true(all(colSums(new_n[-1,]) <= (n$original - new_n[1,])))
+  expect_true(all(new_n[1, 2:3]/n$original[,2:3] > 0.2))
+  expect_true(all(which(rowSums(new_n) > 0) %in% c(1, idx)))
 })
 
 test_that("next", {

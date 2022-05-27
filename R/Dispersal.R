@@ -420,9 +420,9 @@ Dispersal.Region <- function(region, population_model,
               # Distribute dispersers via a multinomial generation
               dispersers <- t(array(dispersers,
                                     c(length(dispersers), dispersals)))
-              for (stage in dispersal_stages) {
-                dispersers[, stage] <-
-                  stats::rmultinom(1, size = dispersers[1, stage],
+              for (ds_i in 1:length(dispersal_stages)) {
+                dispersers[, ds_i] <-
+                  stats::rmultinom(1, size = dispersers[1, ds_i],
                                    prob = rep(1, dispersals))
               }
 
@@ -580,9 +580,9 @@ Dispersal.Region <- function(region, population_model,
               stats::rbinom(length(destinations), size = 1,
                             prob = establish_p)))]
           } else {
-            for (stage in dispersal_stages) {
-              dispersers[, stage] <- stats::rbinom(dispersals,
-                                                   size = dispersers[, stage],
+            for (sd_i in 1:length(dispersal_stages)) {
+              dispersers[, sd_i] <- stats::rbinom(dispersals,
+                                                   size = dispersers[, sd_i],
                                                    prob = establish_p)
             }
             destinations <- destinations[which(rowSums(dispersers) > 0)]
@@ -639,13 +639,19 @@ Dispersal.Region <- function(region, population_model,
           n$relocated[unique(d$destinations)] <- TRUE
         } else if (population_type == "unstructured") {
           destinations <- unique(d$destinations)
-          dispersers <- sapply(destinations,
-                 function(di) sum(d$dispersers[which(d$destinations == di)]))
+          dispersers <- sapply(destinations, function(di)
+            sum(d$dispersers[which(d$destinations == di)]))
           n$relocated[destinations] <-
             n$relocated[destinations] + dispersers
-        } else if (population_type == "stage_structured") { # TODO as above ###
-          n$relocated[d$destinations, dispersal_stages] <-
-            n$relocated[d$destinations, dispersal_stages] + d$dispersers
+        } else if (population_type == "stage_structured") {
+          destinations <- unique(d$destinations)
+          dispersers <- sapply(destinations, function(di)
+            colSums(d$dispersers[which(d$destinations == di),,drop = FALSE]))
+          if (is.matrix(dispersers)) {
+            dispersers <- t(dispersers)
+          }
+          n$relocated[destinations, dispersal_stages] <-
+            n$relocated[destinations, dispersal_stages] + dispersers
         }
       }
     }
