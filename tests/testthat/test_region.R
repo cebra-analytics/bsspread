@@ -32,6 +32,17 @@ test_that("initializes with CSV data", {
   expect_false(region$two_tier())
 })
 
+test_that("empty initialize for single aspatial patch", {
+  expect_silent(region <- Region())
+  expect_equal(region$get_type(), "patch")
+  expect_equal(region$get_locations(), 1)
+  expect_silent(region$configure_paths())
+  expect_silent(region$calculate_paths(1))
+  expect_silent(paths <- region$get_paths(1))
+  expect_length(paths$idx[["1"]], 0)
+  expect_length(paths$distances[["1"]], 0)
+})
+
 test_that("creates two tier aggregation", {
   TEST_DIRECTORY <- test_path("test_inputs")
   template <- terra::rast(file.path(TEST_DIRECTORY, "greater_melb.tif"))
@@ -60,9 +71,9 @@ test_that("creates paths to single tier cells", {
   region <- Region(template)
   expect_silent(region$configure_paths(max_distance = 20000))
   expect_silent(region$calculate_paths(5922))
-  expect_silent(paths <- region$get_paths(5922))
-  expect_equal(length(paths$idx$`5922`$cell), 1002)
-  expect_true(all(paths$distances$`5922`$cell <= 21000))
+  expect_silent(paths <- region$get_paths(5922, max_distance = 20000))
+  expect_equal(length(paths$idx$`5922`$cell), 937)
+  expect_true(all(paths$distances$`5922`$cell <= 20000))
 })
 
 test_that("creates paths to two tier cells and aggregate cells", {

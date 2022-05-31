@@ -4,6 +4,7 @@
 \alias{Region}
 \alias{Region.Raster}
 \alias{Region.SpatRaster}
+\alias{Region.NULL}
 \alias{Region.matrix}
 \alias{Region.data.frame}
 \title{Region class builder}
@@ -14,6 +15,8 @@ Region(x, ...)
 
 \method{Region}{SpatRaster}(x, ...)
 
+\method{Region}{`NULL`}(...)
+
 \method{Region}{matrix}(x, ...)
 
 \method{Region}{data.frame}(x, ...)
@@ -23,7 +26,8 @@ Region(x, ...)
 representing a grid-based spatial region (template) for spread simulations.
 Alternatively, a network of locations or patches may be defined via a data
 frame (or matrix) of location coordinates in longitude and latitude
-(WGS84) with explicitly named columns "lon" and "lat".}
+(WGS84) with explicitly named columns "lon" and "lat". If missing, the
+region is assumed to be a single aspatial patch.}
 
 \item{...}{Additional parameters.}
 }

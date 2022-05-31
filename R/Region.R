@@ -20,7 +20,8 @@
 #'   representing a grid-based spatial region (template) for spread simulations.
 #'   Alternatively, a network of locations or patches may be defined via a data
 #'   frame (or matrix) of location coordinates in longitude and latitude
-#'   (WGS84) with explicitly named columns "lon" and "lat".
+#'   (WGS84) with explicitly named columns "lon" and "lat". If missing, the
+#'   region is assumed to be a single aspatial patch.
 #' @param ... Additional parameters.
 #' @return A \code{Region} class object (list) containing functions for
 #'   accessing attributes, checking compatibility of objects with the
@@ -301,8 +302,7 @@ Region.SpatRaster <- function(x, ...) {
           paths$idx[[cell_char]]$cell <<- paths$idx[[cell_char]]$cell[-cell_i]
 
           # Aggregate cells outside inner area
-          if (is.numeric(max_distance) &&
-              is.finite(max_distance)) {
+          if (is.numeric(max_distance) && is.finite(max_distance)) {
             outer_vect <- terra::buffer(region_pts[cell,],
                                         width = max_distance,
                                         quadsegs = 180)
@@ -317,8 +317,7 @@ Region.SpatRaster <- function(x, ...) {
         } else { # cell approach
 
           # Select cells within range when applicable
-          if (is.numeric(max_distance) &&
-              is.finite(max_distance)) {
+          if (is.numeric(max_distance) && is.finite(max_distance)) {
             range_vect <- terra::buffer(region_pts[cell,],
                                         width = max_distance,
                                         quadsegs = 180)
@@ -738,7 +737,7 @@ Region.SpatRaster <- function(x, ...) {
 
     # Limit to paths within a maximum distance
     limit_paths <- FALSE
-    if (is.numeric(max_distance) && max_distance < paths$max_distance) {
+    if (is.numeric(max_distance)) {
       limit_paths <- TRUE
     }
 
@@ -776,13 +775,6 @@ Region.SpatRaster <- function(x, ...) {
 
     # Limit to paths within reachable cells if required
     if (limit_paths) {
-
-      # Resolve maximum distance when present
-      if (is.numeric(max_distance) && is.numeric(paths$max_distance)) {
-        max_distance <- min(max_distance, paths$max_distance)
-      } else if (is.numeric(paths$max_distance)) {
-        max_distance <- paths$max_distance
-      }
 
       # Get distances and directions to reachable cells for each cell
       for (cell_char in cells_char) {
@@ -870,6 +862,14 @@ Region.SpatRaster <- function(x, ...) {
   }
 
   return(self)
+}
+
+#' @name Region
+#' @export
+Region.NULL <- function(...) {
+
+  # Call the data frame version of the function with a single location
+  Region(data.frame(lon = 0, lat = 0), ...)
 }
 
 #' @name Region
