@@ -100,7 +100,32 @@ Diffusion <- function(region, population_model,
   # Configure maximum distance and define combined function for diffusion
   max_distance <- max(region$get_res(), diffusion_rate) + region$get_res()
   combined_function <- function(distances, directions) {
-    return(pmin(diffusion_rate/distances, 1)) # TODO ####
+
+    # Set diffusion probability to one when within (minimum) range
+    region_res <- region$get_res()
+    diff_pr <- +(distances[[1]] <= max(region_res, diffusion_rate))
+
+    # Calculate probability of outer cells within one cell of the range
+    outer_idx <- which(diff_pr == 0)
+    width <- pmax(abs(cos(directions[outer_idx]*pi/180)),
+                  abs(sin(directions[outer_idx]*pi/180)))
+    diff_pr[outer_idx] <- (pmax(0, max(region_res, diffusion_rate) +
+                                 region_res*width -
+                                 distances[[1]][outer_idx])/
+                             distances[[1]][outer_idx])
+
+    # Adjust probability when permeable distance is out of range
+    if (length(distances) >= 2) {
+      perm_outer_idx <- which(distances[[2]] > max(region_res, diffusion_rate))
+      diff_pr[perm_outer_idx] <-
+        (diff_pr*distances[[1]]/distances[[2]])[perm_outer_idx]
+    }
+
+    # Scale probability when rate is smaller than cell size
+    if (diffusion_rate < region_res) { # TODO: investigate further ####
+      diff_pr <- (diff_pr*diffusion_rate/region_res)/2 # ^1 too big ^2 too small
+    }
+    return(diff_pr)
   }
 
   # Build via base class
