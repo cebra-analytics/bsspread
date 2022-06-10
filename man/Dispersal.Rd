@@ -12,8 +12,9 @@ Dispersal(
   proportion = NULL,
   events = NULL,
   distance_function = NULL,
-  distance_adjust = NULL,
   direction_function = NULL,
+  combined_function = NULL,
+  distance_adjust = NULL,
   attractors = list(),
   permeability = NULL,
   max_distance = NULL,
@@ -28,8 +29,9 @@ Dispersal(
   proportion = NULL,
   events = NULL,
   distance_function = NULL,
-  distance_adjust = NULL,
   direction_function = NULL,
+  combined_function = NULL,
+  distance_adjust = NULL,
   attractors = list(),
   permeability = NULL,
   max_distance = NULL,
@@ -69,16 +71,23 @@ for presence-only populations).}
 dispersal for each distance (in m) specified as a numeric vector. Default
 is none.}
 
-\item{distance_adjust}{Logical indication of whether the (relative)
-probabilities returned by \code{distance_function} should be distributed
-across the (approximate) number of grid cells at each distance. When not
-specified (\code{NULL}), the value will resolve to \code{TRUE} for
-grid-based regions only.}
-
 \item{direction_function}{A function (or kernel) in the form
 \code{function(directions)}, that calculates the (relative) probability of
 dispersal for each direction (0-360 degrees) specified as an integer
 vector. Default is none.}
+
+\item{combined_function}{A function (or kernel) in the form
+\code{function(distances, directions)}, that calculates the (relative)
+probability of dispersal for distances, a list of equal-length numeric
+vectors for (1) actual and (2) optional permeable distances (in m), and
+a corresponding equal-length numeric vector of directions (0-360 degrees).
+Default is none.}
+
+\item{distance_adjust}{Logical indication of whether the (relative)
+probabilities returned by \code{distance_function} or
+\code{combined_function} should be distributed across the (approximate)
+number of grid cells at each distance. When not specified (\code{NULL}),
+the value will resolve to \code{TRUE} for grid-based regions only.}
 
 \item{attractors}{List containing \code{Attractor} (or inherited) class
 objects for spatially weighted dispersal, and/or containing a named

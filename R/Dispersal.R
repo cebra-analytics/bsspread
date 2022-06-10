@@ -57,15 +57,21 @@
 #'   \code{function(distances)}, that calculates the (relative) probability of
 #'   dispersal for each distance (in m) specified as a numeric vector. Default
 #'   is none.
-#' @param distance_adjust Logical indication of whether the (relative)
-#'   probabilities returned by \code{distance_function} should be distributed
-#'   across the (approximate) number of grid cells at each distance. When not
-#'   specified (\code{NULL}), the value will resolve to \code{TRUE} for
-#'   grid-based regions only.
 #' @param direction_function A function (or kernel) in the form
 #'   \code{function(directions)}, that calculates the (relative) probability of
 #'   dispersal for each direction (0-360 degrees) specified as an integer
 #'   vector. Default is none.
+#' @param combined_function A function (or kernel) in the form
+#'   \code{function(distances, directions)}, that calculates the (relative)
+#'   probability of dispersal for distances, a list of equal-length numeric
+#'   vectors for (1) actual and (2) optional permeable distances (in m), and
+#'   a corresponding equal-length numeric vector of directions (0-360 degrees).
+#'   Default is none.
+#' @param distance_adjust Logical indication of whether the (relative)
+#'   probabilities returned by \code{distance_function} or
+#'   \code{combined_function} should be distributed across the (approximate)
+#'   number of grid cells at each distance. When not specified (\code{NULL}),
+#'   the value will resolve to \code{TRUE} for grid-based regions only.
 #' @param attractors List containing \code{Attractor} (or inherited) class
 #'   objects for spatially weighted dispersal, and/or containing a named
 #'   numeric multiplier \code{source_density = <numeric>}, which (when present)
@@ -112,8 +118,9 @@ Dispersal <- function(region, population_model,
                       proportion = NULL,
                       events = NULL,
                       distance_function = NULL,
-                      distance_adjust = NULL,
                       direction_function = NULL,
+                      combined_function = NULL,
+                      distance_adjust = NULL,
                       attractors = list(),
                       permeability = NULL,
                       max_distance = NULL,
@@ -128,8 +135,9 @@ Dispersal.Region <- function(region, population_model,
                              proportion = NULL,
                              events = NULL,
                              distance_function = NULL,
-                             distance_adjust = NULL,
                              direction_function = NULL,
+                             combined_function = NULL,
+                             distance_adjust = NULL,
                              attractors = list(),
                              permeability = NULL,
                              max_distance = NULL,
@@ -170,14 +178,17 @@ Dispersal.Region <- function(region, population_model,
   if (!is.null(distance_function) && !is.function(distance_function)) {
     stop("The distance function must be a function.", call. = FALSE)
   }
+  if (!is.null(direction_function) && !is.function(direction_function)) {
+    stop("The direction function must be a function.", call. = FALSE)
+  }
+  if (!is.null(combined_function) && !is.function(combined_function)) {
+    stop("The combined function must be a function.", call. = FALSE)
+  }
   if (!is.null(distance_adjust) && !is.logical(distance_adjust)) {
     stop("The distance adjust must be logical.", call. = FALSE)
   }
   if (is.null(distance_adjust)) {
     distance_adjust <- region$get_type() == "grid"
-  }
-  if (!is.null(direction_function) && !is.function(direction_function)) {
-    stop("The direction function must be a function.", call. = FALSE)
   }
 
   # Check the attractors
@@ -207,7 +218,8 @@ Dispersal.Region <- function(region, population_model,
   }
 
   # Configure paths via region (sets permeability id when present)
-  region$configure_paths(directions = is.function(direction_function),
+  region$configure_paths(directions = (is.function(direction_function) ||
+                                         is.function(combined_function)),
                          max_distance = max_distance,
                          permeability = permeability)
 
@@ -275,10 +287,12 @@ Dispersal.Region <- function(region, population_model,
       loc_char <- as.character(loc_i)
 
       ## Get paths for location
-      paths <- region$get_paths(loc_i,
-                                directions = is.function(direction_function),
-                                max_distance = max_distance,
-                                perm_id = perm_id)
+      paths <- region$get_paths(
+        loc_i,
+        directions = (is.function(direction_function) ||
+                        is.function(combined_function)),
+        max_distance = max_distance,
+        perm_id = perm_id)
       if (region$get_type() == "patch") { # for code reuse
         paths <- lapply(paths, function(p)
           lapply(p, function(l) list(cell = l)))
@@ -349,6 +363,50 @@ Dispersal.Region <- function(region, population_model,
             (destination_p$aggr*
                direction_function(paths$directions[[loc_char]]$aggr))
         }
+      }
+
+      ## Adjust destination (relative) probabilities based on combined distance
+      ## and direction
+      if (is.function(combined_function)) {
+
+        # Additional adjustment given (approx.) cells at each distance
+        dist_p_adj <- list(cell = 1, aggr = 1)
+        if (distance_adjust) {
+          dist_p_adj$cell <- (region$get_res()/
+                                (2*pi*paths$distances[[loc_char]]$cell))
+          if (aggr_paths_present) {
+            dist_p_adj$aggr <- (region$get_res()/
+                                  (2*pi*paths$distances[[loc_char]]$aggr))
+          }
+        }
+
+        # Adjust via combined function using appropriate distances/directions
+        if (is.numeric(perm_id) && "perm_dist" %in% names(paths)) {
+          destination_p$cell <-
+            (combined_function(list(paths$distances[[loc_char]]$cell,
+                                    paths$perm_dist[[loc_char]]$cell),
+                               paths$directions[[loc_char]]$cell)*
+               dist_p_adj$cell*destination_p$cell)
+          if (aggr_paths_present) {
+            destination_p$aggr <-
+              (combined_function(list(paths$distances[[loc_char]]$aggr,
+                                      paths$perm_dist[[loc_char]]$aggr),
+                                 paths$directions[[loc_char]]$aggr)*
+                 dist_p_adj$aggr*destination_p$aggr)
+          }
+        } else {
+          destination_p$cell <-
+            (combined_function(list(paths$distances[[loc_char]]$cell),
+                               paths$directions[[loc_char]]$cell)*
+               dist_p_adj$cell*destination_p$cell)
+          if (aggr_paths_present) {
+            destination_p$aggr <-
+              (combined_function(list(paths$distances[[loc_char]]$aggr),
+                                 paths$directions[[loc_char]]$aggr)*
+                 dist_p_adj$aggr*destination_p$aggr)
+          }
+        }
+        rm(dist_p_adj)
       }
 
       ## Adjust (relative) probabilities via attractors

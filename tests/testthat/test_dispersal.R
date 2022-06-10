@@ -20,11 +20,14 @@ test_that("initializes with region, population model, and other parameters", {
                                       distance_function = 0),
                "The distance function must be a function.")
   expect_error(dispersal <- Dispersal(region, population_model = population,
-                                      distance_adjust = "y"),
-               "The distance adjust must be logical.")
-  expect_error(dispersal <- Dispersal(region, population_model = population,
                                       direction_function = 0),
                "The direction function must be a function.")
+  expect_error(dispersal <- Dispersal(region, population_model = population,
+                                      combined_function = 0),
+               "The combined function must be a function.")
+  expect_error(dispersal <- Dispersal(region, population_model = population,
+                                      distance_adjust = "y"),
+               "The distance adjust must be logical.")
   expect_error(dispersal <- Dispersal(region, population_model = population,
                                       attractors = 0),
                paste("Attractors must be a list containing zero or more",
@@ -41,8 +44,10 @@ test_that("initializes with region, population model, and other parameters", {
   expect_silent(dispersal <- Dispersal(region, population_model = population,
                                        proportion = 1, events = 5,
                                        distance_function = function(x) 1/x,
-                                       distance_adjust = FALSE,
                                        direction_function = function(x) x/360,
+                                       combined_function = function(x, y)
+                                         1/x[[1]]*y/360,
+                                       distance_adjust = FALSE,
                                        attractors = list(source_density = 1),
                                        permeability = Permeability(template,
                                                                    region),
@@ -118,6 +123,29 @@ test_that("disperses grid population with distance and direction functions", {
                             proportion = 1, distance_adjust = FALSE,
                             distance_function = function(d) +(d <= 10000),
                             direction_function = function(d) +(d <= 180)))
+  n <- dispersal$pack(n)
+  region$calculate_paths(5922)
+  idx <- region$get_paths(5922, max_distance = 10000)$idx[["5922"]]$cell
+  directions <-
+    region$get_paths(5922, directions = TRUE,
+                     max_distance = 10000)$directions[["5922"]]$cell
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_equal(sum(new_n), length(which(directions <= 180)) + 1)
+  expect_true(all(new_n[idx[which(directions <= 180)]]))
+})
+
+test_that("disperses grid population with combined function", {
+  TEST_DIRECTORY <- test_path("test_inputs")
+  template <- terra::rast(file.path(TEST_DIRECTORY, "greater_melb.tif"))
+  region <- Region(template)
+  population <- Population(region)
+  n <- rep(FALSE, region$get_locations())
+  n[5922] <- TRUE
+  expect_silent(dispersal <-
+                  Dispersal(region, population_model = population,
+                            proportion = 1, distance_adjust = FALSE,
+                            combined_function = function(x, d) {
+                              +(x[[1]] <= 10000 & d <= 180)}))
   n <- dispersal$pack(n)
   region$calculate_paths(5922)
   idx <- region$get_paths(5922, max_distance = 10000)$idx[["5922"]]$cell
@@ -324,6 +352,27 @@ test_that("disperses in patch/network with distance and direction functions", {
                             proportion = 1, distance_adjust = FALSE,
                             distance_function = function(d) +(d <= 200000),
                             direction_function = function(d) +(d <= 150)))
+  n <- dispersal$pack(n)
+  region$calculate_paths(1)
+  idx <- region$get_paths(1, max_distance = 200000)$idx[["1"]]
+  directions <- region$get_paths(1, directions = TRUE, max_distance = 200000)$directions[["1"]]
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_equal(sum(new_n), length(which(directions <= 150)) + 1)
+  expect_true(all(new_n[idx[which(directions <= 150)]]))
+})
+
+test_that("disperses in patch/network with combined function", {
+  TEST_DIRECTORY <- test_path("test_inputs")
+  locations <- utils::read.csv(file.path(TEST_DIRECTORY, "vic_cities.csv"))
+  region <- Region(locations)
+  population <- Population(region)
+  n <- rep(FALSE, region$get_locations())
+  n[1] <- TRUE
+  expect_silent(dispersal <-
+                  Dispersal(region, population_model = population,
+                            proportion = 1, distance_adjust = FALSE,
+                            combined_function = function(x, d) {
+                              +(x[[1]] <= 200000 & d <= 150)}))
   n <- dispersal$pack(n)
   region$calculate_paths(1)
   idx <- region$get_paths(1, max_distance = 200000)$idx[["1"]]

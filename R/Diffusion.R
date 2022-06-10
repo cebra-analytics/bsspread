@@ -97,11 +97,10 @@ Diffusion <- function(region, population_model,
     diffusion_rate <- region$get_res()*sqrt(2)
   }
 
-  # Configure maximum distance and define distance function for diffusion
-  diag_dist <- region$get_res()*sqrt(2)/2
-  max_distance <- max(diffusion_rate, diag_dist) + diag_dist
-  distance_function <- function(distances) {
-    return(pmin(diffusion_rate/distances, 1))
+  # Configure maximum distance and define combined function for diffusion
+  max_distance <- max(region$get_res(), diffusion_rate) + region$get_res()
+  combined_function <- function(distances, directions) {
+    return(pmin(diffusion_rate/distances, 1)) # TODO ####
   }
 
   # Build via base class
@@ -109,9 +108,10 @@ Diffusion <- function(region, population_model,
                     dispersal_stages = dispersal_stages,
                     proportion = proportion,
                     events = NULL,
-                    distance_function = distance_function,
-                    distance_adjust = FALSE,
+                    distance_function = NULL,
                     direction_function = direction_function,
+                    combined_function = combined_function,
+                    distance_adjust = FALSE,
                     attractors = attractors,
                     permeability = permeability,
                     max_distance = max_distance,
