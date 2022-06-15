@@ -35,8 +35,7 @@
 #' @param dispersal_stages Numeric vector of population stages (indices) that
 #'   disperse. Default is all stages (when set to \code{NULL}).
 #' @param diffusion_rate The speed of diffusion (in m per time step). Default
-#'   is \code{NULL} (resulting in spread to adjacent locations or cells at each
-#'   time step when other sampling probabilities result in selection).
+#'   is \code{NULL} (resulting in no diffusion).
 #' @param proportion The proportion of the (unstructured or staged) population
 #'   that disperses at each time step, or the proportion of local presence-only
 #'   destinations selected for diffusive dispersal. Default is \code{NULL}
@@ -93,8 +92,14 @@ Diffusion <- function(region, population_model,
       (!is.numeric(diffusion_rate) || diffusion_rate <= 0)) {
     stop("The diffusion rate must be numeric and > 0.", call. = FALSE)
   }
-  if (is.null(diffusion_rate)) { # include adjacent cells
-    diffusion_rate <- region$get_res()*sqrt(2)
+  if (is.null(diffusion_rate)) {
+    diffusion_rate <- 0
+  }
+
+  # Only implemented for grid regions
+  if (region$get_type() != "grid") {
+    stop("Diffusion has only been implemented for grid-based regions.",
+         call. = FALSE)
   }
 
   # Configure maximum distance and define combined function for diffusion
@@ -123,7 +128,7 @@ Diffusion <- function(region, population_model,
 
     # Scale probability when rate is smaller than cell size
     if (diffusion_rate < region_res) { # TODO: investigate further ####
-      diff_pr <- (diff_pr*diffusion_rate/region_res)/2 # ^1 too big ^2 too small
+      diff_pr <- (diff_pr*(diffusion_rate/region_res)^2)
     }
     return(diff_pr)
   }

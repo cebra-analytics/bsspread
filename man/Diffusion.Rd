@@ -29,8 +29,7 @@ defining the population representation for the spread simulations.}
 disperse. Default is all stages (when set to \code{NULL}).}
 
 \item{diffusion_rate}{The speed of diffusion (in m per time step). Default
-is \code{NULL} (resulting in spread to adjacent locations or cells at each
-time step when other sampling probabilities result in selection).}
+is \code{NULL} (resulting in no diffusion).}
 
 \item{proportion}{The proportion of the (unstructured or staged) population
 that disperses at each time step, or the proportion of local presence-only
