@@ -8,7 +8,10 @@ test_that("initializes with region, population model, and other parameters", {
   expect_silent(diffusion <- Diffusion(region, population_model = population))
   expect_is(diffusion, "Diffusion")
   expect_s3_class(diffusion, "Dispersal")
-  expect_silent(dispersal <- Diffusion(region, population_model = population,
+  expect_error(diffusion <- Diffusion(region, population_model = population,
+                                      diffusion_rate = 0),
+               "The diffusion rate must be numeric and > 0.")
+  expect_silent(diffusion <- Diffusion(region, population_model = population,
                                        diffusion_rate = 2000,
                                        proportion = 1,
                                        direction_function = function(x) x/360,
@@ -37,11 +40,8 @@ test_that("sets dispersal parameters and combined function appropriately", {
   expect_equal(max_distance, region$get_res()*2)
   expect_null(get("events", envir = environment(diffusion$disperse)))
   expect_false(get("distance_adjust", envir = environment(diffusion$disperse)))
-  expect_error(diffusion <- Diffusion(region, population_model = population,
-                                      diffusion_rate = 0),
-               "The diffusion rate must be numeric and > 0.")
-  expect_silent(diffusion <- Diffusion(region, population_model = population,
-                                       diffusion_rate = 500))
+  diffusion <- Diffusion(region, population_model = population,
+                         diffusion_rate = 500)
   combined_function <- get("combined_function",
                            envir = environment(diffusion$disperse))
   expect_equal(get("diffusion_rate", envir = environment(combined_function)),
@@ -90,6 +90,6 @@ test_that("no diffusion implemented patch regions", {
   region <- Region(locations)
   population <- Population(region)
   expect_error(diffusion <- Diffusion(region, population_model = population,
-                         diffusion_rate = 2000, proportion = 1),
+                                      diffusion_rate = 2000, proportion = 1),
                "Diffusion has only been implemented for grid-based regions.")
 })

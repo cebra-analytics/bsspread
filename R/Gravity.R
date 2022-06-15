@@ -50,6 +50,10 @@
 #' @param beta Numeric constant for shaping the effect of distance within
 #'   gravity dispersal, i.e. \code{dispersal = f(attractors)/distance^beta}.
 #'   Default is 1.
+#' @param distance_scale Numeric factor for adjusting the scale of distances
+#'   used within gravity dispersal, i.e.
+#'   \code{dispersal = f(attractors)/distance^beta}. Default scale is 1 for
+#'   distances in meters. Use 0.001 to scale distances to kilometers.
 #' @param dispersal_stages Numeric vector of population stages (indices) that
 #'   disperse. Default is all stages (when set to \code{NULL}).
 #' @param proportion The proportion of the (unstructured or staged) population
@@ -99,6 +103,7 @@
 Gravity <- function(region, population_model, attractors,
                     attractor_function = NULL,
                     beta = 1,
+                    distance_scale = 1,
                     dispersal_stages = NULL,
                     proportion = NULL,
                     events = NULL,
@@ -121,6 +126,11 @@ Gravity <- function(region, population_model, attractors,
   if (!is.null(beta) && (!is.numeric(beta) || beta <= 0)) {
     stop("The beta parameter must be numeric and > 0.", call. = FALSE)
   }
+  if (!is.null(distance_scale) && (!is.numeric(distance_scale) ||
+                                   distance_scale <= 0)) {
+    stop("The distance scale parameter must be numeric and > 0.",
+         call. = FALSE)
+  }
 
   # Run the attractor function to calculate a transformed list of Attractor
   # class objects
@@ -142,7 +152,7 @@ Gravity <- function(region, population_model, attractors,
 
   # Set the distance function as per gravity: f(attractors)/distance^beta
   distance_function <- function(distances) {
-    return(1/distances^beta)
+    return(1/(distances*distance_scale)^beta)
   }
 
   # Build via base class
