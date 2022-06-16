@@ -583,48 +583,53 @@ Dispersal.Region <- function(region, population_model,
           destinations[cell_dest] <-
             paths$idx[[loc_char]]$cell[destinations[cell_dest]]
 
-          # Map aggregate destinations
-          destinations[aggr_dest] <-
-            paths$idx[[loc_char]]$aggr[destinations[aggr_dest] -
-                                         length(destination_p$cell)]
+          if (length(aggr_dest)) {
 
-          # Collect consecutive repeated values in a list
-          aggr_dest_rep <- list(destinations[aggr_dest][1])
-          for (ag_i in destinations[aggr_dest][-1]) {
-            if (ag_i == unlist(aggr_dest_rep)[length(unlist(aggr_dest_rep))]) {
-              aggr_dest_rep[[length(aggr_dest_rep)]] <-
-                c(aggr_dest_rep[[length(aggr_dest_rep)]], ag_i)
-            } else {
-              aggr_dest_rep <- c(aggr_dest_rep, list(ag_i))
-            }
-          }
+            # Map aggregate destinations
+            destinations[aggr_dest] <-
+              paths$idx[[loc_char]]$aggr[destinations[aggr_dest] -
+                                           length(destination_p$cell)]
 
-          # Sample region cell(s) within each aggregate destination cell
-          for (rep_i in 1:length(aggr_dest_rep)) {
-
-            # Get region cell raster indices
-            aggr_cells <-
-              region$get_aggr()$get_cells(aggr_dest_rep[[rep_i]][1])
-
-            # Perform a weighted sample via attractors when present
-            aggr_p <- rep(1, length(aggr_cells))
-            for (attractor in attractors) {
-              if (inherits(attractor, "Attractor")) {
-                if (attractor$get_type() %in% c("destination", "both")) {
-                  aggr_p <- aggr_p*attractor$get_values(aggr_cells)
-                }
+            # Collect consecutive repeated values in a list
+            aggr_dest_rep <- list(destinations[aggr_dest][1])
+            for (ag_i in destinations[aggr_dest][-1]) {
+              if (ag_i ==
+                  unlist(aggr_dest_rep)[length(unlist(aggr_dest_rep))]) {
+                aggr_dest_rep[[length(aggr_dest_rep)]] <-
+                  c(aggr_dest_rep[[length(aggr_dest_rep)]], ag_i)
+              } else {
+                aggr_dest_rep <- c(aggr_dest_rep, list(ag_i))
               }
             }
-            aggr_i <- aggr_cells[sample(1:length(aggr_cells),
-                                        size = length(aggr_dest_rep[[rep_i]]),
-                                        prob = aggr_p)]
 
-            # Substitute region cells for repeated aggregate destinations
-            aggr_dest_rep[[rep_i]] <- aggr_i
+            # Sample region cell(s) within each aggregate destination cell
+            for (rep_i in 1:length(aggr_dest_rep)) {
+
+              # Get region cell raster indices
+              aggr_cells <-
+                region$get_aggr()$get_cells(aggr_dest_rep[[rep_i]][1])
+
+              # Perform a weighted sample via attractors when present
+              aggr_p <- rep(1, length(aggr_cells))
+              for (attractor in attractors) {
+                if (inherits(attractor, "Attractor")) {
+                  if (attractor$get_type() %in% c("destination", "both")) {
+                    aggr_p <- aggr_p*attractor$get_values(aggr_cells)
+                  }
+                }
+              }
+              aggr_i <- aggr_cells[sample(
+                1:length(aggr_cells),
+                size = length(aggr_dest_rep[[rep_i]]),
+                prob = aggr_p)]
+
+              # Substitute region cells for repeated aggregate destinations
+              aggr_dest_rep[[rep_i]] <- aggr_i
+            }
+
+            # Substitute region cells for all aggregate destinations
+            destinations[aggr_dest] <- unlist(aggr_dest_rep)
           }
-
-          # Substitute region cells for all aggregate destinations
-          destinations[aggr_dest] <- unlist(aggr_dest_rep)
 
         } else {
           destinations <- paths$idx[[loc_char]]$cell[destinations]
