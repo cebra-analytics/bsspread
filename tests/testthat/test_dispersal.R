@@ -87,11 +87,12 @@ test_that("disperses population in a raster grid region", {
   template <- terra::rast(file.path(TEST_DIRECTORY, "greater_melb.tif"))
   region <- Region(template)
   population <- Population(region)
-  n <- rep(FALSE, region$get_locations())
-  n[5922] <- TRUE
   dispersal <- Dispersal(region, population_model = population)
+  n <- rep(FALSE, region$get_locations())
+  expect_equal(dispersal$unpack(dispersal$disperse(dispersal$pack(n))), n)
+  n[5922] <- TRUE
   n <- dispersal$pack(n)
-  dispersal$unpack(dispersal$disperse(n)) # n
+  expect_equal(dispersal$unpack(dispersal$disperse(n)), dispersal$unpack(n))
   dispersal <- Dispersal(region, population_model = population,
                          proportion = 1)
   expect_true(all(dispersal$unpack(dispersal$disperse(n))))

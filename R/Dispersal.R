@@ -275,8 +275,10 @@ Dispersal.Region <- function(region, population_model,
         "spread_delay" %in% names(attributes(n$relocated))) {
       dispersal_ready <-
         which(attr(n$relocated, "spread_delay")[n$indices] == 0)
-    } else {
+    } else if (length(n$indices)){
       dispersal_ready <- 1:length(n$indices)
+    } else {
+      dispersal_ready <- n$indices
     }
 
     # Function to calculate dispersals from a single occupied location (index)
