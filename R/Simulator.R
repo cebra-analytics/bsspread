@@ -126,7 +126,7 @@ Simulator.Region <- function(region,
     }
   }
   validate_objects()
-  if (!is.null(result_stages) &&
+  if (!is.null(result_stages) && !is.null(population_model) &&
       population_model$get_type() == "stage_structured") {
     if (!is.numeric(result_stages) ||
         !all(result_stages %in% 1:population_model$get_stages())) {
@@ -144,8 +144,10 @@ Simulator.Region <- function(region,
   # Set parallel cores in region and dispersal objects
   set_cores <- function(cores = NULL) {
     region$set_cores(cores)
-    for (i in 1:length(dispersal_models)) {
-      dispersal_models[[i]]$set_cores(cores)
+    if (length(dispersal_models)) {
+      for (i in 1:length(dispersal_models)) {
+        dispersal_models[[i]]$set_cores(cores)
+      }
     }
   }
   set_cores(cores = parallel_cores)
