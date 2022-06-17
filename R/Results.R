@@ -75,6 +75,13 @@ Results.Region <- function(region, population_model,
 
   # Initialize result lists
   results <- list(collated = list(), total = list(), area = list())
+  if (region$get_type() == "grid") {
+    cell_areas <-
+      terra::cellSize(region$get_template())[region$get_indices()][,1]
+    attr(results$area, "units") <- "square meters"
+  } else {
+    attr(results$area, "units") <- "patches"
+  }
   zeros <- list(collated = as.integer(population_model$make(initial = 0L)),
                 total = 0L, area = 0L)
   if (is.numeric(stages) && is.null(combine_stages)) {
@@ -123,6 +130,14 @@ Results.Region <- function(region, population_model,
       total_n <- sum(n)
     }
 
+    # Calculate total area occupied
+    occupied_idx <- which(rowSums(as.matrix(n)) > 0)
+    if (region$get_type() == "grid") {
+      total_area <- sum(cell_areas[occupied_idx])
+    } else { # patches
+      total_area <- length(occupied_idx)
+    }
+
     if (replicates > 1) { # summaries
 
       # Calculates running mean and standard deviation (note: variance*r is
@@ -146,6 +161,15 @@ Results.Region <- function(region, population_model,
         (previous_sd + ((total_n - previous_mean)*
                           (total_n - results$total[[tmc]]$mean)))
 
+      # Total area occupied summaries
+      previous_mean <- results$area[[tmc]]$mean
+      results$area[[tmc]]$mean <<- (previous_mean +
+                                      (total_area - previous_mean)/r)
+      previous_sd <- results$area[[tmc]]$sd
+      results$area[[tmc]]$sd <<-
+        (previous_sd + ((total_area - previous_mean)*
+                          (total_area - results$area[[tmc]]$mean)))
+
     } else {
 
       # Population at each location
@@ -155,6 +179,9 @@ Results.Region <- function(region, population_model,
 
       # Total population size
       results$total[[tmc]] <<- total_n
+
+      # Total area occupied
+      results$area[[tmc]] <<- total_area
     }
   }
 
@@ -173,6 +200,12 @@ Results.Region <- function(region, population_model,
       for (tmc in names(results$total)) {
         results$total[[tmc]]$sd <<-
           sqrt(results$total[[tmc]]$sd/(replicates - 1))
+      }
+
+      # Transform area occupied standard deviations
+      for (tmc in names(results$area)) {
+        results$area[[tmc]]$sd <<-
+          sqrt(results$area[[tmc]]$sd/(replicates - 1))
       }
     }
   }
