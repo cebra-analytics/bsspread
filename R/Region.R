@@ -178,12 +178,10 @@ Region.SpatRaster <- function(x, ...) {
     aggr <<- list(factor = aggr_factor, inner_radius = inner_radius)
     idx_rast <- terra::rast(x)
     idx_rast[indices] <- 1:length(indices)
-    aggr$cells <<- list()
     aggr$rast <<- terra::aggregate(
       idx_rast, fact = aggr_factor, fun = function(values) {
         values <- values[which(is.finite(values))]
         if (length(values)) {
-          aggr$cells <<- c(aggr$cells, list(values))
           return(length(values))
         } else {
           return(NA)
@@ -191,11 +189,18 @@ Region.SpatRaster <- function(x, ...) {
       })
     names(aggr$rast) <<- "cells"
     aggr$indices <<- which(!is.na(aggr$rast[]))
+    aggr$cells <<- list()
+    aggr_rast <- terra::rast(aggr$rast)
+    aggr_rast[aggr$indices] <- 1:length(aggr$indices)
+    aggr_idx_rast <- terra::disagg(aggr_rast, fact = aggr_factor)
+    aggr$cells <<- lapply(1:length(aggr$indices), function(aggr_i) {
+      which(aggr_idx_rast[indices][,1] == aggr_i)
+    })
     aggr$get_cells <<- function(indices) {
       return(unlist(aggr$cells[indices]))
     }
     aggr$pts <<- terra::as.points(aggr$rast, values = FALSE)
-    rm(idx_rast)
+    rm(idx_rast); rm(aggr_rast); rm(aggr_idx_rast)
   }
 
   # Set the number of cores available for parallel processing
@@ -227,18 +232,18 @@ Region.SpatRaster <- function(x, ...) {
         if (is.list(aggr)) {
           idx_rast <- terra::rast(x)
           idx_rast[] <- 1:terra::ncell(x)
-          paths$graphs$agg_idx <<- list()
-          idx_rast <-
-            terra::aggregate(idx_rast, fact = aggr$factor,
-                             fun = function(values) {
-                               paths$graphs$agg_idx <<-
-                                 c(paths$graphs$agg_idx, list(values))
-                               return(NA)
-                             })
+          aggr_rast <- terra::rast(aggr$rast)
+          aggr_rast[] <- 1:terra::ncell(aggr_rast)
+          aggr_idx_rast <- terra::disagg(aggr_rast, fact = aggr$factor)
+          paths$graphs$agg_idx <<- lapply(
+            1:terra::ncell(aggr_rast),
+            function(aggr_i) {
+              which(aggr_idx_rast[][,1] == aggr_i)
+            })
           paths$graphs$get_cells <<- function(indices) {
             return(unlist(paths$graphs$agg_idx[indices]))
           }
-          rm(idx_rast)
+          rm(idx_rast); rm(aggr_rast); rm(aggr_idx_rast)
         }
       }
       if (is.null(paths$weights)) {
@@ -989,21 +994,24 @@ Region.data.frame <- function(x, ...) {
           }
       }
 
-      # Calculate distances when not present
-      if (!patch_char %in% names(paths$distances)) {
-        paths$distances[[patch_char]] <<- as.integer(round(as.numeric(
+      if (length(paths$idx[[patch_char]])) { # reachable patches
+
+        # Calculate distances when not present
+        if (!patch_char %in% names(paths$distances)) {
+          paths$distances[[patch_char]] <<- as.integer(round(as.numeric(
             terra::distance(region_pts[patch],
                             region_pts[paths$idx[[patch_char]]]))))
-      }
+        }
 
-      # Calculate directions when required and not present
-      if (is.list(paths$directions) &&
-          !patch_char %in% names(paths$directions)) {
-        xy_diff <- (terra::crds(region_pts[patch])[
-          rep(1, length(paths$idx[[patch_char]])),] -
-            terra::crds(region_pts[paths$idx[[patch_char]]]))
-        paths$directions[[patch_char]] <<- as.integer(round(
-          atan2(xy_diff[,"y"], xy_diff[,"x"])*180/pi + 180))
+        # Calculate directions when required and not present
+        if (is.list(paths$directions) &&
+            !patch_char %in% names(paths$directions)) {
+          xy_diff <- (terra::crds(region_pts[patch])[
+            rep(1, length(paths$idx[[patch_char]])),] -
+              terra::crds(region_pts[paths$idx[[patch_char]]]))
+          paths$directions[[patch_char]] <<- as.integer(round(
+            atan2(xy_diff[,"y"], xy_diff[,"x"])*180/pi + 180))
+        }
       }
     }
 
