@@ -7,9 +7,9 @@
 #'   spatial region (template) for spread simulations.
 #' @param type One of \code{"presence_only"} (default), \code{"unstructured"},
 #'   or \code{"stage_structured"} to indicate how populations are represented.
-#' @param growth Numeric intrinsic growth rate or lambda (e.g. 1.2 for 20%
-#'   growth per time step) when \code{type = "unstructured"}, or
-#'   age/stage-based transition rates (matrix) for each time step when
+#' @param growth Numeric growth rate or lambda (e.g. 1.2 for 20% growth per
+#'   time step) when \code{type = "unstructured"}, or age/stage-based
+#'   transition rates (matrix) for each time step when
 #'   \code{type = "stage_structured"}. Default is \code{NULL} for when
 #'   \code{type = "presence_only"}.
 #' @param capacity A vector of carrying capacity values of the invasive species

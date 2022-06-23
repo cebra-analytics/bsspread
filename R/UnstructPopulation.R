@@ -5,8 +5,8 @@
 #'
 #' @param region A \code{Region} or inherited class object representing the
 #'   spatial region (template) for the spread simulations.
-#' @param growth Numeric intrinsic growth rate or lambda (e.g. 1.2 for 20%
-#'   growth per time step). Default is \code{1.0} for no increase.
+#' @param growth Numeric growth rate or lambda (e.g. 1.2 for 20% growth per
+#'   time step). Default is \code{1.0} for no increase.
 #' @param capacity A vector of carrying capacity values of the invasive species
 #'   at each location specified by the \code{region}. Default is \code{NULL}
 #'   for when growth is not capacity-limited.
