@@ -11,8 +11,15 @@
 #'   are assumed to be any non-zero values on the lower (left) triangle of the
 #'   matrix, including those on the diagonal.
 #' @param capacity A vector of carrying capacity values of the invasive species
-#'   at each location specified by the \code{region}. Default is \code{NULL}
-#'   for when growth is not capacity-limited.
+#'   at each location specified by the \code{region}, or per unit area defined
+#'   by \code{capacity_area} when the \code{region} is spatially implicit.
+#'   Default is \code{NULL} for when growth is not capacity-limited.
+#' @param capacity_area Carrying capacity area (in m^2) specified for
+#'   capacity-limited growth in a spatially implicit (single patch)
+#'   \code{region}. For example, use a value of \code{1e+06} when
+#'   \code{capacity} is specified in km^2. Default is \code{NULL}, although a
+#'   value is required when \code{capacity} is specified for a spatially
+#'   implicit region.
 #' @param capacity_stages A vector of stage or age indices (as per the
 #'   rows/columns of \code{growth} matrix) indicating which life-stages/ages
 #'   are applicable for capacity-limited growth (and survival). Default is
@@ -56,6 +63,7 @@
 #' @export
 StagedPopulation <- function(region, growth,
                              capacity = NULL,
+                             capacity_area = NULL,
                              capacity_stages = NULL,
                              establish_pr = NULL,
                              incursion_mean = NULL,
@@ -66,6 +74,7 @@ StagedPopulation <- function(region, growth,
                      type = "stage_structured",
                      growth = growth,
                      capacity = capacity,
+                     capacity_area = capacity_area,
                      establish_pr = establish_pr,
                      incursion_mean = incursion_mean,
                      class = "StagedPopulation")
@@ -75,7 +84,7 @@ StagedPopulation <- function(region, growth,
 
   # Equivalent growth rate for stage/age matrix (growth)
   growth_r <- Re((eigen(growth, only.values = TRUE)$values)[1])
-  get_growth_r <- function() {
+  self$get_growth_r <- function() {
     return(growth_r)
   }
 
@@ -194,10 +203,24 @@ StagedPopulation <- function(region, growth,
           indices <- indices[!indices %in% zero_idx]
         }
 
-        # Calculate capacity-limited growth rates for each occupied location
-        r <- exp(log(growth_r)*(1 - (rowSums(x[indices, capacity_stages,
-                                               drop = FALSE])/
-                                       capacity[indices])))
+        # Calculate capacity for spatially implicit diffusion
+        if (region$spatially_implicit() &&
+            is.numeric(attr(x, "diffusion_radius"))) {
+
+          # Calculate capacity of diffused area
+          diffusion_radius <- attr(x, "diffusion_radius")
+          area_capacity <- capacity*pi*diffusion_radius^2/capacity_area
+
+          # Calculate capacity-limited growth rate
+          r <- exp(log(growth_r)*(1 - sum(x[capacity_stages])/area_capacity))
+
+        } else {
+
+          # Calculate capacity-limited growth rates for each occupied location
+          r <- exp(log(growth_r)*(1 - (rowSums(x[indices, capacity_stages,
+                                                 drop = FALSE])/
+                                         capacity[indices])))
+        }
 
         # Look-up stage/age matrix multiplier for each occupied location
         mult <- sapply(r, function(r) {

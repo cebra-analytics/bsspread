@@ -8,8 +8,15 @@
 #' @param growth Numeric growth rate or lambda (e.g. 1.2 for 20% growth per
 #'   time step). Default is \code{1.0} for no increase.
 #' @param capacity A vector of carrying capacity values of the invasive species
-#'   at each location specified by the \code{region}. Default is \code{NULL}
-#'   for when growth is not capacity-limited.
+#'   at each location specified by the \code{region}, or per unit area defined
+#'   by \code{capacity_area} when the \code{region} is spatially implicit.
+#'   Default is \code{NULL} for when growth is not capacity-limited.
+#' @param capacity_area Carrying capacity area (in m^2) specified for
+#'   capacity-limited growth in a spatially implicit (single patch)
+#'   \code{region}. For example, use a value of \code{1e+06} when
+#'   \code{capacity} is specified in km^2. Default is \code{NULL}, although a
+#'   value is required when \code{capacity} is specified for a spatially
+#'   implicit region.
 #' @param establish_pr An optional vector of probability values (0-1) to
 #'   represent the likelihood of establishment at each location specified by
 #'   the \code{region}. This may be used to avoid transient/unsuccessful
@@ -39,6 +46,7 @@
 UnstructPopulation <- function(region,
                                growth = 1.0,
                                capacity = NULL,
+                               capacity_area = NULL,
                                establish_pr = NULL,
                                incursion_mean = NULL, ...) {
 
@@ -47,6 +55,7 @@ UnstructPopulation <- function(region,
                      type = "unstructured",
                      growth = growth,
                      capacity = capacity,
+                     capacity_area = capacity_area,
                      establish_pr = establish_pr,
                      incursion_mean = incursion_mean,
                      class = "UnstructPopulation")
@@ -67,8 +76,22 @@ UnstructPopulation <- function(region,
         indices <- indices[!indices %in% zero_idx]
       }
 
-      # Calculate capacity-limited growth rates for each occupied location
-      r <- exp(log(growth)*(1 - x[indices]/capacity[indices]))
+      # Calculate capacity for spatially implicit diffusion
+      if (region$spatially_implicit() &&
+          is.numeric(attr(x, "diffusion_radius"))) {
+
+        # Calculate capacity of diffused area
+        diffusion_radius <- attr(x, "diffusion_radius")
+        area_capacity <- capacity*pi*diffusion_radius^2/capacity_area
+
+        # Calculate capacity-limited growth rate
+        r <- exp(log(growth)*(1 - x/area_capacity))
+
+      } else {
+
+        # Calculate capacity-limited growth rates for each occupied location
+        r <- exp(log(growth)*(1 - x[indices]/capacity[indices]))
+      }
 
     } else {
       r <- growth

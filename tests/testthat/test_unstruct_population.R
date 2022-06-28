@@ -1,6 +1,6 @@
 context("UnstructPopulation")
 
-test_that("initializes with region", {
+test_that("initializes with region and other parameters", {
   TEST_DIRECTORY <- test_path("test_inputs")
   template <- terra::rast(file.path(TEST_DIRECTORY, "greater_melb.tif"))
   region <- Region(template)
@@ -15,6 +15,19 @@ test_that("initializes with region", {
   expect_is(population, "UnstructPopulation")
   expect_s3_class(population, "Population")
   expect_equal(population$get_type(), "unstructured")
+  region <- Region()
+  expect_error(population <- UnstructPopulation(region, growth = 1.2,
+                                                capacity = 30),
+               paste("Population capacity area is required when capacity is",
+                     "specified and the region is spatially implicit"))
+  expect_error(population <- UnstructPopulation(region, growth = 1.2,
+                                                capacity = 30,
+                                                capacity_area = 0),
+               paste("Population capacity area should be a numeric value",
+                     "> 0."))
+  expect_silent(population <- UnstructPopulation(region, growth = 1.2,
+                                                 capacity = 30,
+                                                 capacity_area = 1e+06))
 })
 
 test_that("grows populations without capacity", {
@@ -45,4 +58,17 @@ test_that("grows populations with capacity", {
   expect_silent(n <- population$make(incursion = incursion))
   idx <- which(n > 0)
   expect_equal(round(mean(population$grow(n)[idx]/n[idx]), 1), 1.0)
+  region <- Region()
+  population <- UnstructPopulation(region, growth = 1.2, capacity = 300,
+                                   capacity_area = 1e+06)
+  n <- 100
+  r <- exp(log(1.2)*(1 - n/300))
+  set.seed(1243); new_n <- stats::rpois(1, r*100); set.seed(1243)
+  expect_equal(population$grow(n), new_n)
+  attr(n, "diffusion_radius") <- 2000
+  r <- exp(log(1.2)*(1 - n/(300*pi*2000^2/1e+06)))
+  set.seed(1243); new_n <- stats::rpois(1, r*100)
+  attr(new_n, "diffusion_radius") <- 2000
+  set.seed(1243)
+  expect_equal(population$grow(n), new_n)
 })

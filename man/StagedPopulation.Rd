@@ -8,6 +8,7 @@ StagedPopulation(
   region,
   growth,
   capacity = NULL,
+  capacity_area = NULL,
   capacity_stages = NULL,
   establish_pr = NULL,
   incursion_mean = NULL,
@@ -26,8 +27,16 @@ are assumed to be any non-zero values on the lower (left) triangle of the
 matrix, including those on the diagonal.}
 
 \item{capacity}{A vector of carrying capacity values of the invasive species
-at each location specified by the \code{region}. Default is \code{NULL}
-for when growth is not capacity-limited.}
+at each location specified by the \code{region}, or per unit area defined
+by \code{capacity_area} when the \code{region} is spatially implicit.
+Default is \code{NULL} for when growth is not capacity-limited.}
+
+\item{capacity_area}{Carrying capacity area (in m^2) specified for
+capacity-limited growth in a spatially implicit (single patch)
+\code{region}. For example, use a value of \code{1e+06} when
+\code{capacity} is specified in km^2. Default is \code{NULL}, although a
+value is required when \code{capacity} is specified for a spatially
+implicit region.}
 
 \item{capacity_stages}{A vector of stage or age indices (as per the
 rows/columns of \code{growth} matrix) indicating which life-stages/ages

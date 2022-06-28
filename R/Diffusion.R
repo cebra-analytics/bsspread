@@ -34,8 +34,18 @@
 #'   defining the population representation for the spread simulations.
 #' @param dispersal_stages Numeric vector of population stages (indices) that
 #'   disperse. Default is all stages (when set to \code{NULL}).
-#' @param diffusion_rate The speed of diffusion (in m per time step). Default
-#'   is \code{NULL} (resulting in no diffusion).
+#' @param diffusion_rate The (asymptotic) speed (limit) of diffusion (in m per
+#'   time step). Default is \code{NULL} (resulting in no diffusion).
+#' @param diffusion_coeff Optional coefficient of diffusion (in m^2 per time
+#'   step) for spatially implicit reaction-diffusion. Only used when
+#'   unstructured or stage-structured populations are defined within a single
+#'   patch region, and the asymptotic \code{diffusion_rate} is unknown (thus
+#'   not defined) or unlimited. Default is \code{NULL}.
+#' @param diffusion_threshold Optional diffusion boundary threshold for
+#'   spatially implicit reaction-diffusion. Defined as a fraction of the
+#'   initial population outside the diffusion boundary. Only used when
+#'   unstructured or stage-structured populations are defined within a single
+#'   patch region. Default is 0.05.
 #' @param proportion The proportion of the (unstructured or staged) population
 #'   that disperses at each time step, or the proportion of local presence-only
 #'   destinations selected for diffusive dispersal. Default is \code{NULL}
@@ -82,6 +92,8 @@
 Diffusion <- function(region, population_model,
                       dispersal_stages = NULL,
                       diffusion_rate = NULL,
+                      diffusion_coeff = NULL,
+                      diffusion_threshold = 0.05,
                       proportion = NULL,
                       direction_function = NULL,
                       attractors = list(),
@@ -89,48 +101,67 @@ Diffusion <- function(region, population_model,
 
   # Check diffusion rate and set its default (when empty)
   if (!is.null(diffusion_rate) &&
-      (!is.numeric(diffusion_rate) || diffusion_rate <= 0)) {
-    stop("The diffusion rate must be numeric and > 0.", call. = FALSE)
+      (!is.numeric(diffusion_rate) || diffusion_rate < 0)) {
+    stop("The diffusion rate must be numeric and >= 0.", call. = FALSE)
   }
-  if (is.null(diffusion_rate)) {
+  if (is.null(diffusion_rate) && is.null(diffusion_coeff)) {
     diffusion_rate <- 0
   }
 
-  # Only implemented for grid regions
-  if (region$get_type() != "grid") {
-    stop("Diffusion has only been implemented for grid-based regions.",
+  # Check diffusion coefficient and threshold
+  if (!is.null(diffusion_coeff) &&
+      (!is.numeric(diffusion_coeff) || diffusion_coeff <= 0)) {
+    stop("The diffusion coefficient must be numeric and > 0.", call. = FALSE)
+  }
+  if (!is.null(diffusion_threshold) &&
+      (!is.numeric(diffusion_threshold) || diffusion_threshold <= 0 ||
+       diffusion_threshold > 1)) {
+    stop("The diffusion threshold must be numeric and > 0 and <= 1.",
          call. = FALSE)
   }
 
   # Configure maximum distance and define combined function for diffusion
-  max_distance <- max(region$get_res(), diffusion_rate) + region$get_res()
-  combined_function <- function(distances, directions) {
+  if (region$get_type() == "grid") {
 
-    # Set diffusion probability to one when within (minimum) range
-    region_res <- region$get_res()
-    diff_pr <- +(distances[[1]] <= max(region_res, diffusion_rate))
+    # Select in-range inner cells plus a buffer for stochastic outer cells
+    max_distance <- max(region$get_res(), diffusion_rate) + region$get_res()
 
-    # Calculate probability of outer cells within one cell of the range
-    outer_idx <- which(diff_pr == 0)
-    width <- pmax(abs(cos(directions[outer_idx]*pi/180)),
-                  abs(sin(directions[outer_idx]*pi/180)))
-    diff_pr[outer_idx] <- (pmax(0, max(region_res, diffusion_rate) +
-                                 region_res*width -
-                                 distances[[1]][outer_idx])/
-                             distances[[1]][outer_idx])
+    # Combined function assigns probabilities to cells
+    combined_function <- function(distances, directions) {
 
-    # Adjust probability when permeable distance is out of range
-    if (length(distances) >= 2) {
-      perm_outer_idx <- which(distances[[2]] > max(region_res, diffusion_rate))
-      diff_pr[perm_outer_idx] <-
-        (diff_pr*distances[[1]]/distances[[2]])[perm_outer_idx]
+      # Set diffusion probability to one when within (minimum) range
+      region_res <- region$get_res()
+      diff_pr <- +(distances[[1]] <= max(region_res, diffusion_rate))
+
+      # Calculate probability of outer cells within one cell of the range
+      outer_idx <- which(diff_pr == 0)
+      width <- pmax(abs(cos(directions[outer_idx]*pi/180)),
+                    abs(sin(directions[outer_idx]*pi/180)))
+      diff_pr[outer_idx] <- (pmax(0, max(region_res, diffusion_rate) +
+                                    region_res*width -
+                                    distances[[1]][outer_idx])/
+                               distances[[1]][outer_idx])
+
+      # Adjust probability when permeable distance is out of range
+      if (length(distances) >= 2) {
+        perm_outer_idx <-
+          which(distances[[2]] > max(region_res, diffusion_rate))
+        diff_pr[perm_outer_idx] <-
+          (diff_pr*distances[[1]]/distances[[2]])[perm_outer_idx]
+      }
+
+      # Scale probability when rate is smaller than cell size
+      if (diffusion_rate < region_res) { # TODO: investigate further ####
+        diff_pr <- (diff_pr*(diffusion_rate/region_res)^2)
+      }
+      return(diff_pr)
     }
 
-    # Scale probability when rate is smaller than cell size
-    if (diffusion_rate < region_res) { # TODO: investigate further ####
-      diff_pr <- (diff_pr*(diffusion_rate/region_res)^2)
-    }
-    return(diff_pr)
+  } else { # patch
+
+    # Select in-range patches only
+    max_distance <- diffusion_rate
+    combined_function <- NULL
   }
 
   # Build via base class
@@ -146,6 +177,87 @@ Diffusion <- function(region, population_model,
                     permeability = permeability,
                     max_distance = max_distance,
                     class = "Diffusion", ...)
+
+  # Spatially implicit (single patch)
+  if (region$spatially_implicit()) {
+
+    # Radial diffusion or reaction-diffusion model
+    if (population_model$get_type() == "presence_only") { # radial diffusion
+
+      # Override disperse function
+      self$disperse <- function(n) {
+
+        # Attach attribute for diffusion radius
+        if (is.numeric(attr(n$relocated, "diffusion_radius"))) {
+          attr(n$relocated, "diffusion_radius") <-
+            attr(n$relocated, "diffusion_radius") + diffusion_rate
+        } else {
+          attr(n$relocated, "diffusion_radius") <- diffusion_rate
+        }
+
+        return(n)
+      }
+
+    } else { # reaction-diffusion
+
+      # Get intrinsic growth rate
+      if (population_model$get_type() == "stage_structured") {
+        intrinsic_r <- log(population_model$get_growth_r())
+      } else { # unstructured
+        intrinsic_r <- log(population_model$get_growth())
+      }
+
+      # Calculate diffusion coefficient
+      if (is.null(diffusion_coeff)) {
+        if (intrinsic_r > 0) {
+          diffusion_coeff <- diffusion_rate^2/(4*intrinsic_r)
+        } else {
+          diffusion_coeff <- 0
+        }
+      }
+
+      # Override disperse function
+      self$disperse <- function(n) {
+
+        # Extract initial population size
+        if (is.numeric(attr(n$relocated, "initial_n"))) {
+          initial_n <- sum(attr(n$relocated, "initial_n"))
+        } else {
+          stop(paste("The initial population needs to be set as an attribute",
+                     "for reaction-diffusion calculations."), call. = FALSE)
+        }
+
+        # Extract time step
+        if (is.numeric(attr(n$relocated, "tm"))) {
+          tm <- attr(n$relocated, "tm")
+        } else {
+          stop(paste("The current time step needs to be set as an attribute",
+                     "for reaction-diffusion calculations."), call. = FALSE)
+        }
+
+        # Calculate current rate via reaction-diffusion (Okubo & Kareiva, 2001)
+        # m' = initial_n*exp(intrinsic_r*tm - Radius^2/(4*diffusion_coeff*tm))
+        m_dash <- initial_n*diffusion_threshold
+        current_rate <- sqrt(4*diffusion_coeff/tm*
+                               log(max(sum(n$original)/m_dash, 1)))
+
+        # Limit to diffusion rate when defined
+        if (is.numeric(diffusion_rate)) {
+          current_rate <- min(current_rate, diffusion_rate)
+        }
+
+        # Attach attribute for diffusion radius
+        if (is.numeric(attr(n$relocated, "diffusion_radius"))) {
+          attr(n$relocated, "diffusion_radius") <-
+            attr(n$relocated, "diffusion_radius") + current_rate
+        } else {
+          attr(n$relocated, "diffusion_radius") <- current_rate
+        }
+
+        return(n)
+      }
+    }
+  }
 
   return(self)
 }

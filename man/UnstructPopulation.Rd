@@ -8,6 +8,7 @@ UnstructPopulation(
   region,
   growth = 1,
   capacity = NULL,
+  capacity_area = NULL,
   establish_pr = NULL,
   incursion_mean = NULL,
   ...
@@ -21,8 +22,16 @@ spatial region (template) for the spread simulations.}
 time step). Default is \code{1.0} for no increase.}
 
 \item{capacity}{A vector of carrying capacity values of the invasive species
-at each location specified by the \code{region}. Default is \code{NULL}
-for when growth is not capacity-limited.}
+at each location specified by the \code{region}, or per unit area defined
+by \code{capacity_area} when the \code{region} is spatially implicit.
+Default is \code{NULL} for when growth is not capacity-limited.}
+
+\item{capacity_area}{Carrying capacity area (in m^2) specified for
+capacity-limited growth in a spatially implicit (single patch)
+\code{region}. For example, use a value of \code{1e+06} when
+\code{capacity} is specified in km^2. Default is \code{NULL}, although a
+value is required when \code{capacity} is specified for a spatially
+implicit region.}
 
 \item{establish_pr}{An optional vector of probability values (0-1) to
 represent the likelihood of establishment at each location specified by

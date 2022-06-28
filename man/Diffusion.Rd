@@ -9,6 +9,8 @@ Diffusion(
   population_model,
   dispersal_stages = NULL,
   diffusion_rate = NULL,
+  diffusion_coeff = NULL,
+  diffusion_threshold = 0.05,
   proportion = NULL,
   direction_function = NULL,
   attractors = list(),
@@ -28,8 +30,20 @@ defining the population representation for the spread simulations.}
 \item{dispersal_stages}{Numeric vector of population stages (indices) that
 disperse. Default is all stages (when set to \code{NULL}).}
 
-\item{diffusion_rate}{The speed of diffusion (in m per time step). Default
-is \code{NULL} (resulting in no diffusion).}
+\item{diffusion_rate}{The (asymptotic) speed (limit) of diffusion (in m per
+time step). Default is \code{NULL} (resulting in no diffusion).}
+
+\item{diffusion_coeff}{Optional coefficient of diffusion (in m^2 per time
+step) for spatially implicit reaction-diffusion. Only used when
+unstructured or stage-structured populations are defined within a single
+patch region, and the asymptotic \code{diffusion_rate} is unknown (thus
+not defined) or unlimited. Default is \code{NULL}.}
+
+\item{diffusion_threshold}{Optional diffusion boundary threshold for
+spatially implicit reaction-diffusion. Defined as a fraction of the
+initial population outside the diffusion boundary. Only used when
+unstructured or stage-structured populations are defined within a single
+patch region. Default is 0.05.}
 
 \item{proportion}{The proportion of the (unstructured or staged) population
 that disperses at each time step, or the proportion of local presence-only

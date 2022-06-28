@@ -9,10 +9,17 @@ test_that("initializes with region, population model, and other parameters", {
   expect_is(diffusion, "Diffusion")
   expect_s3_class(diffusion, "Dispersal")
   expect_error(diffusion <- Diffusion(region, population_model = population,
-                                      diffusion_rate = 0),
-               "The diffusion rate must be numeric and > 0.")
+                                      diffusion_rate = -1),
+               "The diffusion rate must be numeric and >= 0.")
+  expect_error(diffusion <- Diffusion(region, population_model = population,
+                                      diffusion_coeff = 0),
+               "The diffusion coefficient must be numeric and > 0.")
+  expect_error(dispersal <- Diffusion(region, population_model = population,
+                                      diffusion_threshold = 0),
+               "The diffusion threshold must be numeric and > 0 and <= 1.")
   expect_silent(diffusion <- Diffusion(region, population_model = population,
                                        diffusion_rate = 2000,
+                                       diffusion_coeff = 1000000,
                                        proportion = 1,
                                        direction_function = function(x) x/360,
                                        attractors = list(source_density = 1),
@@ -84,12 +91,79 @@ test_that("diffuses population in a raster grid region", {
   expect_true(max(distances) >= 2000)
 })
 
-test_that("no diffusion implemented patch regions", {
+test_that("diffuses population in a patch region", {
   TEST_DIRECTORY <- test_path("test_inputs")
   locations <- utils::read.csv(file.path(TEST_DIRECTORY, "vic_cities.csv"))
   region <- Region(locations)
+  region$calculate_paths(1)
+  paths <- region$get_paths(1)
+  region <- Region(locations)
   population <- Population(region)
-  expect_error(diffusion <- Diffusion(region, population_model = population,
-                                      diffusion_rate = 2000, proportion = 1),
-               "Diffusion has only been implemented for grid-based regions.")
+  n <- rep(FALSE, region$get_locations())
+  n[1] <- TRUE
+  diffusion <- Diffusion(region, population_model = population,
+                         diffusion_rate = 200000, proportion = 1)
+  expect_silent(n <- diffusion$pack(n))
+  expect_silent(n <- diffusion$disperse(n))
+  expect_silent(n <- diffusion$unpack(n))
+  expect_equal(which(n),
+               c(1, paths$idx[["1"]][which(paths$distances[["1"]] <= 200000)]))
+})
+
+test_that("spatially implicit radial diffusion with presence-only", {
+  TEST_DIRECTORY <- test_path("test_inputs")
+  region <- Region()
+  population <- PresencePopulation(region)
+  n <- TRUE
+  diffusion <- Diffusion(region, population_model = population,
+                         diffusion_rate = 2000, proportion = 1)
+  expect_silent(n <- diffusion$pack(n))
+  expect_silent(n <- diffusion$disperse(n))
+  expect_silent(n <- diffusion$unpack(n))
+  expect_true(n)
+  expect_equal(attr(n, "diffusion_radius"), 2000)
+  expect_silent(n <- diffusion$pack(n))
+  expect_silent(n <- diffusion$disperse(n))
+  expect_silent(n <- diffusion$unpack(n))
+  expect_equal(attr(n, "diffusion_radius"), 4000)
+})
+
+test_that("spatially implicit reaction diffusion unstructured", {
+  TEST_DIRECTORY <- test_path("test_inputs")
+  region <- Region()
+  population <- UnstructPopulation(region, growth = 1.2)
+  n <- 100
+  diffusion <- Diffusion(region, population_model = population,
+                         diffusion_rate = 2000, proportion = 1)
+  expect_silent(n <- diffusion$pack(n))
+  expect_error(n <- diffusion$disperse(n),
+               paste("The initial population needs to be set as an attribute",
+                     "for reaction-diffusion calculations."))
+  attr(n$relocated, "initial_n") <- 100
+  expect_error(n <- diffusion$disperse(n),
+               paste("The current time step needs to be set as an attribute",
+               "for reaction-diffusion calculations."))
+  attr(n$relocated, "tm") <- 1
+  expected_n <- n$relocated + 100
+  expect_silent(n <- diffusion$disperse(n))
+  expect_silent(n <- diffusion$unpack(n))
+  attr(expected_n, "diffusion_radius") <- 2000
+  expect_equal(n, expected_n)
+  attr(n, "diffusion_radius") <- NULL
+  diffusion_coeff <- 2000^2/(4*log(1.2))
+  diffusion <- Diffusion(region, population_model = population,
+                         diffusion_coeff = diffusion_coeff,
+                         diffusion_threshold = 0.1, proportion = 1)
+  expect_silent(n <- diffusion$pack(n))
+  expect_silent(n <- diffusion$disperse(n))
+  expect_silent(n <- diffusion$unpack(n))
+  expect_equal(attr(n, "diffusion_radius"),
+               sqrt(4*diffusion_coeff/1*log(100/10)))
+  attr(n, "tm") <- 2
+  prev_radius <- attr(n, "diffusion_radius")
+  expect_silent(n <- diffusion$pack(n))
+  expect_silent(n <- diffusion$disperse(n))
+  expect_silent(n <- diffusion$unpack(n))
+  expect_equal(attr(n, "diffusion_radius"),
+               sqrt(4*diffusion_coeff/2*log(100/10)) + prev_radius)
 })

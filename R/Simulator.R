@@ -205,11 +205,21 @@ Simulator.Region <- function(region,
       # Initialize population array
       n <- initializer$initialize()
 
+      # Set initial n attribute when spatially implicit (single patch)
+      if (region$spatially_implicit()) {
+        attr(n, "initial_n") <- n
+      }
+
       # Initial results (t = 0)
       results$collate(r, 0, n)
 
       # Time steps
       for (tm in 1:time_steps) {
+
+        # Set time step attribute when spatially implicit (single patch)
+        if (region$spatially_implicit()) {
+          attr(n, "tm") <- tm
+        }
 
         # Population growth
         n <- population_model$grow(n)
