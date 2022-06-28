@@ -80,8 +80,8 @@
 #'   each simulation time step. Default is empty.
 #' @param permeability A \code{Permeability} class (or inherited) class object
 #'   for representing spatial permeability or constraints. Default is none.
-#' @param max_distance The maximum dispersal distance (in m). Default is
-#'   \code{NULL} (resulting in no explicit distance limit).
+#' @param max_distance The maximum dispersal distance (in m) in each time step.
+#'   Default is \code{NULL} (resulting in no explicit distance limit).
 #' @param class Character class name for inherited classes. Default is
 #'   \code{NULL}.
 #' @param ... Additional parameters.

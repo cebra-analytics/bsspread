@@ -99,8 +99,8 @@ each simulation time step. Default is empty.}
 \item{permeability}{A \code{Permeability} class (or inherited) class object
 for representing spatial permeability or constraints. Default is none.}
 
-\item{max_distance}{The maximum dispersal distance (in m). Default is
-\code{NULL} (resulting in no explicit distance limit).}
+\item{max_distance}{The maximum dispersal distance (in m) in each time step.
+Default is \code{NULL} (resulting in no explicit distance limit).}
 
 \item{class}{Character class name for inherited classes. Default is
 \code{NULL}.}
