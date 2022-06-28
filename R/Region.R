@@ -31,6 +31,8 @@
 #'       (raster cells) or "patch" (network).}
 #'     \item{\code{get_locations()}}{Get the number of locations (cells or
 #'       patches) that are included in the simulation.}
+#'     \item{\code{spatially_implicit()}}{Check if the region is spatially
+#'       implicit (single patch).}
 #'     \item{\code{is_compatible(y)}}{Check the compatibility of object
 #'       \code{y} with the region defined by \code{x}.}
 #'     \item{\code{get_template(empty = FALSE)}}{Get the spatial template when
@@ -123,6 +125,11 @@ Region.SpatRaster <- function(x, ...) {
   # Get the number of active cell locations
   self$get_locations <- function() {
     return(length(indices))
+  }
+
+  # Check if the region is spatially implicit (single patch)
+  self$spatially_implicit <- function() {
+    return(FALSE)
   }
 
   # Check compatibility of a spatial raster y with the region defined by x
@@ -909,6 +916,11 @@ Region.data.frame <- function(x, ...) {
   # Get the number of patch locations
   self$get_locations <- function() {
     return(nrow(x))
+  }
+
+  # Check if the region is spatially implicit (single patch)
+  self$spatially_implicit <- function() {
+    return(nrow(x) == 1)
   }
 
   # Check compatibility of vector, matrix, or adjacency data frame y

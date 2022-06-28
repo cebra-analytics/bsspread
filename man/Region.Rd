@@ -40,6 +40,8 @@ region, and to maintain and calculate spatial data for dispersal:
 (raster cells) or "patch" (network).}
 \item{\code{get_locations()}}{Get the number of locations (cells or
 patches) that are included in the simulation.}
+\item{\code{spatially_implicit()}}{Check if the region is spatially
+implicit (single patch).}
 \item{\code{is_compatible(y)}}{Check the compatibility of object
 \code{y} with the region defined by \code{x}.}
 \item{\code{get_template(empty = FALSE)}}{Get the spatial template when
