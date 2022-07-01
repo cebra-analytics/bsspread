@@ -79,6 +79,8 @@ Results.Region <- function(region, population_model,
     cell_areas <-
       terra::cellSize(region$get_template())[region$get_indices()][,1]
     attr(results$area, "units") <- "square meters"
+  } else if (region$spatially_implicit()) {
+    attr(results$area, "units") <- "square meters"
   } else {
     attr(results$area, "units") <- "patches"
   }
@@ -112,6 +114,17 @@ Results.Region <- function(region, population_model,
     # Use character list index (allows initial time = 0 and collated times)
     tmc <- as.character(tm)
 
+    # Calculate total area occupied
+    occupied_idx <- which(rowSums(as.matrix(n)) > 0)
+    if (region$get_type() == "grid") {
+      total_area <- sum(cell_areas[occupied_idx])
+    } else if (region$spatially_implicit() &&
+               is.numeric(attr(n, "diffusion_radius"))) {
+      total_area <- pi*(attr(n, "diffusion_radius"))^2
+    } else { # patches
+      total_area <- length(occupied_idx)
+    }
+
     # Clean n (remove attributes etc.)
     if (population_model$get_type() == "presence_only") {
       n <- as.integer(n)
@@ -128,14 +141,6 @@ Results.Region <- function(region, population_model,
       total_n <- array(colSums(n), c(1, stages))
     } else {
       total_n <- sum(n)
-    }
-
-    # Calculate total area occupied
-    occupied_idx <- which(rowSums(as.matrix(n)) > 0)
-    if (region$get_type() == "grid") {
-      total_area <- sum(cell_areas[occupied_idx])
-    } else { # patches
-      total_area <- length(occupied_idx)
     }
 
     if (replicates > 1) { # summaries

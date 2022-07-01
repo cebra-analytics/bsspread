@@ -92,3 +92,28 @@ test_that("runs simulator with correct configuration", {
   expect_true(length(idx) <= 4)
   expect_equal(sum(results_list$collated[["1"]][idx]), n_grown + length(idx))
 })
+
+test_that("attaches attributes for spatially implicit diffusion", {
+  region <- Region()
+  population <- UnstructPopulation(region, growth = 2)
+  initial_n <- 10
+  initializer <- Initializer(initial_n, region = region,
+                             population_model = population)
+  diffusion <- Diffusion(region, population_model = population,
+                         diffusion_rate = 2000, proportion = 1)
+  expect_silent(simulator <- Simulator(region,
+                                       initializer = initializer,
+                                       population_model = population,
+                                       dispersal_models = list(diffusion)))
+  expect_silent(results <- simulator$run())
+  results_list <- results$get_list()
+  names(results_list$collated) # as.character(0:1)
+  expect_equal(attributes(results_list$collated[["0"]]),
+               list(initial_n = 10, diffusion_rate = 2000,
+                    diffusion_radius = 0))
+  expect_equal(attributes(results_list$collated[["1"]]),
+               list(initial_n = 10, diffusion_rate = 2000,
+                    diffusion_radius = 2000, tm = 1))
+  expect_equal(results_list$area[["0"]], 0)
+  expect_equal(results_list$area[["1"]], pi*2000^2)
+})

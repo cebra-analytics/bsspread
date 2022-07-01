@@ -117,4 +117,22 @@ test_that("collates and finalises multiple replicate results", {
   expect_equal(attr(result_list$area, "units"), "square meters")
 })
 
-# TODO spatially implicit ####
+test_that("collates spatially implicit area results", {
+  region <- Region()
+  population <- Population(region)
+  expect_silent(results <- Results(region, population_model = population,
+                                   time_steps = 10,
+                                   step_duration = 1,
+                                   step_units = "years",
+                                   collation_steps = 2,
+                                   replicates = 1,
+                                   combine_stages = NULL))
+  n <- 10
+  for (tm in 0:10) {
+    attr(n, "diffusion_radius") <- 2000*tm
+    results$collate(r = 1, tm, n)
+  }
+  result_list <- results$get_list()
+  expect_equal(unname(unlist(result_list$area)), pi*((0:10)*2000)^2)
+  expect_equal(attr(result_list$area, "units"), "square meters")
+})

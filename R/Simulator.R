@@ -205,9 +205,18 @@ Simulator.Region <- function(region,
       # Initialize population array
       n <- initializer$initialize()
 
-      # Set initial n attribute when spatially implicit (single patch)
+      # Set diffusion attributes when spatially implicit (single patch)
       if (region$spatially_implicit()) {
         attr(n, "initial_n") <- n
+        attr(n, "diffusion_rate") <-
+          unlist(lapply(dispersal_models, function(dm) {
+          if (inherits(dm, "Diffusion")) {
+            dm$get_diffusion_rate()
+          }
+        }))[1] # assume one only
+        if (is.numeric(attr(n, "diffusion_rate"))) {
+          attr(n, "diffusion_radius") <- 0
+        }
       }
 
       # Initial results (t = 0)
