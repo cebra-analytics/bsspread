@@ -15,6 +15,7 @@ Gravity(
   proportion = NULL,
   events = NULL,
   direction_function = NULL,
+  permeability = NULL,
   ...
 )
 }
@@ -67,6 +68,9 @@ for presence-only populations).}
 \code{function(directions)}, that calculates the (relative) probability of
 dispersal for each direction (0-360 degrees) specified as an integer
 vector. Default is none.}
+
+\item{permeability}{A \code{Permeability} class (or inherited) class object
+for representing spatial permeability or constraints. Default is none.}
 
 \item{...}{Additional parameters.}
 }

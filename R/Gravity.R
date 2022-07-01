@@ -72,6 +72,8 @@
 #'   \code{function(directions)}, that calculates the (relative) probability of
 #'   dispersal for each direction (0-360 degrees) specified as an integer
 #'   vector. Default is none.
+#' @param permeability A \code{Permeability} class (or inherited) class object
+#'   for representing spatial permeability or constraints. Default is none.
 #' @param ... Additional parameters.
 #' @return A \code{Gravity} class object (list), containing inherited and
 #'   extended functions from the generic \code{Dispersal} class for accessing
@@ -107,7 +109,8 @@ Gravity <- function(region, population_model, attractors,
                     dispersal_stages = NULL,
                     proportion = NULL,
                     events = NULL,
-                    direction_function = NULL, ...) {
+                    direction_function = NULL,
+                    permeability = NULL, ...) {
 
   # Check the attractors
   if (!is.list(attractors) ||
@@ -163,6 +166,7 @@ Gravity <- function(region, population_model, attractors,
                     distance_function = distance_function,
                     direction_function = direction_function,
                     attractors = attractors,
+                    permeability = permeability,
                     class = "Gravity", ...)
 
   return(self)
