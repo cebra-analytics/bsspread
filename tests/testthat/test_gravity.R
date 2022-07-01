@@ -43,7 +43,7 @@ test_that("initializes with region, population model, and other parameters", {
                                      }
                                      list(Attractor(a_vector, region))
                                    },
-                                   beta = 2, distance_scale = 0.001,
+                                   beta = 2, distance_scale = 1000,
                                    proportion = 1, events = 5))
   expect_silent(distance_function <-
                   get("distance_function",
@@ -69,7 +69,7 @@ test_that("disperses via gravity function", {
         a_vector <- a_vector + a$get_values()
       }
       list(Attractor(a_vector, region, type = "destination"))
-    }, beta = 2, distance_scale = 0.001, proportion = 0.8))
+    }, beta = 2, distance_scale = 1000, proportion = 0.8))
   expect_silent(n <- gravity$pack(n))
   region$calculate_paths(1)
   paths <- region$get_paths(1)
