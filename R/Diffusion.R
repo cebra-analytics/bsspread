@@ -24,7 +24,9 @@
 #' separation enables multiple dispersal models, representing different
 #' dispersal vectors, to be run in sequence. For example, local diffusion may
 #' be combined with human-mediated and/or wind-based long-distant "jump"
-#' dispersal.
+#' dispersal. Spatially implicit diffusion is also provided via simple radial
+#' diffusion for a presence-only single-patch population, or via
+#' reaction-diffusion for unstructured or stage-based single patch populations.
 #'
 #' @param region A \code{Region} or inherited class object representing the
 #'   spatial region (template) for spread simulations. The region object
@@ -34,18 +36,20 @@
 #'   defining the population representation for the spread simulations.
 #' @param dispersal_stages Numeric vector of population stages (indices) that
 #'   disperse. Default is all stages (when set to \code{NULL}).
-#' @param diffusion_rate The (asymptotic) speed (limit) of diffusion (in m per
-#'   time step). Default is \code{NULL} (resulting in no diffusion).
+#' @param diffusion_rate The (asymptotic) speed of diffusion (in m per time
+#'   step). Default is \code{NULL} (resulting in no diffusion).
 #' @param diffusion_coeff Optional coefficient of diffusion (in m^2 per time
 #'   step) for spatially implicit reaction-diffusion. Only used when
 #'   unstructured or stage-structured populations are defined within a single
 #'   patch region, and the asymptotic \code{diffusion_rate} is unknown (thus
-#'   not defined) or unlimited. Default is \code{NULL}.
+#'   not defined). Default is \code{NULL}.
 #' @param diffusion_threshold Optional diffusion boundary threshold for
-#'   spatially implicit reaction-diffusion. Defined as a fraction of the
-#'   initial population outside the diffusion boundary. Only used when
-#'   unstructured or stage-structured populations are defined within a single
-#'   patch region. Default is 0.05.
+#'   spatially implicit reaction-diffusion. Defined as a fraction (> 0 and
+#'   <= 1) of the initial population outside the diffusion boundary. Only used
+#'   when unstructured or stage-structured populations are defined within a
+#'   single patch region. Default is 1, resulting in diffusion limited to the
+#'   asymptotic diffusion rate, defined via the \code{diffusion_rate}
+#'   parameter, or calculated via the \code{diffusion_coeff} parameter.
 #' @param proportion The proportion of the (unstructured or staged) population
 #'   that disperses at each time step, or the proportion of local presence-only
 #'   destinations selected for diffusive dispersal. Default is \code{NULL}
@@ -84,7 +88,10 @@
 #'       populations (at all region cells), and return the transformed list of
 #'       vectors or matrices. The separation of original, remaining and
 #'       relocated populations enables multiple models for different dispersal
-#'       vectors to run in sequence.}
+#'       vectors to run in sequence. Spatially implicit diffusion attaches a
+#'       \code{diffusion_radius} attribute to \code{n} at each time step.}
+#'     \item{\code{get_diffusion_rate()}}{Get the defined or calculated
+#'       (asymptotic) speed of diffusion.}
 #'   }
 #' @include Region.R
 #' @include Dispersal.R
@@ -93,7 +100,7 @@ Diffusion <- function(region, population_model,
                       dispersal_stages = NULL,
                       diffusion_rate = NULL,
                       diffusion_coeff = NULL,
-                      diffusion_threshold = 0.05,
+                      diffusion_threshold = 1,
                       proportion = NULL,
                       direction_function = NULL,
                       attractors = list(),
@@ -207,7 +214,10 @@ Diffusion <- function(region, population_model,
         intrinsic_r <- log(population_model$get_growth())
       }
 
-      # Calculate diffusion coefficient
+      # Calculate diffusion rate and coefficient
+      if (is.null(diffusion_rate) && is.numeric(diffusion_coeff)) {
+        diffusion_rate <- sqrt(4*intrinsic_r*diffusion_coeff)
+      }
       if (is.null(diffusion_coeff)) {
         if (intrinsic_r > 0) {
           diffusion_coeff <- diffusion_rate^2/(4*intrinsic_r)
@@ -235,28 +245,24 @@ Diffusion <- function(region, population_model,
                      "for reaction-diffusion calculations."), call. = FALSE)
         }
 
-        # Calculate current rate via reaction-diffusion (Okubo & Kareiva, 2001)
+        # Calculate radius via reaction-diffusion (Okubo & Kareiva, 2001)
         # m' = initial_n*exp(intrinsic_r*tm - Radius^2/(4*diffusion_coeff*tm))
         m_dash <- initial_n*diffusion_threshold
-        current_rate <- sqrt(4*diffusion_coeff/tm*
-                               log(max(sum(n$original)/m_dash, 1)))
-
-        # Limit to diffusion rate when defined
-        if (is.numeric(diffusion_rate)) {
-          current_rate <- min(current_rate, diffusion_rate)
-        }
+        diffusion_radius <-
+          sqrt(4*diffusion_coeff*tm*
+                 log(max(initial_n*exp(intrinsic_r*tm)/m_dash, 1)))
 
         # Attach attribute for diffusion radius
-        if (is.numeric(attr(n$relocated, "diffusion_radius"))) {
-          attr(n$relocated, "diffusion_radius") <-
-            attr(n$relocated, "diffusion_radius") + current_rate
-        } else {
-          attr(n$relocated, "diffusion_radius") <- current_rate
-        }
+        attr(n$relocated, "diffusion_radius") <- diffusion_radius
 
         return(n)
       }
     }
+  }
+
+  # Get the (asymptotic) speed of diffusion
+  self$get_diffusion_rate <- function() {
+    return(diffusion_rate)
   }
 
   return(self)

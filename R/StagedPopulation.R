@@ -204,11 +204,11 @@ StagedPopulation <- function(region, growth,
         }
 
         # Calculate capacity for spatially implicit diffusion
-        if (region$spatially_implicit() &&
-            is.numeric(attr(x, "diffusion_radius"))) {
+        if (region$spatially_implicit() && is.numeric(attr(x, "tm")) &&
+            is.numeric(attr(x, "diffusion_rate"))) {
 
           # Calculate capacity of diffused area
-          diffusion_radius <- attr(x, "diffusion_radius")
+          diffusion_radius <- attr(x, "tm")*attr(x, "diffusion_rate")
           area_capacity <- capacity*pi*diffusion_radius^2/capacity_area
 
           # Calculate capacity-limited growth rate

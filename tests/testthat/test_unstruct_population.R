@@ -65,10 +65,12 @@ test_that("grows populations with capacity", {
   r <- exp(log(1.2)*(1 - n/300))
   set.seed(1243); new_n <- stats::rpois(1, r*100); set.seed(1243)
   expect_equal(population$grow(n), new_n)
-  attr(n, "diffusion_radius") <- 2000
+  attr(n, "tm") <- 1
+  attr(n, "diffusion_rate") <- 2000
   r <- exp(log(1.2)*(1 - n/(300*pi*2000^2/1e+06)))
   set.seed(1243); new_n <- stats::rpois(1, r*100)
-  attr(new_n, "diffusion_radius") <- 2000
+  attr(new_n, "tm") <- 1
+  attr(new_n, "diffusion_rate") <- 2000
   set.seed(1243)
   expect_equal(population$grow(n), new_n)
 })
