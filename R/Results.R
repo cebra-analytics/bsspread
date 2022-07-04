@@ -41,6 +41,10 @@
 #'     \item{\code{save_rasters(...)}}{Save the collated results as raster TIF
 #'       files when the region is grid-based. \code{Terra} raster write options
 #'       may be passed to the function.}
+#'     \item{\code{save_csv()}}{Save the collated results as comma-separated
+#'       values (CSV) files when the region is patch-based. Also saves the
+#'       population totals and area occupied to CSV files for both grid and
+#'       patch-based region types.}
 #'   }
 #' @include Region.R
 #' @export
@@ -270,6 +274,75 @@ Results.Region <- function(region, population_model,
           terra::writeRaster(output_rast, filename, ...)
         }
       }
+    }
+  }
+
+  # Save collated (patch only) and summary (both) results as CSV files
+  self$save_csv  <- function() {
+
+    # Replicate summaries or single replicate
+    if (replicates > 1) {
+      summaries <- c("mean", "sd")
+    } else {
+      summaries <- ""
+    }
+
+    # Collated results for patch only
+    if (region$get_type() == "patch") {
+
+      # Location coordinates and labels
+      coords <- region$get_coords(extra_cols = TRUE)
+      coords <- coords[, c("lon", "lat",
+                           names(which(sapply(coords, is.character))))]
+
+      # Save CSV for each time step
+      for (tmc in names(results$collated)) {
+        for (s in summaries) {
+
+          # Combine coordinates, labels, and results
+          if (replicates > 1) {
+            collated_results <- cbind(coords, results$collated[[tmc]][[s]])
+            s <- paste0("_", s)
+          } else {
+            collated_results <- cbind(coords, results$collated[[tmc]])
+          }
+
+          # Write to CSV file
+          filename <- sprintf(paste0("result_t%0",
+                                     nchar(as.character(time_steps)),
+                                     "d%s.csv"), as.integer(tmc), s)
+          utils::write.csv(collated_results, filename, row.names = FALSE)
+        }
+      }
+    }
+
+    # Population totals and area occupied
+    for (s in summaries) {
+
+      # Collect totals and area occupied
+      if (replicates > 1) {
+        totals <- array(sapply(results$total, function(tot) tot[[s]]),
+                        c(stages, time_steps + 1))
+        areas <- array(sapply(results$area, function(area) area[[s]]),
+                       c(1, time_steps + 1))
+        s <- paste0("_", s)
+      } else {
+        totals <- array(sapply(results$total, function(tot) tot),
+                        c(stages, time_steps + 1))
+        areas <- array(sapply(results$area, function(area) area),
+                       c(1, time_steps + 1))
+      }
+      time_steps_labels <- sprintf(paste0("t%0",
+                                          nchar(as.character(time_steps)),
+                                          "d"), as.integer(0:time_steps))
+      colnames(totals) <- time_steps_labels
+      colnames(areas) <- time_steps_labels
+
+      # Write to CSV files
+      filename <- sprintf("result_totals%s.csv", s)
+      utils::write.csv(totals, filename, row.names = FALSE)
+      filename <- sprintf("result_areas%s.csv", s)
+      utils::write.csv(areas, filename, row.names = FALSE)
     }
   }
 
