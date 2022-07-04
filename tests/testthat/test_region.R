@@ -33,7 +33,7 @@ test_that("initializes with CSV data", {
   expect_true(region$is_compatible(1:nrow(locations)))
   expect_false(region$two_tier())
   expect_equal(region$get_coords(), locations[, c("lon", "lat")])
-  expect_equal(region$get_coords(extra_cols = c("name","unknown")),
+  expect_equal(region$get_coords(extra_cols = TRUE),
                locations[, c("lon", "lat", "name")])
 })
 
