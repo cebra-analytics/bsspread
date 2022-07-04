@@ -60,6 +60,9 @@
 #'       an inner radius (in m) to define the boundary between local dispersal
 #'       at the original resolution and long-distance dispersal at an aggregate
 #'       resolution.}
+#'     \item{\code{get_coords(extra_cols = NULL)}}{Get a data frame of patch
+#'       location coordinates when \code{type} is "patch", as well as optional
+#'       extra named columns from the original location data.}
 #'     \item{\code{set_cores(cores)}}{Set the number of cores available for
 #'       parallel processing and thus enable parallel processing for
 #'       calculating path distances and directions.}
@@ -937,6 +940,12 @@ Region.data.frame <- function(x, ...) {
   # No two-tier dispersal for patch-based region
   self$two_tier <- function() {
     return(FALSE)
+  }
+
+  # Get location coordinates plus optional extra named columns
+  self$get_coords <- function(extra_cols = NULL) {
+    extra_cols <- extra_cols[which(extra_cols %in% names(x))]
+    return(x[, c("lon", "lat", extra_cols)])
   }
 
   # Set the number of cores available for parallel processing
