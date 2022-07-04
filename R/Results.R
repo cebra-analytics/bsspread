@@ -231,6 +231,7 @@ Results.Region <- function(region, population_model,
                 step_units = step_units,
                 collation_steps = collation_steps,
                 replicates = replicates,
+                stages = stages,
                 combine_stages = combine_stages))
   }
 
