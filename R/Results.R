@@ -287,6 +287,11 @@ Results.Region <- function(region, population_model,
       summaries <- ""
     }
 
+    # Resolve stages
+    if (is.null(stages) || is.numeric(combine_stages)) {
+      stages <- 1
+    }
+
     # Collated results for patch only
     if (region$get_type() == "patch") {
 
