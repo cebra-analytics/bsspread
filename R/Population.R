@@ -208,8 +208,8 @@ Population.Region <- function(region,
     # Initial or ongoing incursions (combined with current in subclasses)
     if (is.logical(incursion)) {
 
-      # Apply stochastic establishment to incursions
-      if (is.numeric(establish_pr)) {
+      # Apply stochastic establishment to arrival probability-based incursions
+      if (is.numeric(establish_pr) && attr(incursion, "type") == "prob") {
 
         # Indices of incursion locations
         indices <- which(incursion)
