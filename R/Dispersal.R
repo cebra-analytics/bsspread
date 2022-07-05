@@ -621,7 +621,6 @@ Dispersal.Region <- function(region, population_model,
               aggr_i <- aggr_cells[sample(
                 1:length(aggr_cells),
                 size = length(aggr_dest_rep[[rep_i]]),
-                replace = TRUE,
                 prob = aggr_p)]
 
               # Substitute region cells for repeated aggregate destinations
