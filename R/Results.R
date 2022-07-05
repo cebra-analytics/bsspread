@@ -45,6 +45,8 @@
 #'       values (CSV) files when the region is patch-based. Also saves the
 #'       population totals and area occupied to CSV files for both grid and
 #'       patch-based region types.}
+#'     \item{\code{save_plots()}}{Save plots of the population (staged) totals
+#'       and the area occupied as PNG files.}
 #'   }
 #' @include Region.R
 #' @export
@@ -93,6 +95,8 @@ Results.Region <- function(region, population_model,
   if (is.numeric(stages) && is.null(combine_stages)) {
     zeros$collated <- matrix(zeros$collated, ncol = stages)
     zeros$total <- array(0L, c(1, stages))
+  } else if (is.numeric(combine_stages)) {
+    zeros$collated <- rowSums(matrix(zeros$collated, ncol = stages))
   }
   if (replicates > 1) { # summaries
     zeros$collated <- list(mean = zeros$collated, sd = zeros$collated)
@@ -288,9 +292,10 @@ Results.Region <- function(region, population_model,
       summaries <- ""
     }
 
-    # Resolve stages
+    # Resolve result stages
+    result_stages <- stages
     if (is.null(stages) || is.numeric(combine_stages)) {
-      stages <- 1
+      result_stages <- 1
     }
 
     # Collated results for patch only
@@ -307,10 +312,11 @@ Results.Region <- function(region, population_model,
 
           # Combine coordinates, labels, and results
           if (replicates > 1) {
-            collated_results <- cbind(coords, results$collated[[tmc]][[s]])
+            collated_results <- cbind(coords,
+                                      pop = results$collated[[tmc]][[s]])
             s <- paste0("_", s)
           } else {
-            collated_results <- cbind(coords, results$collated[[tmc]])
+            collated_results <- cbind(coords, pop = results$collated[[tmc]])
           }
 
           # Write to CSV file
@@ -328,13 +334,13 @@ Results.Region <- function(region, population_model,
       # Collect totals and area occupied
       if (replicates > 1) {
         totals <- array(sapply(results$total, function(tot) tot[[s]]),
-                        c(stages, time_steps + 1))
+                        c(result_stages, time_steps + 1))
         areas <- array(sapply(results$area, function(area) area[[s]]),
                        c(1, time_steps + 1))
         s <- paste0("_", s)
       } else {
         totals <- array(sapply(results$total, function(tot) tot),
-                        c(stages, time_steps + 1))
+                        c(result_stages, time_steps + 1))
         areas <- array(sapply(results$area, function(area) area),
                        c(1, time_steps + 1))
       }
@@ -349,6 +355,96 @@ Results.Region <- function(region, population_model,
       utils::write.csv(totals, filename, row.names = FALSE)
       filename <- sprintf("result_areas%s.csv", s)
       utils::write.csv(areas, filename, row.names = FALSE)
+    }
+  }
+
+  # Plot total population (per stage) and area occupied as PNG files
+  self$save_plots  <- function() {
+
+    # Resolve the number of (combined) stages used in the results
+    result_stages <- stages
+    if (is.null(stages) || is.numeric(combine_stages)) {
+      result_stages <- 1
+    }
+
+    # Stage label for plot headings
+    stage_label <- ""
+    stage_file <- ""
+    if (result_stages > 1) {
+      stage_label <- paste0("stage ", 1:result_stages, " ")
+      stage_file <- paste0("_stage_", 1:result_stages)
+    }
+
+    # All plots have time steps on x-axis
+    plot_x_label <- paste0("Time steps (", step_units, ")")
+
+    if (replicates > 1) { # plot summary mean +/- 2 SD
+
+      # Collect totals and areas
+      totals <- list()
+      areas <- list()
+      for (s in c("mean", "sd")) {
+        totals[[s]] <- array(sapply(results$total, function(tot) tot[[s]]),
+                             c(result_stages, time_steps + 1))
+        areas[[s]] <- sapply(results$area, function(area) area[[s]])
+      }
+
+      # Plot totals (per result stage)
+      for (s in 1:result_stages) {
+        grDevices::png(filename = paste0("total_population", stage_file[s],
+                                         ".png"))
+        graphics::plot(0:time_steps, totals$mean[s,], type = "l",
+                       main = paste0("Total ", stage_label[s],
+                                     "population (mean +/- 2 SD)"),
+                       xlab = plot_x_label, ylab = "Population",
+                       ylim = c(0, 1.1*max(totals$mean[s,] + 2*totals$sd[s,])))
+        graphics::lines(0:time_steps, totals$mean[s,] + 2*totals$sd[s,],
+                        lty = "dashed")
+        graphics::lines(0:time_steps,
+                        pmax(0, totals$mean[s,] - 2*totals$sd[s,]),
+                        lty = "dashed")
+        invisible(grDevices::dev.off())
+      }
+
+      # Plot areas
+      grDevices::png(filename = "area_occupied.png")
+      graphics::plot(0:time_steps, areas$mean, type = "l",
+                     main = "Area occupied (mean +/- 2 SD)",
+                     xlab = plot_x_label,
+                     ylab = paste0("Area (", attr(results$area, "units"),
+                                   ")"),
+                     ylim = c(0, 1.1*max(areas$mean + 2*areas$sd)))
+      graphics::lines(0:time_steps, areas$mean + 2*areas$sd, lty = "dashed")
+      graphics::lines(0:time_steps, pmax(0, areas$mean - 2*areas$sd),
+                      lty = "dashed")
+      invisible(grDevices::dev.off())
+
+    } else { # plot values
+
+      # Collect totals and areas
+      totals <- array(sapply(results$total, function(tot) tot),
+                      c(result_stages, time_steps + 1))
+      areas <- sapply(results$area, function(area) area)
+
+      # Plot totals (per result stage)
+      for (s in 1:result_stages) {
+        grDevices::png(filename = paste0("total_population", stage_file[s],
+                                         ".png"))
+        graphics::plot(0:time_steps, totals[s,], type = "l",
+                       main = paste0("Total ", stage_label[s], "population"),
+                       xlab = plot_x_label, ylab = "Population",
+                       ylim = c(0, 1.1*max(totals[s,])))
+        invisible(grDevices::dev.off())
+      }
+
+      # Plot areas
+      grDevices::png(filename = "area_occupied.png")
+      graphics::plot(0:time_steps, areas, type = "l", main = "Area occupied",
+                     xlab = plot_x_label,
+                     ylab = paste0("Area (", attr(results$area, "units"),
+                                   ")"),
+                     ylim = c(0, 1.1*max(areas)))
+      invisible(grDevices::dev.off())
     }
   }
 

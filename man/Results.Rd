@@ -79,6 +79,8 @@ may be passed to the function.}
 values (CSV) files when the region is patch-based. Also saves the
 population totals and area occupied to CSV files for both grid and
 patch-based region types.}
+\item{\code{save_plots()}}{Save plots of the population (staged) totals
+and the area occupied as PNG files.}
 }
 }
 \description{
