@@ -603,6 +603,8 @@ Dispersal.Region <- function(region, population_model,
             }
 
             # Sample region cell(s) within each aggregate destination cell
+            aggr_sample_replace <- !(population_type == "presence_only" &&
+                                       is.null(events))
             for (rep_i in 1:length(aggr_dest_rep)) {
 
               # Get region cell raster indices
@@ -621,6 +623,7 @@ Dispersal.Region <- function(region, population_model,
               aggr_i <- aggr_cells[sample(
                 1:length(aggr_cells),
                 size = length(aggr_dest_rep[[rep_i]]),
+                replace = aggr_sample_replace,
                 prob = aggr_p)]
 
               # Substitute region cells for repeated aggregate destinations
