@@ -44,7 +44,11 @@ test_that("makes populations with establishment prob", {
   establish <- template[region$get_indices()][,1]
   expect_silent(population <- Population(region, establish_pr = establish))
   incursion <- rep(TRUE, region$get_locations())
+  attr(incursion, "type") <- "weight"
   expect_is(population$make(incursion = incursion), "logical")
+  expect_equal(sum(population$make(incursion = incursion)),
+               region$get_locations())
+  attr(incursion, "type") <- "prob"
   expect_true(sum(population$make(incursion = incursion)) <
                 region$get_locations())
   expect_true(sum(population$make(incursion = incursion)) <=

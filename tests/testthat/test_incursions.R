@@ -15,7 +15,7 @@ test_that("initializes with raster layer", {
                      "locations."))
 })
 
-test_that("weighted incursion location", {
+test_that("generates weighted incursion location", {
   TEST_DIRECTORY <- test_path("test_inputs")
   template <- terra::rast(file.path(TEST_DIRECTORY, "greater_melb.tif"))
   region <- Region(template*0)
@@ -24,6 +24,7 @@ test_that("weighted incursion location", {
   expect_silent(generated_incursion <- incursions$generate())
   expect_is(generated_incursion, "logical")
   expect_equal(length(which(generated_incursion)), 1)
+  expect_equal(attr(generated_incursion, "type"), "weight")
 })
 
 test_that("generates probability incursions", {
@@ -38,5 +39,6 @@ test_that("generates probability incursions", {
   expect_is(generated_incursions, "logical")
   expect_true(abs(length(which(generated_incursions)) -
                     mean_incursions)/mean_incursions < 0.1)
+  expect_equal(attr(generated_incursions, "type"), "prob")
 })
 

@@ -12,7 +12,7 @@ test_that("initializes with region, population model, and other parameters", {
   expect_is(results, "Results")
   expect_equal(results$get_params(),
                list(time_steps = 1, step_duration = 1, step_units = "years",
-                    collation_steps = 1, replicates = 1,
+                    collation_steps = 1, replicates = 1, stages = NULL,
                     combine_stages = NULL))
 })
 

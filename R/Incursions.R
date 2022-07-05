@@ -118,12 +118,12 @@ Incursions.default <- function(x,
   # Generate incursion locations via sampling
   self$generate <- function() {
     incursions <- vector("logical", length(unlist(x)))
-    attr(incursions, "type") <- type
     if (type == "weight") { # sample single location
       incursions[sample(1:length(x), 1, prob = unlist(x))] <- TRUE
     } else if (type == "prob") { # binomial sampling at each location
       incursions <- as.logical(stats::rbinom(length(x), 1, prob = unlist(x)))
     }
+    attr(incursions, "type") <- type
     return(incursions)
   }
 
