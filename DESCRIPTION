@@ -1,6 +1,6 @@
 Package: bsspread
 Title: Biosecurity Spread Modelling
-Version: 0.0.8
+Version: 0.1.0
 Authors@R: c(person("Sean", "Haythorne", 
                     email = "sean.haythorne@unimelb.edu.au", 
                     role = c("aut", "cre")))
@@ -16,7 +16,7 @@ Imports:
     foreach (>= 1.5.1),
     igraph (>= 1.2.8),
     raster (>= 3.5.2),
-    terra (>= 1.4.22)
+    terra (>= 1.6.47)
 Suggests:
     knitr,
     rmarkdown,
