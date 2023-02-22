@@ -29,6 +29,17 @@
 #'       population at each location at that time. The function returns a
 #'       population array with merged incursions.}
 #'   }
+#' @references
+#'   Bradhurst, R., Spring, D., Stanaway, M., Milner, J., & Kompas, T. (2021).
+#'   A generalised and scalable framework for modelling incursions,
+#'   surveillance and control of plant and environmental pests.
+#'   \emph{Environmental Modelling & Software}, 139, N.PAG.
+#'   \doi{10.1016/j.envsoft.2021.105004}
+#'
+#'   García Adeva, J. J., Botha, J. H., & Reynolds, M. (2012). A simulation
+#'   modelling approach to forecast establishment and spread of Bactrocera
+#'   fruit flies. \emph{Ecological Modelling}, 227, 93–108.
+#'   \doi{10.1016/j.ecolmodel.2011.11.026}
 #' @export
 Initializer <- function(x,
                         region = NULL,

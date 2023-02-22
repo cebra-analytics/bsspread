@@ -59,6 +59,29 @@
 #'       population \code{x} vector/array (stages by locations), and returns
 #'       the transformed vector/array.}
 #'   }
+#' @references
+#'   Beverton, R. J. H., & Holt, S. J. (1957). On the dynamics of exploited
+#'   fish populations. \emph{Fisheries Investigations}, 19, 1-533.
+#'
+#'   Bradhurst, R., Spring, D., Stanaway, M., Milner, J., & Kompas, T. (2021).
+#'   A generalised and scalable framework for modelling incursions,
+#'   surveillance and control of plant and environmental pests.
+#'   \emph{Environmental Modelling & Software}, 139, N.PAG.
+#'   \doi{10.1016/j.envsoft.2021.105004}
+#'
+#'   García Adeva, J. J., Botha, J. H., & Reynolds, M. (2012). A simulation
+#'   modelling approach to forecast establishment and spread of Bactrocera
+#'   fruit flies. \emph{Ecological Modelling}, 227, 93–108.
+#'   \doi{10.1016/j.ecolmodel.2011.11.026}
+#'
+#'   Jongejans, E., Skarpaas, O., & Shea, K. (2008). Dispersal, demography and
+#'   spatial population models for conservation and control management.
+#'   \emph{Perspectives In Plant Ecology Evolution And Systematics}, 9(3–4),
+#'   153–170. \doi{10.1016/j.ppees.2007.09.005}
+#'
+#'   Ricker, W. E. (1958). Handbook of computations for biological statistics
+#'   of fish populations. \emph{Bulletin (Fisheries Research Board of Canada)},
+#'   119. \url{https://waves-vagues.dfo-mpo.gc.ca/Library/1485.pdf}
 #' @include Region.R
 #' @export
 Population <- function(region,

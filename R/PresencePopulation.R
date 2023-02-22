@@ -30,6 +30,17 @@
 #'       \code{x} vector via spread delay when present, and returns the
 #'       transformed vector.}
 #'   }
+#' @references
+#'   Bradhurst, R., Spring, D., Stanaway, M., Milner, J., & Kompas, T. (2021).
+#'   A generalised and scalable framework for modelling incursions,
+#'   surveillance and control of plant and environmental pests.
+#'   \emph{Environmental Modelling & Software}, 139, N.PAG.
+#'   \doi{10.1016/j.envsoft.2021.105004}
+#'
+#'   Jongejans, E., Skarpaas, O., & Shea, K. (2008). Dispersal, demography and
+#'   spatial population models for conservation and control management.
+#'   \emph{Perspectives In Plant Ecology Evolution And Systematics}, 9(3–4),
+#'   153–170. \doi{10.1016/j.ppees.2007.09.005}
 #' @include Population.R
 #' @export
 PresencePopulation <- function(region,

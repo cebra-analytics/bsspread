@@ -44,3 +44,15 @@ Builds a class for representing presence-only populations in spread
 simulations. Growth is implicitly simulated via a delay in the ability of
 newly established populations to spread.
 }
+\references{
+Bradhurst, R., Spring, D., Stanaway, M., Milner, J., & Kompas, T. (2021).
+A generalised and scalable framework for modelling incursions,
+surveillance and control of plant and environmental pests.
+\emph{Environmental Modelling & Software}, 139, N.PAG.
+\doi{10.1016/j.envsoft.2021.105004}
+
+Jongejans, E., Skarpaas, O., & Shea, K. (2008). Dispersal, demography and
+spatial population models for conservation and control management.
+\emph{Perspectives In Plant Ecology Evolution And Systematics}, 9(3–4),
+153–170. \doi{10.1016/j.ppees.2007.09.005}
+}

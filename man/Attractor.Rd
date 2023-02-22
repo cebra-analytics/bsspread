@@ -87,3 +87,27 @@ may be used to modify the relative likelihood of dispersal to each
 destination location. The \code{type} attribute of an attractor may thus be
 defined as "source", "destination", or "both".
 }
+\references{
+Bossenbroek, J. M., Kraft, C. E., & Nekola, J. C. (2001). Prediction of
+Long-Distance Dispersal Using Gravity Models: Zebra Mussel Invasion of
+Inland Lakes. \emph{Ecological Applications}, 11(6), 1778–1788.
+\doi{10.2307/3061095}
+
+Carrasco, L. R., Mumford, J. D., MacLeod, A., Harwood, T.,
+Grabenweger, G., Leach, A. W., Knight, J. D., & Baker, R. H. A. (2010).
+Unveiling human-assisted dispersal mechanisms in invasive alien insects:
+Integration of spatial stochastic simulation and phenology models.
+\emph{Ecological Modelling}, 221(17), 2068–2075.
+\doi{10.1016/j.ecolmodel.2010.05.012}
+
+Crespo-Pérez, V., Rebaudo, F., Silvain, J.-F., & Dangles, O. (2011).
+Modeling invasive species spread in complex landscapes: the case of potato
+moth in Ecuador. \emph{Landscape Ecology}, 26(10), 1447.
+\doi{10.1007/s10980-011-9649-4}
+
+Muirhead, J. R., Leung, B., Overdijk, C., Kelly, D. W., Nandakumar, K.,
+Marchant, K. R., & MacIsaac, H. J. (2006). Modelling local and
+long-distance dispersal of invasive emerald ash borer Agrilus planipennis
+(Coleoptera) in North America. \emph{Diversity & Distributions}, 12(1),
+71–79. \doi{10.1111/j.1366-9516.2006.00218.x}
+}

@@ -111,6 +111,29 @@
 #'       relocated populations enables multiple models for different dispersal
 #'       vectors to run in sequence.}
 #'   }
+#' @references
+#'   Bradhurst, R., Spring, D., Stanaway, M., Milner, J., & Kompas, T. (2021).
+#'   A generalised and scalable framework for modelling incursions,
+#'   surveillance and control of plant and environmental pests.
+#'   \emph{Environmental Modelling & Software}, 139, N.PAG.
+#'   \doi{10.1016/j.envsoft.2021.105004}
+#'
+#'   García Adeva, J. J., Botha, J. H., & Reynolds, M. (2012). A simulation
+#'   modelling approach to forecast establishment and spread of Bactrocera
+#'   fruit flies. \emph{Ecological Modelling}, 227, 93–108.
+#'   \doi{10.1016/j.ecolmodel.2011.11.026}
+#'
+#'   Jongejans, E., Skarpaas, O., & Shea, K. (2008). Dispersal, demography and
+#'   spatial population models for conservation and control management.
+#'   \emph{Perspectives In Plant Ecology Evolution And Systematics}, 9(3–4),
+#'   153–170. \doi{10.1016/j.ppees.2007.09.005}
+#'
+#'   Robinet, C., Kehlenbeck, H., Kriticos, D. J., Baker, R. H. A.,
+#'   Battisti, A., Brunel, S., Dupin, M., Eyre, D., Faccoli, M., Ilieva, Z.,
+#'   Kenis, M., Knight, J., Reynaud, P., Yart, A., & van der Werf, W. (2012).
+#'   A Suite of Models to Support the Quantitative Assessment of Spread in Pest
+#'   Risk Analysis. \emph{PLoS ONE}, 7(10), 1–18.
+#'   \doi{10.1371/journal.pone.0043366}
 #' @include Region.R
 #' @export
 Dispersal <- function(region, population_model,

@@ -59,6 +59,27 @@
 #'       population \code{x} matrix (having a row per location and a column per
 #'       stage/age), and returns the transformed matrix.}
 #'   }
+#' @references
+#'   Beverton, R. J. H., & Holt, S. J. (1957). On the dynamics of exploited
+#'   fish populations. \emph{Fisheries Investigations}, 19, 1-533.
+#'
+#'   García Adeva, J. J., Botha, J. H., & Reynolds, M. (2012). A simulation
+#'   modelling approach to forecast establishment and spread of Bactrocera
+#'   fruit flies. \emph{Ecological Modelling}, 227, 93–108.
+#'   \doi{10.1016/j.ecolmodel.2011.11.026}
+#'
+#'   Jongejans, E., Skarpaas, O., & Shea, K. (2008). Dispersal, demography and
+#'   spatial population models for conservation and control management.
+#'   \emph{Perspectives In Plant Ecology Evolution And Systematics}, 9(3–4),
+#'   153–170. \doi{10.1016/j.ppees.2007.09.005}
+#'
+#'   Lefkovitch, L. P. (1965). The Study of Population Growth in Organisms
+#'   Grouped by Stages. \emph{Biometrics}, 21(1), 1–18.
+#'   \doi{doi.org/10.2307/2528348}
+#'
+#'   Ricker, W. E. (1958). Handbook of computations for biological statistics
+#'   of fish populations. \emph{Bulletin (Fisheries Research Board of Canada)},
+#'   119. \url{https://waves-vagues.dfo-mpo.gc.ca/Library/1485.pdf}
 #' @include Population.R
 #' @export
 StagedPopulation <- function(region, growth,

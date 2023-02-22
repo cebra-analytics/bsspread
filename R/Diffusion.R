@@ -93,6 +93,34 @@
 #'     \item{\code{get_diffusion_rate()}}{Get the defined or calculated
 #'       (asymptotic) speed of diffusion.}
 #'   }
+#' @references
+#'   Andow, D. A., Kareiva, P. M., Levin, S. A., & Okubo, A. (1990). Spread of
+#'   invading organisms. \emph{Landscape Ecology}, 4(2–3), 177.
+#'   \doi{10.1007/bf00132860}
+#'
+#'   Bradhurst, R., Spring, D., Stanaway, M., Milner, J., & Kompas, T. (2021).
+#'   A generalised and scalable framework for modelling incursions,
+#'   surveillance and control of plant and environmental pests.
+#'   \emph{Environmental Modelling & Software}, 139, N.PAG.
+#'   \doi{10.1016/j.envsoft.2021.105004}
+#'
+#'   Fisher, R. A. (1937). The wave of advance of advantageous genes.
+#'   \emph{Ann. Eugenics} 7, 355–369. \doi{10.1111/j.1469-1809.1937.tb02153.x}
+#'
+#'   Jongejans, E., Skarpaas, O., & Shea, K. (2008). Dispersal, demography and
+#'   spatial population models for conservation and control management.
+#'   \emph{Perspectives In Plant Ecology Evolution And Systematics}, 9(3–4),
+#'   153–170. \doi{10.1016/j.ppees.2007.09.005}
+#'
+#'   Robinet, C., Kehlenbeck, H., Kriticos, D. J., Baker, R. H. A.,
+#'   Battisti, A., Brunel, S., Dupin, M., Eyre, D., Faccoli, M., Ilieva, Z.,
+#'   Kenis, M., Knight, J., Reynaud, P., Yart, A., & van der Werf, W. (2012).
+#'   A Suite of Models to Support the Quantitative Assessment of Spread in Pest
+#'   Risk Analysis. \emph{PLoS ONE}, 7(10), 1–18.
+#'   \doi{10.1371/journal.pone.0043366}
+#'
+#'   Skellam, J. G. (1951). Random Dispersal in Theoretical Populations.
+#'   \emph{Biometrika}, 38(1/2), 196–218. \doi{10.2307/2332328}
 #' @include Region.R
 #' @include Dispersal.R
 #' @export

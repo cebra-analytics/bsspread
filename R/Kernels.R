@@ -41,6 +41,23 @@
 #'       (relative) probability values (second column). Look-up functionality
 #'       performs linear interpolation between discrete values.}
 #'   }
+#' @references
+#'   Carrasco, L. R., Harwood, T. D., Toepfer, S., MacLeod, A., Levay, N.,
+#'   Kiss, J., Baker, R. H. A., Mumford, J. D., & Knight, J. D. (2010).
+#'   Dispersal kernels of the invasive alien western corn rootworm and the
+#'   effectiveness of buffer zones in eradication programmes in Europe.
+#'   \emph{Annals of Applied Biology}, 156(1), 63–77.
+#'   \doi{10.1111/j.1744-7348.2009.00363.x}
+#'
+#'   Jongejans, E., Skarpaas, O., & Shea, K. (2008). Dispersal, demography and
+#'   spatial population models for conservation and control management.
+#'   \emph{Perspectives In Plant Ecology Evolution And Systematics}, 9(3–4),
+#'   153–170. \doi{10.1016/j.ppees.2007.09.005}
+#'
+#'   Shaw, M. W. (1995). Simulation of Population Expansion and Spatial Pattern
+#'   when Individual Dispersal Distributions do not Decline Exponentially with
+#'   Distance. \emph{Proceedings B: Biological Sciences}, 259(1356), 243–248.
+#'   \doi{10.1098/rspb.1995.0036}
 #' @export
 Kernels <- function(multiplier = NULL, ...) {
 
