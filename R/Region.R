@@ -38,6 +38,9 @@
 #'     \item{\code{get_template(empty = FALSE)}}{Get the spatial template when
 #'      the \code{type} is "grid", with either zeros in non-NA locations
 #'      (default), or with no values when \code{empty = TRUE}.}
+#'     \item{\code{get_rast(values)}}{Get spatial \code{terra::SpatRaster} set
+#'       with a single value or a vector of values matching the number of
+#'       locations when \code{type} is "grid".}
 #'     \item{\code{get_indices()}}{Get cell indices of grid or patch locations
 #'       that are included in the simulation when the \code{type} is "grid".}
 #'     \item{\code{get_res()}}{Get the spatial cell resolution (in m) of the
@@ -152,6 +155,30 @@ Region.SpatRaster <- function(x, ...) {
       names(template) <- "value"
     }
     return(template)
+  }
+
+  # Get spatial raster set with values
+  self$get_rast <- function(values) {
+
+    # Check values is vector of correct length
+    if (!length(values) %in% c(1, self$get_locations())) {
+      stop(paste("Values should be a single value or vector of length",
+                 "matching the number of region locations."), call. = FALSE)
+    }
+
+    # Get a template raster to populate
+    value_rast <- self$get_template()
+
+    # Set categories when present
+    if (is.factor(values)) {
+      levels(value_rast) <- data.frame(ID = 1:length(levels(values)),
+                                       category = levels(values))
+    }
+
+    # Set values
+    value_rast[indices] <- values
+
+    return(value_rast)
   }
 
   # Get cell indices

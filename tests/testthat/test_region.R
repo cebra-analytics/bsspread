@@ -23,6 +23,25 @@ test_that("initializes with lonlat raster", {
   expect_equal(region$is_included(1113:1116), c(TRUE, FALSE, FALSE, TRUE))
 })
 
+test_that("gets a raster with specified values", {
+  TEST_DIRECTORY <- test_path("test_inputs")
+  template <- terra::rast(file.path(TEST_DIRECTORY, "greater_melb.tif"))
+  expect_silent(region <- Region(template))
+  expect_error(region$get_rast(1:10),
+               paste("Values should be a single value or vector of length",
+                     "matching the number of region locations."))
+  expect_silent(value_rast <- region$get_rast(10))
+  expect_equal(value_rast[region$get_indices()][,1],
+               rep(10, region$get_locations()))
+  expect_silent(value_rast <- region$get_rast(1:region$get_locations()))
+  expect_equal(value_rast[region$get_indices()][,1], 1:region$get_locations())
+  cat_values <- factor(c("a", rep(c("b", "c"), 5915)), c("a", "b", "c", "d"))
+  expect_silent(value_rast <- region$get_rast(cat_values))
+  expect_equal(terra::cats(value_rast)[[1]],
+               data.frame(ID = 1:4, category = c("a", "b", "c", "d")))
+  expect_equal(value_rast[region$get_indices()][,1], cat_values)
+})
+
 test_that("initializes with CSV data", {
   TEST_DIRECTORY <- test_path("test_inputs")
   locations <- utils::read.csv(file.path(TEST_DIRECTORY, "vic_cities.csv"))

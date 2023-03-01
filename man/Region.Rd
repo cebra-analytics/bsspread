@@ -47,6 +47,9 @@ implicit (single patch).}
 \item{\code{get_template(empty = FALSE)}}{Get the spatial template when
 the \code{type} is "grid", with either zeros in non-NA locations
 (default), or with no values when \code{empty = TRUE}.}
+\item{\code{get_rast(values)}}{Get spatial \code{terra::SpatRaster} set
+with a single value or a vector of values matching the number of
+locations when \code{type} is "grid".}
 \item{\code{get_indices()}}{Get cell indices of grid or patch locations
 that are included in the simulation when the \code{type} is "grid".}
 \item{\code{get_res()}}{Get the spatial cell resolution (in m) of the
