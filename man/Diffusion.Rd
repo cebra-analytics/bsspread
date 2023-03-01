@@ -10,7 +10,6 @@ Diffusion(
   dispersal_stages = NULL,
   diffusion_rate = NULL,
   diffusion_coeff = NULL,
-  diffusion_threshold = 1,
   proportion = NULL,
   direction_function = NULL,
   attractors = list(),
@@ -38,14 +37,6 @@ step) for spatially implicit reaction-diffusion. Only used when
 unstructured or stage-structured populations are defined within a single
 patch region, and the asymptotic \code{diffusion_rate} is unknown (thus
 not defined). Default is \code{NULL}.}
-
-\item{diffusion_threshold}{Optional diffusion boundary threshold for
-spatially implicit reaction-diffusion. Defined as a fraction (> 0 and
-<= 1) of the initial population outside the diffusion boundary. Only used
-when unstructured or stage-structured populations are defined within a
-single patch region. Default is 1, resulting in diffusion limited to the
-asymptotic diffusion rate, defined via the \code{diffusion_rate}
-parameter, or calculated via the \code{diffusion_coeff} parameter.}
 
 \item{proportion}{The proportion of the (unstructured or staged) population
 that disperses at each time step, or the proportion of local presence-only
@@ -145,6 +136,11 @@ Jongejans, E., Skarpaas, O., & Shea, K. (2008). Dispersal, demography and
 spatial population models for conservation and control management.
 \emph{Perspectives In Plant Ecology Evolution And Systematics}, 9(3–4),
 153–170. \doi{10.1016/j.ppees.2007.09.005}
+
+Okubo, A., & Kareiva, P. (2001). Some Examples of Animal Diffusion. In
+A. Okubo & S. A. Levin (Eds.) \emph{Diffusion and Ecological Problems:}
+\emph{Modern Perspectives} (pp. 238-267). Springer New York.
+\doi{10.1007/978-1-4757-4978-6}
 
 Robinet, C., Kehlenbeck, H., Kriticos, D. J., Baker, R. H. A.,
 Battisti, A., Brunel, S., Dupin, M., Eyre, D., Faccoli, M., Ilieva, Z.,

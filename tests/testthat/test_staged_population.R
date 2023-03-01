@@ -147,10 +147,10 @@ test_that("grows populations with capacity", {
   }
   set.seed(1243)
   expect_equal(population$grow(n), new_n)
-  attr(n, "tm") <- 1
   attr(n, "diffusion_rate") <- 2000
+  attr(n, "diffusion_radius") <- 1000
   r <- exp(log(population$get_growth_r())*
-             (1 - sum(n[2:3])/(300*pi*2000^2/1e+06)))
+             (1 - sum(n[2:3])/(300*pi*3000^2/1e+06)))
   mult <- r_mult$mult[which.min(abs(r_mult$r - r))]
   set.seed(1243)
   new_n <- array(0L, c(1, 3))
@@ -161,8 +161,8 @@ test_that("grows populations with capacity", {
     new_n <- new_n + t(stats::rmultinom(1, size = stage_surv,
                                         prob = survivals[, stage]*mult))
   }
-  attr(new_n, "tm") <- 1
   attr(new_n, "diffusion_rate") <- 2000
+  attr(new_n, "diffusion_radius") <- 1000
   set.seed(1243)
   expect_equal(population$grow(n), new_n)
 })

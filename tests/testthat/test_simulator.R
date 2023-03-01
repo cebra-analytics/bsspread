@@ -105,6 +105,8 @@ test_that("attaches attributes for spatially implicit diffusion", {
                                        initializer = initializer,
                                        population_model = population,
                                        dispersal_models = list(diffusion)))
+  set.seed(1248); expect_n_1 <- stats::rpois(1, 2*initial_n); set.seed(1248)
+  expect_diff_radius_1 <- sqrt(4*2000^2/(4*log(2))*1*log(expect_n_1/10))
   expect_silent(results <- simulator$run())
   results_list <- results$get_list()
   names(results_list$collated) # as.character(0:1)
@@ -113,7 +115,7 @@ test_that("attaches attributes for spatially implicit diffusion", {
                     diffusion_radius = 0))
   expect_equal(attributes(results_list$collated[["1"]]),
                list(initial_n = 10, diffusion_rate = 2000,
-                    diffusion_radius = 2000, tm = 1))
+                    diffusion_radius = expect_diff_radius_1, tm = 1))
   expect_equal(results_list$area[["0"]], 0)
-  expect_equal(results_list$area[["1"]], pi*2000^2)
+  expect_equal(results_list$area[["1"]], pi*expect_diff_radius_1^2)
 })

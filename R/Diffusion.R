@@ -43,13 +43,6 @@
 #'   unstructured or stage-structured populations are defined within a single
 #'   patch region, and the asymptotic \code{diffusion_rate} is unknown (thus
 #'   not defined). Default is \code{NULL}.
-#' @param diffusion_threshold Optional diffusion boundary threshold for
-#'   spatially implicit reaction-diffusion. Defined as a fraction (> 0 and
-#'   <= 1) of the initial population outside the diffusion boundary. Only used
-#'   when unstructured or stage-structured populations are defined within a
-#'   single patch region. Default is 1, resulting in diffusion limited to the
-#'   asymptotic diffusion rate, defined via the \code{diffusion_rate}
-#'   parameter, or calculated via the \code{diffusion_coeff} parameter.
 #' @param proportion The proportion of the (unstructured or staged) population
 #'   that disperses at each time step, or the proportion of local presence-only
 #'   destinations selected for diffusive dispersal. Default is \code{NULL}
@@ -112,6 +105,11 @@
 #'   \emph{Perspectives In Plant Ecology Evolution And Systematics}, 9(3–4),
 #'   153–170. \doi{10.1016/j.ppees.2007.09.005}
 #'
+#'   Okubo, A., & Kareiva, P. (2001). Some Examples of Animal Diffusion. In
+#'   A. Okubo & S. A. Levin (Eds.) \emph{Diffusion and Ecological Problems:}
+#'   \emph{Modern Perspectives} (pp. 238-267). Springer New York.
+#'   \doi{10.1007/978-1-4757-4978-6}
+#'
 #'   Robinet, C., Kehlenbeck, H., Kriticos, D. J., Baker, R. H. A.,
 #'   Battisti, A., Brunel, S., Dupin, M., Eyre, D., Faccoli, M., Ilieva, Z.,
 #'   Kenis, M., Knight, J., Reynaud, P., Yart, A., & van der Werf, W. (2012).
@@ -128,7 +126,6 @@ Diffusion <- function(region, population_model,
                       dispersal_stages = NULL,
                       diffusion_rate = NULL,
                       diffusion_coeff = NULL,
-                      diffusion_threshold = 1,
                       proportion = NULL,
                       direction_function = NULL,
                       attractors = list(),
@@ -143,16 +140,10 @@ Diffusion <- function(region, population_model,
     diffusion_rate <- 0
   }
 
-  # Check diffusion coefficient and threshold
+  # Check diffusion coefficient
   if (!is.null(diffusion_coeff) &&
       (!is.numeric(diffusion_coeff) || diffusion_coeff <= 0)) {
     stop("The diffusion coefficient must be numeric and > 0.", call. = FALSE)
-  }
-  if (!is.null(diffusion_threshold) &&
-      (!is.numeric(diffusion_threshold) || diffusion_threshold <= 0 ||
-       diffusion_threshold > 1)) {
-    stop("The diffusion threshold must be numeric and > 0 and <= 1.",
-         call. = FALSE)
   }
 
   # Configure maximum distance and define combined function for diffusion
@@ -275,10 +266,10 @@ Diffusion <- function(region, population_model,
 
         # Calculate radius via reaction-diffusion (Okubo & Kareiva, 2001)
         # m' = initial_n*exp(intrinsic_r*tm - Radius^2/(4*diffusion_coeff*tm))
-        m_dash <- initial_n*diffusion_threshold
+        # where n_t = initial_n*exp(intrinsic_r*tm) for exponential growth
+        m_dash <- initial_n # since initial radius is zero
         diffusion_radius <-
-          sqrt(4*diffusion_coeff*tm*
-                 log(max(initial_n*exp(intrinsic_r*tm)/m_dash, 1)))
+          sqrt(4*diffusion_coeff*tm*log(max(n$original/m_dash, 1)))
 
         # Attach attribute for diffusion radius
         attr(n$relocated, "diffusion_radius") <- diffusion_radius

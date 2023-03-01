@@ -14,9 +14,6 @@ test_that("initializes with region, population model, and other parameters", {
   expect_error(diffusion <- Diffusion(region, population_model = population,
                                       diffusion_coeff = 0),
                "The diffusion coefficient must be numeric and > 0.")
-  expect_error(dispersal <- Diffusion(region, population_model = population,
-                                      diffusion_threshold = 0),
-               "The diffusion threshold must be numeric and > 0 and <= 1.")
   expect_silent(diffusion <- Diffusion(region, population_model = population,
                                        diffusion_rate = 2000,
                                        diffusion_coeff = 1000000,
@@ -132,7 +129,7 @@ test_that("spatially implicit reaction diffusion unstructured", {
   TEST_DIRECTORY <- test_path("test_inputs")
   region <- Region()
   population <- UnstructPopulation(region, growth = 1.2)
-  n <- 100
+  n <- 120
   diffusion <- Diffusion(region, population_model = population,
                          diffusion_rate = 2000, proportion = 1)
   expect_silent(n <- diffusion$pack(n))
@@ -144,7 +141,7 @@ test_that("spatially implicit reaction diffusion unstructured", {
                paste("The current time step needs to be set as an attribute",
                "for reaction-diffusion calculations."))
   attr(n$relocated, "tm") <- 1
-  expected_n <- n$relocated + 100
+  expected_n <- n$relocated + 120
   expect_silent(n <- diffusion$disperse(n))
   expect_silent(n <- diffusion$unpack(n))
   attr(expected_n, "diffusion_radius") <- 2000
@@ -152,18 +149,17 @@ test_that("spatially implicit reaction diffusion unstructured", {
   attr(n, "diffusion_radius") <- NULL
   diffusion_coeff <- 2000^2/(4*log(1.2))
   diffusion <- Diffusion(region, population_model = population,
-                         diffusion_coeff = diffusion_coeff,
-                         diffusion_threshold = 0.1, proportion = 1)
+                         diffusion_coeff = diffusion_coeff, proportion = 1)
   expect_silent(n <- diffusion$pack(n))
   expect_silent(n <- diffusion$disperse(n))
   expect_silent(n <- diffusion$unpack(n))
   expect_equal(attr(n, "diffusion_radius"),
-               sqrt(4*diffusion_coeff*1*log(120/10)))
+               sqrt(4*diffusion_coeff*1*log(120/100)))
   attr(n, "tm") <- 2
-  prev_radius <- attr(n, "diffusion_radius")
+  n <- n + 24
   expect_silent(n <- diffusion$pack(n))
   expect_silent(n <- diffusion$disperse(n))
   expect_silent(n <- diffusion$unpack(n))
   expect_equal(attr(n, "diffusion_radius"),
-               sqrt(4*diffusion_coeff*2*log(144/10)))
+               sqrt(4*diffusion_coeff*2*log(144/100)))
 })
