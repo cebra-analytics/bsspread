@@ -192,7 +192,7 @@ Region.SpatRaster <- function(x, ...) {
       corners <- array(terra::ext(x), c(2, 2))
       diagonal <- terra::distance(corners[1,,drop = FALSE],
                                   corners[2,,drop = FALSE], lonlat = TRUE)
-      return(diagonal/sqrt(terra::nrow(x)^2 + terra::ncol(x)^2))
+      return(c(diagonal/sqrt(terra::nrow(x)^2 + terra::ncol(x)^2)))
     } else {
       return(mean(terra::res(x)[1]))
     }

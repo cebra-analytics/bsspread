@@ -484,7 +484,7 @@ Dispersal.Region <- function(region, population_model,
         # Generate dispersers
         dispersers <- stats::rbinom(length(dispersal_stages),
                                     size = n$original[i, dispersal_stages],
-                                    prob = proportion*source_p)
+                                    prob = pmin(proportion*source_p, 1))
 
         # Ensure there are sufficient remaining (after other dispersals)
         dispersers <- pmin(dispersers, n$remaining[i, dispersal_stages])
@@ -562,7 +562,7 @@ Dispersal.Region <- function(region, population_model,
           # Probabilistic dispersal to each reachable destination
           destinations <- which(as.logical(stats::rbinom(
             length(destination_p$cell), size = 1,
-            prob = destination_p$cell*proportion*source_p)))
+            prob = pmin(destination_p$cell*proportion*source_p, 1))))
 
           if (aggr_paths_present) {
 
@@ -573,7 +573,8 @@ Dispersal.Region <- function(region, population_model,
             # Sample region cell counts for aggregate cells
             aggr_cells <- stats::rbinom(
               length(destination_p$aggr), size = aggr_cells,
-              prob = destination_p$aggr*proportion*source_p/aggr_cells)
+              prob = pmin(destination_p$aggr*proportion*source_p/aggr_cells,
+                          1))
 
             # Replicate aggregate destination cells using cell counts
             aggr_dest <- which(as.logical(aggr_cells))
