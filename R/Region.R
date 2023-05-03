@@ -380,7 +380,7 @@ Region.SpatRaster <- function(x, ...) {
                             region_pts[paths$idx[[cell_char]]$cell])))))
 
         # Calculate aggregate cell distances when applicable
-        if (include_aggr) {
+        if (include_aggr && length(paths$idx[[cell_char]]$aggr) > 0) {
           paths$distances[[cell_char]]$aggr <<-
             as.integer(round(as.numeric(
               terra::distance(region_pts[cell],
@@ -398,7 +398,7 @@ Region.SpatRaster <- function(x, ...) {
             atan2(xy_diff[,"y"], xy_diff[,"x"])*180/pi + 180)))
 
           # Calculate aggregate cell directions when applicable
-          if (include_aggr) {
+          if (include_aggr && length(paths$idx[[cell_char]]$aggr) > 0) {
             xy_diff <- (terra::crds(region_pts[cell])[
               rep(1, length(paths$idx[[cell_char]]$aggr)),] -
                 terra::crds(aggr$pts[paths$idx[[cell_char]]$aggr]))
@@ -687,7 +687,7 @@ Region.SpatRaster <- function(x, ...) {
         }
 
         # Aggregate distance multipliers when applicable
-        if (include_aggr) {
+        if (include_aggr && length(paths$idx[[cell_char]]$aggr) > 0) {
 
           # Find the aggregate cell index that contains the region cell
           aggr_i <- terra::cells(aggr$rast, region_pts[cell],
@@ -854,7 +854,7 @@ Region.SpatRaster <- function(x, ...) {
         }
 
         # Aggregate cells
-        if (include_aggr) {
+        if (include_aggr && length(paths$idx[[cell_char]]$aggr) > 0) {
 
           # Find aggregate cells within range
           if (use_perm) {
