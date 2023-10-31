@@ -272,7 +272,8 @@ Region.SpatRaster <- function(x, ...) {
           idx_rast[] <- 1:terra::ncell(x)
           aggr_rast <- terra::rast(aggr$rast)
           aggr_rast[] <- 1:terra::ncell(aggr_rast)
-          aggr_idx_rast <- terra::disagg(aggr_rast, fact = aggr$factor)
+          aggr_idx_rast <- terra::crop(
+            terra::disagg(aggr_rast, fact = aggr$factor), idx_rast)
           paths$graphs$agg_idx <<- lapply(
             1:terra::ncell(aggr_rast),
             function(aggr_i) {
