@@ -166,7 +166,7 @@ StagedPopulation <- function(region, growth,
     if (ncol(as.matrix(values)) == 1) {
 
       # Calculate ratio for stable distribution of stages
-      ratio <- Re((eigen(growth)$vectors)[,1])
+      ratio <- abs(Re((eigen(growth)$vectors)[,1]))
 
       # Select incursion stages only
       if (!is.null(incursion) && !is.null(incursion_stages)) {
