@@ -104,7 +104,8 @@ StagedPopulation <- function(region, growth,
   stages = self$get_stages()
 
   # Equivalent growth rate for stage/age matrix (growth)
-  growth_r <- Re((eigen(growth, only.values = TRUE)$values)[1])
+  growth_r <- Re((sort(eigen(growth, only.values = TRUE)$values,
+                       decreasing = TRUE))[1])
   self$get_growth_r <- function() {
     return(growth_r)
   }
@@ -202,7 +203,8 @@ StagedPopulation <- function(region, growth,
     # Construct look-up table
     r_mult <- data.frame(r = NA, mult = (1:trunc(max_mult*1000))/1000)
     r_mult$r <- sapply(r_mult$mult, function(m) {
-      Re((eigen(growth*m, only.values = TRUE)$values)[1])
+      Re((sort(eigen(growth*m, only.values = TRUE)$values,
+               decreasing = TRUE))[1])
     })
   }
 
