@@ -727,6 +727,14 @@ Dispersal.Region <- function(region, population_model,
         }
       doParallel::stopImplicitCluster()
 
+      # Recover from parallel memory failures via serial calculations
+      if (any(sapply(dispersal_list, is.null))) {
+        message("Parallel dispersal memory failures detected - trying serial")
+        for (i in which(sapply(dispersal_list, is.null))) {
+          dispersal_list[[i]] <- calculate_dispersals(dispersal_ready[i])
+        }
+      }
+
     } else {
 
       # Calculate and collect in serial
