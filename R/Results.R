@@ -90,6 +90,10 @@ Results.Region <- function(region, population_model,
   # Population stages (NULL or number of stages)
   stages <- population_model$get_stages()
 
+  # Include occupancy?
+  include_occupancy <- (population_model$get_type() %in%
+                          c("unstructured", "stage_structured"))
+
   # Initialize result lists
   results <- list(collated = list(), total = list(), area = list())
   if (region$get_type() == "grid") {
@@ -103,6 +107,10 @@ Results.Region <- function(region, population_model,
   }
   zeros <- list(collated = as.integer(population_model$make(initial = 0L)),
                 total = 0L, area = 0L)
+  if (include_occupancy) {
+    results$occupancy <- list()
+    zeros$occupancy <- rep(0L, region$get_locations())
+  }
   if (is.numeric(stages) && is.null(combine_stages)) {
     zeros$collated <- matrix(zeros$collated, ncol = stages)
     zeros$total <- array(0L, c(1, stages))
@@ -113,10 +121,16 @@ Results.Region <- function(region, population_model,
     zeros$collated <- list(mean = zeros$collated, sd = zeros$collated)
     zeros$total <- list(mean = zeros$total, sd = zeros$total)
     zeros$area <- list(mean = zeros$area, sd = zeros$area)
+    if (include_occupancy) {
+      zeros$occupancy <- list(mean = zeros$occupancy, sd = zeros$occupancy)
+    }
   }
   for (tm in as.character(c(0, seq(collation_steps, time_steps,
                                    by = collation_steps)))) {
     results$collated[[tm]] <- zeros$collated
+    if (include_occupancy) {
+      results$occupancy[[tm]] <- zeros$occupancy
+    }
   }
   for (tm in as.character(0:time_steps)) {
     results$total[[tm]] <- zeros$total
@@ -153,6 +167,11 @@ Results.Region <- function(region, population_model,
     if (population_model$get_type() == "stage_structured" &&
         is.numeric(combine_stages)) {
       n <- rowSums(n[,combine_stages, drop = FALSE])
+    }
+
+    # Calculate occupancy
+    if (include_occupancy) {
+      occupancy <- +(rowSums(as.matrix(n)) > 0)
     }
 
     # Shape total when population is staged
@@ -194,6 +213,17 @@ Results.Region <- function(region, population_model,
         (previous_sd + ((total_area - previous_mean)*
                           (total_area - results$area[[tmc]]$mean)))
 
+      # Occupancy summaries at each location
+      if (include_occupancy && (tm %% collation_steps == 0)) {
+        previous_mean <- results$occupancy[[tmc]]$mean
+        results$occupancy[[tmc]]$mean <<-
+          previous_mean + (occupancy - previous_mean)/r
+        previous_sd <- results$occupancy[[tmc]]$sd
+        results$occupancy[[tmc]]$sd <<-
+          (previous_sd + ((occupancy - previous_mean)*
+                            (occupancy - results$occupancy[[tmc]]$mean)))
+      }
+
     } else {
 
       # Population at each location
@@ -206,6 +236,11 @@ Results.Region <- function(region, population_model,
 
       # Total area occupied
       results$area[[tmc]] <<- total_area
+
+      # Occupancy at each location
+      if (include_occupancy && (tm %% collation_steps == 0)) {
+        results$occupancy[[tmc]] <<- occupancy
+      }
     }
   }
 
@@ -230,6 +265,14 @@ Results.Region <- function(region, population_model,
       for (tmc in names(results$area)) {
         results$area[[tmc]]$sd <<-
           sqrt(results$area[[tmc]]$sd/(replicates - 1))
+      }
+
+      # Transform collated occupancy standard deviations
+      if (include_occupancy) {
+        for (tmc in names(results$occupancy)) {
+          results$occupancy[[tmc]]$sd <<-
+            sqrt(results$occupancy[[tmc]]$sd/(replicates - 1))
+        }
       }
     }
   }
@@ -290,6 +333,28 @@ Results.Region <- function(region, population_model,
           terra::writeRaster(output_rast, filename, ...)
         }
       }
+
+      # Save occupancy rasters for each time step
+      if (include_occupancy) {
+        for (tmc in names(results$occupancy)) {
+          for (s in summaries) {
+
+            # Copy results into a raster
+            if (replicates > 1) {
+              output_rast <- region$get_rast(results$occupancy[[tmc]][[s]])
+              s <- paste0("_", s)
+            } else {
+              output_rast <- region$get_rast(results$occupancy[[tmc]])
+            }
+
+            # Write raster to file
+            filename <- sprintf(paste0("occupancy_t%0",
+                                       nchar(as.character(time_steps)),
+                                       "d%s.tif"), as.integer(tmc), s)
+            terra::writeRaster(output_rast, filename, ...)
+          }
+        }
+      }
     }
   }
 
@@ -335,6 +400,30 @@ Results.Region <- function(region, population_model,
                                      nchar(as.character(time_steps)),
                                      "d%s.csv"), as.integer(tmc), s)
           utils::write.csv(collated_results, filename, row.names = FALSE)
+        }
+      }
+
+      # Save occupancy CSV for each time step
+      if (include_occupancy) {
+        for (tmc in names(results$occupancy)) {
+          for (s in summaries) {
+
+            # Combine coordinates, labels, and results
+            if (replicates > 1) {
+              collated_occupancy <-
+                cbind(coords, occupancy = results$occupancy[[tmc]][[s]])
+              s <- paste0("_", s)
+            } else {
+              collated_occupancy <-
+                cbind(coords, occupancy = results$occupancy[[tmc]])
+            }
+
+            # Write to CSV file
+            filename <- sprintf(paste0("occupancy_t%0",
+                                       nchar(as.character(time_steps)),
+                                       "d%s.csv"), as.integer(tmc), s)
+            utils::write.csv(collated_occupancy, filename, row.names = FALSE)
+          }
         }
       }
     }
