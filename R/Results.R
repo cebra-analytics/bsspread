@@ -99,9 +99,9 @@ Results.Region <- function(region, population_model,
   if (region$get_type() == "grid") {
     cell_areas <-
       terra::cellSize(region$get_template())[region$get_indices()][,1]
-    attr(results$area, "units") <- "square meters"
+    attr(results$area, "units") <- "square metres"
   } else if (region$spatially_implicit()) {
-    attr(results$area, "units") <- "square meters"
+    attr(results$area, "units") <- "square metres"
   } else {
     attr(results$area, "units") <- "patches"
   }

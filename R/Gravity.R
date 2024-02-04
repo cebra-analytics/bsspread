@@ -53,7 +53,7 @@
 #' @param distance_scale Numeric factor for adjusting the scale of distances
 #'   used within gravity dispersal, i.e.
 #'   \code{dispersal = f(attractors)/distance^beta}. Default scale is 1 for
-#'   distances in meters. Use 1000 to scale distances to kilometers.
+#'   distances in metres. Use 1000 to scale distances to kilometres.
 #' @param dispersal_stages Numeric vector of population stages (indices) that
 #'   disperse. Default is all stages (when set to \code{NULL}).
 #' @param proportion The proportion of the (unstructured or staged) population
