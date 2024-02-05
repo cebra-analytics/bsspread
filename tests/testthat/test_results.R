@@ -52,7 +52,7 @@ test_that("collates single replicate results", {
   expect_equal(lapply(result_list$collated, function(rl) rl[1:12]), expected)
   expect_equal(unname(unlist(result_list$total)), 1:11)
   expect_equal(unname(unlist(result_list$area)), (1:11)*1000^2)
-  expect_equal(attr(result_list$area, "units"), "square meters")
+  expect_equal(attr(result_list$area, "units"), "square metres")
 })
 
 test_that("collates and finalises multiple replicate results", {
@@ -114,7 +114,7 @@ test_that("collates and finalises multiple replicate results", {
   expect_equal(unname(unlist(lapply(result_list$area, function(rl) rl$sd))),
                sapply(1:11, function(a)
                  stats::sd(colSums(expected[1:a,,drop = FALSE] > 0)))*1000^2)
-  expect_equal(attr(result_list$area, "units"), "square meters")
+  expect_equal(attr(result_list$area, "units"), "square metres")
 })
 
 test_that("collates spatially implicit area results", {
@@ -134,5 +134,5 @@ test_that("collates spatially implicit area results", {
   }
   result_list <- results$get_list()
   expect_equal(unname(unlist(result_list$area)), pi*((0:10)*2000)^2)
-  expect_equal(attr(result_list$area, "units"), "square meters")
+  expect_equal(attr(result_list$area, "units"), "square metres")
 })
