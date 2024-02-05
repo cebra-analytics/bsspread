@@ -14,6 +14,7 @@ Results(
   collation_steps = 1,
   replicates = 1,
   combine_stages = NULL,
+  class = character(),
   ...
 )
 
@@ -26,6 +27,7 @@ Results(
   collation_steps = 1,
   replicates = 1,
   combine_stages = NULL,
+  class = character(),
   ...
 )
 }

@@ -67,7 +67,8 @@ Results <- function(region, population_model,
                     step_units = "years",
                     collation_steps = 1,
                     replicates = 1,
-                    combine_stages = NULL, ...) {
+                    combine_stages = NULL,
+                    class = character(), ...) {
   UseMethod("Results")
 }
 
@@ -79,7 +80,8 @@ Results.Region <- function(region, population_model,
                            step_units = "years",
                            collation_steps = 1,
                            replicates = 1,
-                           combine_stages = NULL, ...) {
+                           combine_stages = NULL,
+                           class = character(), ...) {
 
   # Validate population model
   if (is.null(population_model) || !inherits(population_model, "Population")) {
@@ -139,7 +141,7 @@ Results.Region <- function(region, population_model,
   rm(zeros)
 
   # Create a class structure
-  self <- structure(list(), class = "Results")
+  self <- structure(list(), class = c(class, "Results"))
 
   # Collate results
   self$collate <- function(r, tm, n) {
