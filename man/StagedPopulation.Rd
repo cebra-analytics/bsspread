@@ -65,6 +65,7 @@ stages/ages are applicable for incursions.}
 A \code{StagedPopulation} class object (list) containing functions
 for accessing attributes and simulating growth:
 \describe{
+\item{\code{get_region()}}{Get the region object.}
 \item{\code{get_type()}}{Get the population representation type.}
 \item{\code{get_growth()}}{Get the growth stage/age matrix.}
 \item{\code{get_growth_r()}}{Get the equivalent (single value) growth

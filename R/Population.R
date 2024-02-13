@@ -39,6 +39,7 @@
 #'   accessing attributes, conforming data to the appropriate population
 #'   representation, and simulating growth:
 #'   \describe{
+#'     \item{\code{get_region()}}{Get the region object.}
 #'     \item{\code{get_type()}}{Get the population representation type.}
 #'     \item{\code{get_growth()}}{Get the growth rate or age/stage transition
 #'       matrix.}
@@ -166,6 +167,11 @@ Population.Region <- function(region,
 
   # Create a class structure
   self <- structure(list(), class = c(class, "Population"))
+
+  # Get the region object get_region
+  self$get_region <- function() {
+    return(region)
+  }
 
   # Get type
   self$get_type <- function() {

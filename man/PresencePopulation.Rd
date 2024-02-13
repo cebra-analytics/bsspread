@@ -27,6 +27,7 @@ an implicit mechanism for growth. Default \code{NULL} assumes no delay.}
 A \code{PresencePopulation} class object (list) containing functions
 for accessing attributes and simulating (implicit) growth:
 \describe{
+\item{\code{get_region()}}{Get the region object.}
 \item{\code{get_type()}}{Get the population representation type.}
 \item{\code{get_establish_pr()}}{Get the establishment probability as a
 vector of values for each location.}

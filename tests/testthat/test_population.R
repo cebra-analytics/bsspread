@@ -5,6 +5,8 @@ test_that("initializes with region", {
   template <- terra::rast(file.path(TEST_DIRECTORY, "greater_melb.tif"))
   region <- Region(template)
   expect_silent(population <- Population(region))
+  expect_is(population, "Population")
+  expect_is(population$get_region(), "Region")
   expect_equal(population$get_type(), "presence_only")
 })
 

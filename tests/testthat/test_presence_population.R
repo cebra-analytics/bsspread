@@ -7,6 +7,7 @@ test_that("initializes with region", {
   expect_silent(population <- PresencePopulation(region))
   expect_is(population, "PresencePopulation")
   expect_s3_class(population, "Population")
+  expect_is(population$get_region(), "Region")
   expect_equal(population$get_type(), "presence_only")
 })
 

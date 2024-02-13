@@ -29,6 +29,7 @@
 #' @return A \code{UnstructPopulation} class object (list) containing functions
 #'   for accessing attributes and simulating growth:
 #'   \describe{
+#'     \item{\code{get_region()}}{Get the region object.}
 #'     \item{\code{get_type()}}{Get the population representation type.}
 #'     \item{\code{get_growth()}}{Get the growth rate.}
 #'     \item{\code{get_capacity()}}{Get the carrying capacity as a vector of

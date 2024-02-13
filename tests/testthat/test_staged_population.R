@@ -31,6 +31,7 @@ test_that("initializes with region and other parameters", {
                Re((eigen(stage_matrix, only.values = TRUE)$values)[1]))
   expect_is(population, "StagedPopulation")
   expect_s3_class(population, "Population")
+  expect_is(population$get_region(), "Region")
   expect_equal(population$get_type(), "stage_structured")
   region <- Region()
   expect_error(population <- StagedPopulation(region, growth = stage_matrix,

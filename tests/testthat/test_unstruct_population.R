@@ -14,6 +14,7 @@ test_that("initializes with region and other parameters", {
   expect_silent(population <- UnstructPopulation(region, growth = 1.2))
   expect_is(population, "UnstructPopulation")
   expect_s3_class(population, "Population")
+  expect_is(population$get_region(), "Region")
   expect_equal(population$get_type(), "unstructured")
   region <- Region()
   expect_error(population <- UnstructPopulation(region, growth = 1.2,
