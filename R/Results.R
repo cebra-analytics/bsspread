@@ -25,6 +25,8 @@
 #' @param combine_stages Optionally combine (sum) specified stages (a vector of
 #'   stage indices) of stage-based population results. The default
 #'   (\code{NULL}) maintains results for each stage.
+#' @param class Character class name for inherited classes. Default is
+#'   \code{NULL}.
 #' @param ... Additional parameters.
 #' @return A \code{Results} class object (list) containing functions for
 #'   calculating and collating results, as well as accessing lists of results

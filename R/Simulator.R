@@ -37,6 +37,8 @@
 #'   applied to the population vector or matrix \code{n} (returning a
 #'   transformed \code{n}) prior to collating the results at each simulation
 #'   time step.
+#' @param class Character class name for inherited classes. Default is
+#'   \code{NULL}.
 #' @param ... Additional parameters.
 #' @return A \code{Simulator} class object (list) containing functions for
 #'   setting objects (in the function environment) and running the simulations:
@@ -73,7 +75,8 @@ Simulator <- function(region,
                       initializer = NULL,
                       population_model = NULL,
                       dispersal_models = list(),
-                      user_function = NULL, ...) {
+                      user_function = NULL,
+                      class = character(), ...) {
   UseMethod("Simulator")
 }
 
@@ -104,7 +107,8 @@ Simulator.Region <- function(region,
                              initializer = NULL,
                              population_model = NULL,
                              dispersal_models = list(),
-                             user_function = NULL, ...) {
+                             user_function = NULL,
+                             class = character(), ...) {
 
   # Validation
   time_params <- c(time_steps, step_duration, collation_steps, replicates)
@@ -164,7 +168,7 @@ Simulator.Region <- function(region,
   set_cores(cores = parallel_cores)
 
   # Create a class structure
-  self <- structure(list(), class = "Simulator")
+  self <- structure(list(), class = c(class, "Simulator"))
 
   # Set initializer
   self$set_initializer <- function(object) {

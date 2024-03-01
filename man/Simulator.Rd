@@ -20,6 +20,7 @@ Simulator(
   population_model = NULL,
   dispersal_models = list(),
   user_function = NULL,
+  class = character(),
   ...
 )
 
@@ -40,6 +41,7 @@ Simulator(
   population_model = NULL,
   dispersal_models = list(),
   user_function = NULL,
+  class = character(),
   ...
 )
 }
@@ -88,6 +90,9 @@ vectors to be simulated.}
 applied to the population vector or matrix \code{n} (returning a
 transformed \code{n}) prior to collating the results at each simulation
 time step.}
+
+\item{class}{Character class name for inherited classes. Default is
+\code{NULL}.}
 
 \item{...}{Additional parameters.}
 }

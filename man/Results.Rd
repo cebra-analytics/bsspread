@@ -59,6 +59,9 @@ summary statistics across simulations.}
 stage indices) of stage-based population results. The default
 (\code{NULL}) maintains results for each stage.}
 
+\item{class}{Character class name for inherited classes. Default is
+\code{NULL}.}
+
 \item{...}{Additional parameters.}
 }
 \value{
