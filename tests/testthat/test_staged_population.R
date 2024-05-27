@@ -21,12 +21,22 @@ test_that("initializes with region and other parameters", {
              0.3, 0.0, 0.0,
              0.0, 0.6, 0.8),
            nrow = 3, ncol = 3, byrow = TRUE)
+  expect_silent(population <- StagedPopulation(region, growth = stage_matrix))
+  expect_equal(attr(population$get_growth(), "labels"),
+               c("stage 1", "stage 2", "stage 3"))
+  attr(stage_matrix, "labels") <- c("a", "b")
+  expect_error(population <- StagedPopulation(region, growth = stage_matrix),
+               paste("Stage/age labels attribute should be a character vector",
+                     "compatible with the dimensions of the growth",
+                     "(stage/age) matrix."), fixed = TRUE)
+  attr(stage_matrix, "labels") <- c("a", "b", "c")
   expect_error(population <- StagedPopulation(region, growth = stage_matrix,
                                                 capacity = 30),
                paste("Population capacity should be a vector with a value for",
                      "each region location."))
 
   expect_silent(population <- StagedPopulation(region, growth = stage_matrix))
+  expect_equal(attr(population$get_growth(), "labels"), c("a", "b", "c"))
   expect_equal(population$get_growth_r(),
                Re((eigen(stage_matrix, only.values = TRUE)$values)[1]))
   expect_is(population, "StagedPopulation")
@@ -61,6 +71,7 @@ test_that("makes populations with incursions", {
              0.3, 0.0, 0.0,
              0.0, 0.6, 0.8),
            nrow = 3, ncol = 3, byrow = TRUE)
+  attr(stage_matrix, "labels") <- c("a", "b", "c")
   expect_error(population <- StagedPopulation(region, growth = stage_matrix,
                                  incursion_stages = 2:4),
                "Incursion stages should specify index values between 1 and 3.")
@@ -70,6 +81,7 @@ test_that("makes populations with incursions", {
   incursion <- template[region$get_indices()][,1] > 0
   expect_silent(n <- population$make(incursion = incursion))
   expect_equal(dim(n), c(region$get_locations(), 3))
+  expect_equal(colnames(n), c("a", "b", "c"))
   expect_true(all(n[,1] == 0))
   pop_tot <- rowSums(n)
   expect_equal(round(mean(pop_tot[which(pop_tot > 0)])), 10)
@@ -146,6 +158,7 @@ test_that("grows populations with capacity", {
     new_n <- new_n + t(stats::rmultinom(1, size = stage_surv,
                                         prob = survivals[, stage]*mult))
   }
+  colnames(new_n) <- c("stage 1", "stage 2", "stage 3")
   set.seed(1243)
   expect_equal(population$grow(n), new_n)
   attr(n, "diffusion_rate") <- 2000
@@ -162,6 +175,7 @@ test_that("grows populations with capacity", {
     new_n <- new_n + t(stats::rmultinom(1, size = stage_surv,
                                         prob = survivals[, stage]*mult))
   }
+  colnames(new_n) <- c("stage 1", "stage 2", "stage 3")
   attr(new_n, "diffusion_rate") <- 2000
   attr(new_n, "diffusion_radius") <- 1000
   set.seed(1243)

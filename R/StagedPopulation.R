@@ -9,7 +9,8 @@
 #'   survival rates for each time step. An optional attribute \code{survivals}
 #'   may be used to differentiate the survival rates, otherwise survival rates
 #'   are assumed to be any non-zero values on the lower (left) triangle of the
-#'   matrix, including those on the diagonal.
+#'   matrix, including those on the diagonal. The stages/ages may also be
+#'   labelled via an optional attribute \code{labels}.
 #' @param capacity A vector of carrying capacity values of the invasive species
 #'   at each location specified by the \code{region}, or per unit area defined
 #'   by \code{capacity_area} when the \code{region} is spatially implicit.
@@ -104,6 +105,11 @@ StagedPopulation <- function(region, growth,
   # Number of stages or age classes
   stages = self$get_stages()
 
+  # Get growth (overridden)
+  self$get_growth <- function() {
+    return(growth)
+  }
+
   # Equivalent growth rate for stage/age matrix (growth)
   growth_r <- Re((sort(eigen(growth, only.values = TRUE)$values,
                        decreasing = TRUE))[1])
@@ -121,6 +127,19 @@ StagedPopulation <- function(region, growth,
     }
   } else {
     survivals <- lower.tri(growth, diag = TRUE)*growth
+  }
+
+  # Stage/age labels from attribute when present
+  if ("labels" %in% names(attributes(growth))) {
+    labels <- attr(growth, "labels")
+    if (!is.character(labels) || !all(length(labels) == dim(growth))) {
+      stop("Stage/age labels attribute should be a character vector ",
+           "compatible with the dimensions of the growth (stage/age) matrix.",
+           call. = FALSE)
+    }
+  } else {
+    labels <- paste("stage", 1:stages)
+    attr(growth, "labels") <- labels
   }
 
   # Growth reproductions
@@ -191,6 +210,9 @@ StagedPopulation <- function(region, growth,
              "the columns are inconsistent.", call. = FALSE)
       }
     }
+
+    # Label columns
+    colnames(values) <- labels
 
     return(values)
   }

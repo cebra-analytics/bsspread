@@ -24,7 +24,8 @@ spatial region (template) for the spread simulations.}
 survival rates for each time step. An optional attribute \code{survivals}
 may be used to differentiate the survival rates, otherwise survival rates
 are assumed to be any non-zero values on the lower (left) triangle of the
-matrix, including those on the diagonal.}
+matrix, including those on the diagonal. The stages/ages may also be
+labelled via an optional attribute \code{labels}.}
 
 \item{capacity}{A vector of carrying capacity values of the invasive species
 at each location specified by the \code{region}, or per unit area defined

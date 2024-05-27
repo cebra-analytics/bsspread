@@ -94,6 +94,13 @@ Results.Region <- function(region, population_model,
   # Population stages (NULL or number of stages)
   stages <- population_model$get_stages()
 
+  # Stage labels
+  if (is.numeric(stages) && is.null(combine_stages)) {
+    stage_labels <- attr(population_model$get_growth(), "labels")
+  } else if (is.numeric(combine_stages)) {
+    stage_labels <- "combined"
+  }
+
   # Include occupancy?
   include_occupancy <- (population_model$get_type() %in%
                           c("unstructured", "stage_structured"))
@@ -109,17 +116,20 @@ Results.Region <- function(region, population_model,
   } else {
     attr(results$area, "units") <- "patches"
   }
-  zeros <- list(collated = as.integer(population_model$make(initial = 0L)),
-                total = 0L, area = 0L)
+  if (is.numeric(stages) && is.null(combine_stages)) {
+    zeros <- list(collated = population_model$make(initial = 0L),
+                  total = 0L, area = 0L)
+  } else if (is.numeric(combine_stages)) {
+    zeros <- list(collated = array(0L, c(region$get_locations(), 1)),
+                  total = 0L, area = 0L)
+    colnames(zeros$collated) <- stage_labels
+  } else {
+    zeros <- list(collated = rep(0L, region$get_locations()),
+                  total = 0L, area = 0L)
+  }
   if (include_occupancy) {
     results$occupancy <- list()
     zeros$occupancy <- rep(0L, region$get_locations())
-  }
-  if (is.numeric(stages) && is.null(combine_stages)) {
-    zeros$collated <- matrix(zeros$collated, ncol = stages)
-    zeros$total <- array(0L, c(1, stages))
-  } else if (is.numeric(combine_stages)) {
-    zeros$collated <- rowSums(matrix(zeros$collated, ncol = stages))
   }
   if (replicates > 1) { # summaries
     zeros$collated <- list(mean = zeros$collated, sd = zeros$collated)
@@ -170,7 +180,8 @@ Results.Region <- function(region, population_model,
     # Combine stages when required
     if (population_model$get_type() == "stage_structured" &&
         is.numeric(combine_stages)) {
-      n <- rowSums(n[,combine_stages, drop = FALSE])
+      n <- matrix(rowSums(n[,combine_stages, drop = FALSE]), ncol = 1)
+      colnames(n) <- stage_labels
     }
 
     # Calculate occupancy
@@ -179,8 +190,9 @@ Results.Region <- function(region, population_model,
     }
 
     # Shape total when population is staged
-    if (is.numeric(stages) && is.null(combine_stages)) {
-      total_n <- array(colSums(n), c(1, stages))
+    if (is.numeric(stages)) {
+      total_n <- array(colSums(n), c(1, ncol(n)))
+      colnames(total_n) <- stage_labels
     } else {
       total_n <- sum(n)
     }
@@ -279,6 +291,26 @@ Results.Region <- function(region, population_model,
         }
       }
     }
+
+    # Add labels to staged populations (again)
+    if (population_model$get_type() == "stage_structured") {
+      if (replicates > 1) {
+        summaries <- c("mean", "sd")
+      } else {
+        summaries <- ""
+      }
+      for (tmc in names(results$collated)) {
+        for (s in summaries) {
+          if (replicates > 1) {
+            colnames(results$collated[[tmc]][[s]]) <<- stage_labels
+            colnames(results$total[[tmc]][[s]]) <<- stage_labels
+          } else {
+            colnames(results$collated[[tmc]]) <<- stage_labels
+            colnames(results$total[[tmc]]) <<- stage_labels
+          }
+        }
+      }
+    }
   }
 
   # Get results list
@@ -312,25 +344,35 @@ Results.Region <- function(region, population_model,
       for (tmc in names(results$collated)) {
         for (s in summaries) {
 
-          # Create a raster with a layer per stage
+          # Create a results raster with a layer per stage
           if (is.null(stages) || is.numeric(combine_stages)) {
             stages <- 1
           }
           output_rast <- list()
           for (i in 1:stages) {
-            output_rast[[i]] <- region$get_template()
+            if (replicates > 1) {
+              output_rast[[i]] <-
+                region$get_rast(results$collated[[tmc]][[s]][,i])
+            } else {
+              output_rast[[i]] <- region$get_rast(results$collated[[tmc]][,i])
+            }
           }
           output_rast <- terra::rast(output_rast)
 
-          # Copy results into the raster
-          if (replicates > 1) {
-            output_rast[region$get_indices()] <- results$collated[[tmc]][[s]]
-            s <- paste0("_", s)
-          } else {
-            output_rast[region$get_indices()] <- results$collated[[tmc]]
+          # Label staged raster layers
+          if (population_model$get_type() == "stage_structured") {
+            if (is.numeric(stages) && is.null(combine_stages)) {
+              labels <- stage_labels
+            } else if (is.numeric(combine_stages)) {
+              labels <- "combined"
+            }
+            names(output_rast) <- labels
           }
 
           # Write raster to file
+          if (replicates > 1) {
+            s <- paste0("_", s)
+          }
           filename <- sprintf(paste0("result_t%0",
                                      nchar(as.character(time_steps)),
                                      "d%s.tif"), as.integer(tmc), s)
@@ -392,11 +434,19 @@ Results.Region <- function(region, population_model,
 
           # Combine coordinates, labels, and results
           if (replicates > 1) {
-            collated_results <- cbind(coords,
-                                      pop = results$collated[[tmc]][[s]])
+            if (is.numeric(stages)) {
+              collated_results <- cbind(coords, results$collated[[tmc]][[s]])
+            } else {
+              collated_results <- cbind(coords,
+                                        pop = results$collated[[tmc]][[s]])
+            }
             s <- paste0("_", s)
           } else {
-            collated_results <- cbind(coords, pop = results$collated[[tmc]])
+            if (is.numeric(stages)) {
+              collated_results <- cbind(coords, results$collated[[tmc]])
+            } else {
+              collated_results <- cbind(coords, pop = results$collated[[tmc]])
+            }
           }
 
           # Write to CSV file
@@ -454,9 +504,20 @@ Results.Region <- function(region, population_model,
       colnames(totals) <- time_steps_labels
       colnames(areas) <- time_steps_labels
 
+      # Label rows of staged totals
+      if (population_model$get_type() == "stage_structured") {
+        if (is.numeric(stages) && is.null(combine_stages)) {
+          labels <- stage_labels
+        } else if (is.numeric(combine_stages)) {
+          labels <- "combined"
+        }
+        rownames(totals) <- labels
+      }
+
       # Write to CSV files
       filename <- sprintf("result_totals%s.csv", s)
-      utils::write.csv(totals, filename, row.names = FALSE)
+      include_row_names <- population_model$get_type() == "stage_structured"
+      utils::write.csv(totals, filename, row.names = include_row_names)
       filename <- sprintf("result_areas%s.csv", s)
       utils::write.csv(areas, filename, row.names = FALSE)
     }
@@ -474,9 +535,13 @@ Results.Region <- function(region, population_model,
     # Stage label for plot headings
     stage_label <- ""
     stage_file <- ""
-    if (result_stages > 1) {
-      stage_label <- paste0("stage ", 1:result_stages, " ")
-      stage_file <- paste0("_stage_", 1:result_stages)
+    if (population_model$get_type() == "stage_structured") {
+      if (is.numeric(stages) && is.null(combine_stages)) {
+        stage_label <- paste0(stage_labels, " ")
+        stage_file <- paste0("_stage_", 1:result_stages)
+      } else if (is.numeric(combine_stages)) {
+        stage_label <- "combined "
+      }
     }
 
     # All plots have time steps on x-axis
