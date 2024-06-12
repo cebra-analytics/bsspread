@@ -13,6 +13,8 @@ Incursions(
   type = c("weight", "prob"),
   continued = FALSE,
   time_steps = 1,
+  incursion_mean = NULL,
+  incursion_stages = NULL,
   ...
 )
 
@@ -26,6 +28,8 @@ Incursions(
   type = c("weight", "prob"),
   continued = FALSE,
   time_steps = 1,
+  incursion_mean = NULL,
+  incursion_stages = NULL,
   ...
 )
 }
@@ -49,6 +53,17 @@ spread simulations.}
 subsequent incursions when \code{type = "prob"} and
 \code{continued = TRUE}.}
 
+\item{incursion_mean}{Numeric mean population size for unstructured and
+stage structured populations applied at incursion locations. The
+population size is sampled from the Poisson distribution for each
+incursion location. Default is \code{NULL} for presence-only populations.}
+
+\item{incursion_stages}{A vector of stage or age indices (as per the
+rows/columns of a \code{growth} matrix) indicating which life-stages/ages
+are applicable for stage structured population incursions. Default is
+\code{NULL} for presence-only or unstructured populations, or when all
+stages/ages are applicable for stage structured population incursions.}
+
 \item{...}{Additional parameters.}
 }
 \value{
@@ -60,6 +75,8 @@ accessing attributes and generating sampled incursions:
 "prob".}
 \item{\code{get_time_steps()}}{Get the continued incursion time steps
 when applicable.}
+\item{\code{get_incursion_mean()}}{Get the incursion mean.}
+\item{\code{get_incursion_stages()}}{Get the incursion stages.}
 \item{\code{generate()}}{Generates incursion locations via sampling.}
 }
 }

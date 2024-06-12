@@ -27,17 +27,30 @@ test_that("initializes with incursion object", {
   region <- Region(template)
   incursion_rast <- template/10
   incursions <- Incursions(incursion_rast, region, type = "prob",
-                           continued = TRUE)
+                           continued = TRUE, incursion_mean = 5,
+                           incursion_stages = 2:3)
   pop_model <- Population(region)
   expect_silent(initializer <- Initializer(incursions, region,
                                            population_model = pop_model))
   expect_silent(n <- initializer$initialize())
-  idx <- which(n)
+  idx <- which(n > 0)
   expect_true(length(idx) > 1)
+  expect_equal(round(mean(n[idx])), 5)
   expect_is(initializer$continued_incursions, "function")
   expect_silent(continued_incursions <- initializer$continued_incursions())
   expect_is(continued_incursions, "function")
   expect_silent(n <- continued_incursions(tm = 2, n))
-  expect_true(length(which(n)) > length(idx))
-  expect_true(all(idx %in% which(n)))
+  expect_true(length(which(n > 0)) > length(idx))
+  expect_true(all(idx %in% which(n > 0)))
+  stage_matrix <- matrix(c(0.0, 2.0, 5.0,
+                           0.3, 0.0, 0.0,
+                           0.0, 0.6, 0.8),
+                         nrow = 3, ncol = 3, byrow = TRUE)
+  pop_model <- StagedPopulation(region, growth = stage_matrix)
+  expect_silent(initializer <- Initializer(incursions, region,
+                                           population_model = pop_model))
+  expect_silent(n <- initializer$initialize())
+  expect_true(all(n[,1] == 0))
+  idx <- which(rowSums(n) > 0)
+  expect_equal(round(mean(rowSums(n[idx,]))), 5)
 })

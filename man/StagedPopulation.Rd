@@ -77,6 +77,8 @@ values for each location.}
 applicable for capacity-limited growth.}
 \item{\code{get_establish_pr()}}{Get the establishment probability as a
 vector of values for each location.}
+\item{\code{set_incursion_mean(m)}}{Set the incursion mean.}
+\item{\code{set_incursion_stages(s)}}{Set the incursion stages.}
 \item{\code{make(initial, current, incursion)}}{Make a population matrix
 (with a row per location and a column per stage/age) via using vectors
 or matrices of the \code{initial} or \code{current} and

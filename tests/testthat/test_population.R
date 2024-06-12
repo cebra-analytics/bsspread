@@ -34,9 +34,14 @@ test_that("makes populations with incursions", {
                paste("Incursion mean population size should be a numeric",
                      "value greater than zero."))
   expect_silent(population <- Population(region, incursion_mean = 10))
-  expect_is(population$make(incursion = incursion), "integer")
-  expect_true(sum(population$make(incursion = incursion) > 0) <=
-                sum(incursion))
+  expect_silent(n <- population$make(incursion = incursion))
+  expect_is(n, "integer")
+  expect_true(sum(n > 0) <= sum(incursion))
+  expect_equal(round(mean(n[which(incursion)])), 10)
+  expect_silent(population <- Population(region))
+  expect_silent(population$set_incursion_mean(15))
+  expect_silent(n <- population$make(incursion = incursion))
+  expect_equal(round(mean(n[which(incursion)])), 15)
 })
 
 test_that("makes populations with establishment prob", {

@@ -83,8 +83,13 @@ test_that("makes populations with incursions", {
   expect_equal(dim(n), c(region$get_locations(), 3))
   expect_equal(colnames(n), c("a", "b", "c"))
   expect_true(all(n[,1] == 0))
-  pop_tot <- rowSums(n)
-  expect_equal(round(mean(pop_tot[which(pop_tot > 0)])), 10)
+  expect_equal(round(mean(rowSums(n)[which(incursion)])), 10)
+  expect_silent(population <- StagedPopulation(region, growth = stage_matrix))
+  expect_silent(population$set_incursion_mean(15))
+  expect_silent(population$set_incursion_stages(1:2))
+  expect_silent(n <- population$make(incursion = incursion))
+  expect_true(all(n[,3] == 0))
+  expect_equal(round(mean(rowSums(n)[which(incursion)])), 15)
 })
 
 test_that("grows populations without capacity", {

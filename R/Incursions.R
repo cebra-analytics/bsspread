@@ -21,6 +21,15 @@
 #' @param time_steps The time interval in simulation steps for generating
 #'   subsequent incursions when \code{type = "prob"} and
 #'   \code{continued = TRUE}.
+#' @param incursion_mean Numeric mean population size for unstructured and
+#'   stage structured populations applied at incursion locations. The
+#'   population size is sampled from the Poisson distribution for each
+#'   incursion location. Default is \code{NULL} for presence-only populations.
+#' @param incursion_stages A vector of stage or age indices (as per the
+#'   rows/columns of a \code{growth} matrix) indicating which life-stages/ages
+#'   are applicable for stage structured population incursions. Default is
+#'   \code{NULL} for presence-only or unstructured populations, or when all
+#'   stages/ages are applicable for stage structured population incursions.
 #' @param ... Additional parameters.
 #' @return An \code{Incursions} class object (list) containing functions for
 #'   accessing attributes and generating sampled incursions:
@@ -30,6 +39,8 @@
 #'       "prob".}
 #'     \item{\code{get_time_steps()}}{Get the continued incursion time steps
 #'       when applicable.}
+#'     \item{\code{get_incursion_mean()}}{Get the incursion mean.}
+#'     \item{\code{get_incursion_stages()}}{Get the incursion stages.}
 #'     \item{\code{generate()}}{Generates incursion locations via sampling.}
 #'   }
 #' @references
@@ -48,7 +59,9 @@ Incursions <- function(x,
                        region = NULL,
                        type = c("weight", "prob"),
                        continued = FALSE,
-                       time_steps = 1, ...) {
+                       time_steps = 1,
+                       incursion_mean = NULL,
+                       incursion_stages = NULL, ...) {
   UseMethod("Incursions")
 }
 
@@ -91,7 +104,9 @@ Incursions.default <- function(x,
                                region = NULL,
                                type = c("weight", "prob"),
                                continued = FALSE,
-                               time_steps = 1, ...) {
+                               time_steps = 1,
+                               incursion_mean = NULL,
+                               incursion_stages = NULL, ...) {
 
   # Check region and x
   if (!is.null(region)) {
@@ -124,6 +139,15 @@ Incursions.default <- function(x,
     self$get_time_steps <- function() {
       return(time_steps)
     }
+  }
+
+  # Get the incursion mean
+  self$get_incursion_mean <- function() {
+    return(incursion_mean)
+  }
+  # Get the incursion stages
+  self$get_incursion_stages <- function() {
+    return(incursion_stages)
   }
 
   # Generate incursion locations via sampling

@@ -36,6 +36,7 @@
 #'       values for each location.}
 #'     \item{\code{get_establish_pr()}}{Get the establishment probability as a
 #'       vector of values for each location.}
+#'     \item{\code{set_incursion_mean(m)}}{Set the incursion mean.}
 #'     \item{\code{make(initial, current, incursion)}}{Make a population vector
 #'       via using vectors of the \code{initial} or \code{current} and
 #'       \code{incursion} population at each region location.}

@@ -5,9 +5,13 @@ test_that("initializes with raster layer", {
   template <- terra::rast(file.path(TEST_DIRECTORY, "greater_melb.tif"))
   region <- Region(template*0)
   incursion_rast <- template*10
-  expect_silent(incursions <- Incursions(incursion_rast, region))
+  expect_silent(incursions <- Incursions(incursion_rast, region,
+                                         incursion_mean = 5,
+                                         incursion_stages = 2:3))
   expect_is(incursions, "Incursions")
   expect_equal(incursions$get_type(), "weight")
+  expect_equal(incursions$get_incursion_mean(), 5)
+  expect_equal(incursions$get_incursion_stages(), 2:3)
   expect_error(incursions <- Incursions(incursion_rast, 1:10),
                "Region model must be a 'Region' or inherited class object.")
   expect_error(incursions <- Incursions(1:10, region),

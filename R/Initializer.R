@@ -156,6 +156,15 @@ Initializer.Incursions <- function(x,
          call. = FALSE)
   }
 
+  # Set incursion population mean and stages where applicable
+  if (!is.null(x$get_incursion_mean())) {
+    population_model$set_incursion_mean(x$get_incursion_mean())
+  }
+  if (!is.null(x$get_incursion_stages()) &&
+      is.function(population_model$set_incursion_stages)) {
+    population_model$set_incursion_stages(x$get_incursion_stages())
+  }
+
   # Create a class structure
   self <- structure(list(), class = c(class, "Initializer"))
 

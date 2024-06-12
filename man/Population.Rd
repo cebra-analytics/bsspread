@@ -62,8 +62,9 @@ incursion or migration arrivals from being presented in the simulation
 results, and/or from subsequently contributing to spread in presence-only
 models. Default is \code{NULL}.}
 
-\item{incursion_mean}{Numeric mean population size for incursion locations.
-The population size is sampled from the Poisson distribution for each
+\item{incursion_mean}{Numeric mean population size for unstructured and
+stage structured populations applied at incursion locations. The
+population size is sampled from the Poisson distribution for each
 incursion location.}
 
 \item{class}{Character class name for inherited classes. Default is
@@ -88,6 +89,7 @@ region locations (indices).}
 \item{\code{get_establish_pr(cells = NULL)}}{Get the establishment
 probability as a vector of values for each region location or
 optionally specified region locations (indices).}
+\item{\code{set_incursion_mean(m)}}{Set the incursion mean.}
 \item{\code{make(initial, current, incursion)}}{Make a population vector
 or array (rows:stages x columns:locations) via the defined population
 representation using vectors or arrays of the \code{initial} or

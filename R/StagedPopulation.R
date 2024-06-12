@@ -53,6 +53,8 @@
 #'       applicable for capacity-limited growth.}
 #'     \item{\code{get_establish_pr()}}{Get the establishment probability as a
 #'       vector of values for each location.}
+#'     \item{\code{set_incursion_mean(m)}}{Set the incursion mean.}
+#'     \item{\code{set_incursion_stages(s)}}{Set the incursion stages.}
 #'     \item{\code{make(initial, current, incursion)}}{Make a population matrix
 #'       (with a row per location and a column per stage/age) via using vectors
 #'       or matrices of the \code{initial} or \code{current} and
@@ -175,6 +177,11 @@ StagedPopulation <- function(region, growth,
     return(capacity_stages)
   }
 
+  # Set the incursion stages
+  self$set_incursion_stages <- function(s) {
+    incursion_stages <<- s
+  }
+
   # Make method (extends inherited function from Population class)
   inherited_make <- self$make
   self$make <- function(initial = NULL, current = NULL, incursion = NULL) {
@@ -279,29 +286,35 @@ StagedPopulation <- function(region, growth,
       }
 
       # Sample the new population values (reproduction and survival)
-      new_x <- array(0L, c(length(indices), stages))
-      for (stage in 1:stages) {
+      if (length(indices)) {
+        new_x <- array(0L, c(length(indices), stages))
+        for (stage in 1:stages) {
 
-        # Sample stage reproduction via a Poisson distribution
-        new_x <- new_x + stats::rpois(
-          length(indices)*stages,
-          (x[indices, stage]*
-             t(reproductions[, rep(stage, length(indices))])*mult))
+          # Sample stage reproduction via a Poisson distribution
+          new_x <- new_x + stats::rpois(
+            length(indices)*stages,
+            (x[indices, stage]*
+               t(reproductions[, rep(stage, length(indices))])*mult))
 
-        # Sample stage survival via a binomial distribution
-        stage_surv <- stats::rbinom(length(indices), x[indices, stage],
-                                    rep(sum(survivals[, stage]),
-                                        length(indices))*mult)
+          # Sample stage survival via a binomial distribution
+          stage_surv <- stats::rbinom(length(indices), x[indices, stage],
+                                      rep(sum(survivals[, stage]),
+                                          length(indices))*mult)
 
-        # Distribute survivals across stages via multinomial sampling
-        new_x <- new_x + t(sapply(1:length(indices), function(i) {
-          stats::rmultinom(1, size = stage_surv[i],
-                           prob = survivals[, stage]*mult[i])
-        }))
+          # Distribute survivals across stages via multinomial sampling
+          new_x <- new_x + t(sapply(1:length(indices), function(i) {
+            if (any(survivals[, stage]*mult[i] > 0)) {
+              stats::rmultinom(1, size = stage_surv[i],
+                               prob = survivals[, stage]*mult[i])
+            } else {
+              matrix(0, nrow = nrow(survivals), ncol = 1)
+            }
+          }))
+        }
+
+        # Update populations at occupied locations
+        x[indices,] <- new_x
       }
-
-      # Update populations at occupied locations
-      x[indices,] <- new_x
     }
 
     return(x)
