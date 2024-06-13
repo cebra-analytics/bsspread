@@ -265,7 +265,11 @@ Simulator.Region <- function(region,
 
         # User-defined function
         if (is.function(user_function)) {
-          n <- user_function(n, r, tm)
+          if (length(formals(user_function)) == 3) {
+            n <- user_function(n, r, tm)
+          } else { # previously just n
+            n <- user_function(n)
+          }
         }
 
         # Collate results
