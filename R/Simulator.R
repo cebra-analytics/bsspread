@@ -33,10 +33,10 @@
 #' @param dispersal_models A list of \code{Dispersal} or inherited class
 #'   objects defining the dispersal functionality for the different spread
 #'   vectors to be simulated.
-#' @param user_function An optional user-defined \code{function(n)} that is
-#'   applied to the population vector or matrix \code{n} (returning a
-#'   transformed \code{n}) prior to collating the results at each simulation
-#'   time step.
+#' @param user_function An optional user-defined \code{function(n, r, tm)} that
+#'   is applied to the population vector or matrix \code{n} (returning a
+#'   transformed \code{n}) prior to collating the results at simulation
+#'   replicate \code{r} and time step \code{tm}.
 #' @param class Character class name for inherited classes. Default is
 #'   \code{NULL}.
 #' @param ... Additional parameters.
@@ -265,7 +265,7 @@ Simulator.Region <- function(region,
 
         # User-defined function
         if (is.function(user_function)) {
-          n <- user_function(n)
+          n <- user_function(n, r, tm)
         }
 
         # Collate results

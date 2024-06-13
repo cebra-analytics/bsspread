@@ -44,16 +44,17 @@ test_that("initializes with components and parameters", {
   initializer <- Initializer(region$get_template(),
                              population_model = population)
   dispersal <- Dispersal(region, population)
-  expect_silent(simulator <- Simulator(region,
-                                       time_steps = 10,
-                                       step_duration = 1,
-                                       step_units = "years",
-                                       collation_steps = 2,
-                                       replicates = 5,
-                                       initializer = initializer,
-                                       population_model = population,
-                                       dispersal_models = list(dispersal),
-                                       user_function = function(n) n + 1))
+  expect_silent(simulator <- Simulator(
+    region,
+    time_steps = 10,
+    step_duration = 1,
+    step_units = "years",
+    collation_steps = 2,
+    replicates = 5,
+    initializer = initializer,
+    population_model = population,
+    dispersal_models = list(dispersal),
+    user_function = function(n, r, tm) n + 1))
 })
 
 test_that("runs simulator with correct configuration", {
@@ -75,7 +76,7 @@ test_that("runs simulator with correct configuration", {
                                        initializer = initializer,
                                        population_model = population,
                                        dispersal_models = list(dispersal),
-                                       user_function = function(n) {
+                                       user_function = function(n, r, tm) {
                                          idx <- which(n > 0)
                                          n[idx] <- n[idx] + 1
                                          return(n)
