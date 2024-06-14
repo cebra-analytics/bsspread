@@ -344,39 +344,47 @@ Results.Region <- function(region, population_model,
       for (tmc in names(results$collated)) {
         for (s in summaries) {
 
-          # Create a results raster with a layer per stage
+          # Create and save a results raster per stage
           if (is.null(stages) || is.numeric(combine_stages)) {
             stages <- 1
           }
-          output_rast <- list()
           for (i in 1:stages) {
-            if (replicates > 1) {
-              output_rast[[i]] <-
-                region$get_rast(results$collated[[tmc]][[s]][,i])
+
+            # Create result raster
+            if (population_model$get_type() == "stage_structured") {
+              if (replicates > 1) {
+                output_rast <-
+                  region$get_rast(results$collated[[tmc]][[s]][,i])
+              } else {
+                output_rast <- region$get_rast(results$collated[[tmc]][,i])
+              }
+              if (is.numeric(stages) && is.null(combine_stages)) {
+                names(output_rast) <- stage_labels[i]
+                i <- paste0("_stage_", i)
+              } else if (is.numeric(combine_stages)) {
+                names(output_rast) <- "combined"
+                i <- "_combined"
+              }
             } else {
-              output_rast[[i]] <- region$get_rast(results$collated[[tmc]][,i])
+              if (replicates > 1) {
+                output_rast <- region$get_rast(results$collated[[tmc]][[s]])
+              } else {
+                output_rast <- region$get_rast(results$collated[[tmc]])
+              }
+              i <- ""
             }
-          }
-          output_rast <- terra::rast(output_rast)
 
-          # Label staged raster layers
-          if (population_model$get_type() == "stage_structured") {
-            if (is.numeric(stages) && is.null(combine_stages)) {
-              labels <- stage_labels
-            } else if (is.numeric(combine_stages)) {
-              labels <- "combined"
+            # Write raster to file
+            if (replicates > 1) {
+              s_ <- paste0("_", s)
+            } else {
+              s_ <- s
             }
-            names(output_rast) <- labels
+            filename <- sprintf(paste0("result_t%0",
+                                       nchar(as.character(time_steps)),
+                                       "d%s%s.tif"), as.integer(tmc), s_, i)
+            terra::writeRaster(output_rast, filename, ...)
           }
-
-          # Write raster to file
-          if (replicates > 1) {
-            s <- paste0("_", s)
-          }
-          filename <- sprintf(paste0("result_t%0",
-                                     nchar(as.character(time_steps)),
-                                     "d%s.tif"), as.integer(tmc), s)
-          terra::writeRaster(output_rast, filename, ...)
         }
       }
 
