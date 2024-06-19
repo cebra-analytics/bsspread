@@ -117,16 +117,16 @@ Results.Region <- function(region, population_model,
     attr(results$area, "units") <- "patches"
   }
   if (is.numeric(stages) && is.null(combine_stages)) {
-    zeros <- list(collated = population_model$make(initial = 0L),
-                  total = 0L, area = 0L)
+    zeros <- list(collated = population_model$make(initial = 0L))
+    zeros$total <- zeros$collated[1,, drop = FALSE]
   } else if (is.numeric(combine_stages)) {
-    zeros <- list(collated = array(0L, c(region$get_locations(), 1)),
-                  total = 0L, area = 0L)
+    zeros <- list(collated = array(0L, c(region$get_locations(), 1)))
     colnames(zeros$collated) <- stage_labels
+    zeros$total <- zeros$collated[1,, drop = FALSE]
   } else {
-    zeros <- list(collated = rep(0L, region$get_locations()),
-                  total = 0L, area = 0L)
+    zeros <- list(collated = rep(0L, region$get_locations()), total = 0L)
   }
+  zeros$area <- 0L
   if (include_occupancy) {
     results$occupancy <- list()
     zeros$occupancy <- rep(0L, region$get_locations())
@@ -358,12 +358,12 @@ Results.Region <- function(region, population_model,
               } else {
                 output_rast <- region$get_rast(results$collated[[tmc]][,i])
               }
-              if (is.numeric(stages) && is.null(combine_stages)) {
+              if (is.null(combine_stages)) {
                 names(output_rast) <- stage_labels[i]
-                i <- paste0("_stage_", i)
+                i <- paste0("_", i)
               } else if (is.numeric(combine_stages)) {
                 names(output_rast) <- "combined"
-                i <- "_combined"
+                i <- ""
               }
             } else {
               if (replicates > 1) {
@@ -376,13 +376,13 @@ Results.Region <- function(region, population_model,
 
             # Write raster to file
             if (replicates > 1) {
-              s_ <- paste0("_", s)
+              sc <- paste0("_", s)
             } else {
-              s_ <- s
+              sc <- s
             }
             filename <- sprintf(paste0("result_t%0",
                                        nchar(as.character(time_steps)),
-                                       "d%s%s.tif"), as.integer(tmc), s_, i)
+                                       "d%s%s.tif"), as.integer(tmc), sc, i)
             terra::writeRaster(output_rast, filename, ...)
           }
         }
