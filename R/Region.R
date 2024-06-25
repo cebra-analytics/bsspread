@@ -21,7 +21,7 @@
 #'   Alternatively, a network of locations or patches may be defined via a data
 #'   frame (or matrix) of location coordinates in longitude and latitude
 #'   (WGS84) with explicitly named columns "lon" and "lat". If missing, the
-#'   region is assumed to be a single aspatial patch.
+#'   region is assumed to be a single aspatial or spatially implicit patch.
 #' @param ... Additional parameters.
 #' @return A \code{Region} class object (list) containing functions for
 #'   accessing attributes, checking compatibility of objects with the
@@ -33,6 +33,11 @@
 #'       patches) that are included in the simulation.}
 #'     \item{\code{spatially_implicit()}}{Check if the region is spatially
 #'       implicit (single patch).}
+#'     \item{\code{get_max_implicit_area()}}{Get the maximum spatially implicit
+#'       (single patch) area (in square metres). \code{NULL} implies an
+#'       unbounded area.}
+#'     \item{\code{set_max_implicit_area(area)}}{Set the maximum spatially
+#'       implicit (single patch) area in square metres.}
 #'     \item{\code{is_compatible(y)}}{Check the compatibility of object
 #'       \code{y} with the region defined by \code{x}.}
 #'     \item{\code{get_template(empty = FALSE)}}{Get the spatial template when
@@ -953,6 +958,21 @@ Region.data.frame <- function(x, ...) {
   # Check if the region is spatially implicit (single patch)
   self$spatially_implicit <- function() {
     return(nrow(x) == 1)
+  }
+
+  # Get/set the maximum spatially implicit area in square metres
+  if (self$spatially_implicit()) {
+    max_implicit_area <- NULL # default is unbounded
+    self$get_max_implicit_area <- function() {
+      return(max_implicit_area)
+    }
+    self$set_max_implicit_area <- function(area) {
+      if (!is.null(area) && (!is.numeric(area) || area <= 0)) {
+        stop("The maximum spatially implicit area must be numeric and > 0.",
+             call. = FALSE)
+      }
+      max_implicit_area <<- area
+    }
   }
 
   # Check compatibility of vector, matrix, or adjacency data frame y

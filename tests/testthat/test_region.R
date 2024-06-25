@@ -61,6 +61,11 @@ test_that("empty initialize for single aspatial patch", {
   expect_equal(region$get_type(), "patch")
   expect_equal(region$get_locations(), 1)
   expect_true(region$spatially_implicit())
+  expect_null(region$get_max_implicit_area())
+  expect_error(region$set_max_implicit_area(0),
+               "The maximum spatially implicit area must be numeric and > 0.")
+  expect_silent(region$set_max_implicit_area(1e8))
+  expect_equal(region$get_max_implicit_area(), 1e8)
   expect_silent(region$configure_paths())
   expect_silent(region$calculate_paths(1))
   expect_silent(paths <- region$get_paths(1))

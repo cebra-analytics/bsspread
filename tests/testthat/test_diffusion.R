@@ -110,6 +110,7 @@ test_that("diffuses population in a patch region", {
 test_that("spatially implicit radial diffusion with presence-only", {
   TEST_DIRECTORY <- test_path("test_inputs")
   region <- Region()
+  region$set_max_implicit_area(1e8)
   population <- PresencePopulation(region)
   n <- TRUE
   diffusion <- Diffusion(region, population_model = population,
@@ -123,11 +124,16 @@ test_that("spatially implicit radial diffusion with presence-only", {
   expect_silent(n <- diffusion$disperse(n))
   expect_silent(n <- diffusion$unpack(n))
   expect_equal(attr(n, "diffusion_radius"), 4000)
+  expect_silent(n <- diffusion$pack(n))
+  expect_silent(n <- diffusion$disperse(n))
+  expect_silent(n <- diffusion$unpack(n))
+  expect_equal(attr(n, "diffusion_radius"), sqrt(1e8/pi))
 })
 
 test_that("spatially implicit reaction diffusion unstructured", {
   TEST_DIRECTORY <- test_path("test_inputs")
   region <- Region()
+  region$set_max_implicit_area(1e8)
   population <- UnstructPopulation(region, growth = 1.2)
   n <- 120
   diffusion <- Diffusion(region, population_model = population,
@@ -162,4 +168,10 @@ test_that("spatially implicit reaction diffusion unstructured", {
   expect_silent(n <- diffusion$unpack(n))
   expect_equal(attr(n, "diffusion_radius"),
                sqrt(4*diffusion_coeff*2*log(144/100)))
+  attr(n, "tm") <- 3
+  n <- n + 26
+  expect_silent(n <- diffusion$pack(n))
+  expect_silent(n <- diffusion$disperse(n))
+  expect_silent(n <- diffusion$unpack(n))
+  expect_equal(attr(n, "diffusion_radius"), sqrt(1e8/pi))
 })

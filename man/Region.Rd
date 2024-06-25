@@ -27,7 +27,7 @@ representing a grid-based spatial region (template) for spread simulations.
 Alternatively, a network of locations or patches may be defined via a data
 frame (or matrix) of location coordinates in longitude and latitude
 (WGS84) with explicitly named columns "lon" and "lat". If missing, the
-region is assumed to be a single aspatial patch.}
+region is assumed to be a single aspatial or spatially implicit patch.}
 
 \item{...}{Additional parameters.}
 }
@@ -42,6 +42,11 @@ region, and to maintain and calculate spatial data for dispersal:
 patches) that are included in the simulation.}
 \item{\code{spatially_implicit()}}{Check if the region is spatially
 implicit (single patch).}
+\item{\code{get_max_implicit_area()}}{Get the maximum spatially implicit
+(single patch) area (in square metres). \code{NULL} implies an
+unbounded area.}
+\item{\code{set_max_implicit_area(area)}}{Set the maximum spatially
+implicit (single patch) area in square metres.}
 \item{\code{is_compatible(y)}}{Check the compatibility of object
 \code{y} with the region defined by \code{x}.}
 \item{\code{get_template(empty = FALSE)}}{Get the spatial template when

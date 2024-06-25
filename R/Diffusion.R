@@ -213,13 +213,22 @@ Diffusion <- function(region, population_model,
       # Override disperse function
       self$disperse <- function(n) {
 
-        # Attach attribute for diffusion radius
+        # Calculate diffusion radius
         if (is.numeric(attr(n$relocated, "diffusion_radius"))) {
-          attr(n$relocated, "diffusion_radius") <-
+          diffusion_radius <-
             attr(n$relocated, "diffusion_radius") + diffusion_rate
         } else {
-          attr(n$relocated, "diffusion_radius") <- diffusion_rate
+          diffusion_radius <- diffusion_rate
         }
+
+        # Limit via maximum area when applicable
+        if (is.numeric(region$get_max_implicit_area())) {
+          max_radius <- sqrt(region$get_max_implicit_area()/pi)
+          diffusion_radius <- min(diffusion_radius, max_radius)
+        }
+
+        # Attach attribute for diffusion radius
+        attr(n$relocated, "diffusion_radius") <- diffusion_radius
 
         return(n)
       }
@@ -270,6 +279,12 @@ Diffusion <- function(region, population_model,
         m_dash <- initial_n # since initial radius is zero
         diffusion_radius <-
           sqrt(4*diffusion_coeff*tm*log(max(n$original/m_dash, 1)))
+
+        # Limit via maximum area when applicable
+        if (is.numeric(region$get_max_implicit_area())) {
+          max_radius <- sqrt(region$get_max_implicit_area()/pi)
+          diffusion_radius <- min(diffusion_radius, max_radius)
+        }
 
         # Attach attribute for diffusion radius
         attr(n$relocated, "diffusion_radius") <- diffusion_radius
