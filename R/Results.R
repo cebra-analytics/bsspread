@@ -102,9 +102,8 @@ Results.Region <- function(region, population_model,
   }
 
   # Include occupancy?
-  include_occupancy <- ((population_model$get_type() %in%
-                          c("unstructured", "stage_structured")) &&
-                          !region$spatially_implicit())
+  include_occupancy <- (population_model$get_type() %in%
+                          c("unstructured", "stage_structured"))
 
   # Initialize result lists
   results <- list(collated = list(), total = list(), area = list())
@@ -487,36 +486,8 @@ Results.Region <- function(region, population_model,
       pop_label <- "population"
     }
 
-    # Collated results for patch only
-    if (region$spatially_implicit()) {
-
-      # Collect values
-      output_df <- list()
-      for (s in summaries) {
-        if (replicates > 1) {
-          output_df[[s]] <- array(sapply(results$collated,
-                                   function(c_tm) c_tm[[s]]),
-                                  c(result_stages, length(results$collated)))
-        } else {
-          output_df[[s]] <- array(sapply(results$collated,
-                                         function(c_tm) c_tm),
-                                  c(result_stages, length(results$collated)))
-        }
-        colnames(output_df[[s]]) <- collated_labels
-        if (population_model$get_type() == "stage_structured") {
-          rownames(output_df[[s]]) <- stage_labels
-        } else {
-          rownames(output_df[[s]]) <- pop_label
-        }
-      }
-
-      # Write to CSV files
-      for (s in summaries) {
-        filename <- sprintf(paste0(pop_label, "%s.csv"), s_fname[[s]])
-        utils::write.csv(output_df[[s]], filename, row.names = TRUE)
-      }
-
-    } else if (region$get_type() == "patch") {
+    # Collated results for multi-patch only
+    if (region$get_type() == "patch" && !region$spatially_implicit()) {
 
       # Location coordinates and labels
       coords <- region$get_coords(extra_cols = TRUE)
@@ -581,62 +552,73 @@ Results.Region <- function(region, population_model,
       }
     }
 
-    # Population totals and area occupied
-    for (s in summaries) {
+    # Population totals, area occupied, and total occupancy
 
-      # Collect total population, area occupied, and occupancy
+    # Collect total population(s)
+    totals <- list()
+    if (replicates > 1 && is.numeric(stages)) {
+      for (i in 1:result_stages) {
+        totals[[i]] <-
+          sapply(results$total,
+                 function(tot) as.data.frame(lapply(tot, function(m) m[,i])))
+        colnames(totals[[i]]) <- time_steps_labels
+      }
+    } else {
+      if (replicates > 1 || result_stages > 1) {
+        totals[[1]] <- sapply(results$total,
+                              function(tot) as.data.frame(tot))
+      } else {
+        totals[[1]] <- matrix(results$total, ncol = time_steps + 1)
+        rownames(totals[[1]]) <- pop_label
+      }
+      colnames(totals[[1]]) <- time_steps_labels
+    }
+
+    # Collect area occupied and occupancy
+    if (replicates > 1) {
+      areas <- sapply(results$area,
+                       function(area) as.data.frame(area))
+    } else {
+      areas <- matrix(results$area, ncol = time_steps + 1)
+      rownames(areas) <- "area"
+    }
+    colnames(areas) <- time_steps_labels
+    if (include_occupancy) {
       if (replicates > 1) {
-        totals <- array(sapply(results$total, function(tot) tot[[s]]),
-                        c(result_stages, time_steps + 1))
-        areas <- array(sapply(results$area, function(area) area[[s]]),
-                       c(1, time_steps + 1))
-        if (include_occupancy) {
-          total_occup <- array(sapply(results$total_occup,
-                                      function(occup) occup[[s]]),
-                         c(1, time_steps + 1))
-        }
+        total_occup <- sapply(results$total_occup,
+                        function(occup) as.data.frame(occup))
       } else {
-        totals <- array(sapply(results$total, function(tot) tot),
-                        c(result_stages, time_steps + 1))
-        areas <- array(sapply(results$area, function(area) area),
-                       c(1, time_steps + 1))
-        if (include_occupancy) {
-          total_occup <- array(sapply(results$total_occup,
-                                      function(occup) occup),
-                         c(1, time_steps + 1))
-        }
-      }
-
-      # Label columns and rows
-      colnames(totals) <- time_steps_labels
-      colnames(areas) <- time_steps_labels
-      if (population_model$get_type() == "stage_structured") {
-        rownames(totals) <- stage_labels
-      } else {
-        rownames(totals) <- pop_label
-      }
-      rownames(areas) <- attr(results$area, "units")
-      if (include_occupancy) {
-        colnames(total_occup) <- time_steps_labels
+        total_occup <- matrix(results$total_occup, ncol = time_steps + 1)
         rownames(total_occup) <- "occupancy"
       }
+      colnames(total_occup) <- time_steps_labels
+    }
 
-      # Write to CSV files
-      if (!region$spatially_implicit()) {
-        filename <- sprintf(paste0("total_", pop_label, "%s.csv"),
-                                   s_fname[[s]])
-        utils::write.csv(totals, filename, row.names = TRUE)
+    # Write to CSV files
+    if (region$spatially_implicit()) {
+      totals_filename <- paste0(pop_label, "%s.csv")
+      areas_filename <- "area_occupied.csv"
+    } else {
+      totals_filename <- paste0("total_", pop_label, "%s.csv")
+      areas_filename <- "total_area_occupied.csv"
+    }
+    if (length(totals) > 1) {
+      for (i in 1:length(totals)) {
+        utils::write.csv(totals[[i]], sprintf(totals_filename, i_fname[i]),
+                         row.names = TRUE)
       }
+    } else {
+      utils::write.csv(totals[[1]], sprintf(totals_filename, ""),
+                       row.names = TRUE)
+    }
+    utils::write.csv(areas, areas_filename, row.names = TRUE)
+    if (include_occupancy) {
       if (region$spatially_implicit()) {
-        filename <- sprintf("area_occupied%s.csv", s_fname[[s]])
+        filename <- "occupancy.csv"
       } else {
-        filename <- sprintf("total_area_occupied%s.csv", s_fname[[s]])
+        filename <- "total_occupancy.csv"
       }
-      utils::write.csv(areas, filename, row.names = TRUE)
-      if (include_occupancy) {
-        filename <- sprintf("total_occupancy%s.csv", s_fname[[s]])
-        utils::write.csv(total_occup, filename, row.names = TRUE)
-      }
+      utils::write.csv(total_occup, filename, row.names = TRUE)
     }
   }
 
