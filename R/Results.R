@@ -569,7 +569,19 @@ Results.Region <- function(region, population_model,
                               function(tot) as.data.frame(tot))
       } else {
         totals[[1]] <- matrix(results$total, ncol = time_steps + 1)
-        rownames(totals[[1]]) <- pop_label
+        if (population_model$get_type() == "stage_structured" &&
+            is.numeric(combine_stages)) {
+          if (length(combine_stages) == 1) {
+            rownames(totals[[1]]) <-
+              attr(population_model$get_growth(), "labels")[combine_stages]
+          } else {
+            rownames(totals[[1]]) <-
+              sprintf("stages %s-%s", min(combine_stages),
+                      max(combine_stages))
+          }
+        } else {
+          rownames(totals[[1]]) <- pop_label
+        }
       }
       colnames(totals[[1]]) <- time_steps_labels
     }
@@ -639,7 +651,13 @@ Results.Region <- function(region, population_model,
         stage_label <- paste0(stage_labels, " ")
         stage_file <- paste0("_stage_", 1:result_stages)
       } else if (is.numeric(combine_stages)) {
-        stage_label <- "combined "
+        if (length(combine_stages) == 1) {
+          stage_label <- paste0(
+            attr(population_model$get_growth(), "labels")[combine_stages], " ")
+        } else {
+          stage_label <- paste0(sprintf("stages %s-%s", min(combine_stages),
+                                        max(combine_stages)), " ")
+        }
       }
     }
 
@@ -722,9 +740,16 @@ Results.Region <- function(region, population_model,
 
       # Plot occupancy
       if (include_occupancy) {
-        grDevices::png(filename = "total_occupancy.png")
+        if (region$spatially_implicit()) {
+          filename <- "occupancy.png"
+          main_title <- "Occupancy (mean +/- 2 SD)"
+        } else {
+          filename <- "total_occupancy.png"
+          main_title <- "Total occupancy (mean +/- 2 SD)"
+        }
+        grDevices::png(filename = filename)
         graphics::plot(0:time_steps, occup$mean, type = "l",
-                       main = "Total occupancy (mean +/- 2 SD)",
+                       main = main_title,
                        xlab = plot_x_label,
                        ylab = "Occupancy",
                        ylim = c(0, 1.1*max(occup$mean + 2*occup$sd)))
@@ -781,9 +806,16 @@ Results.Region <- function(region, population_model,
 
       # Plot total occupancy
       if (include_occupancy) {
-        grDevices::png(filename = "total_occupancy.png")
+        if (region$spatially_implicit()) {
+          filename <- "occupancy.png"
+          main_title <- "Occupancy"
+        } else {
+          filename <- "total_occupancy.png"
+          main_title <- "Total occupancy"
+        }
+        grDevices::png(filename = filename)
         graphics::plot(0:time_steps, occup, type = "l",
-                       main = "Total occupancy",
+                       main = main_title,
                        xlab = plot_x_label,
                        ylab = "Occupancy",
                        ylim = c(0, 1.1*max(occup)))
