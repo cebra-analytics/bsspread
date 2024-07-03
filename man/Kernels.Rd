@@ -20,10 +20,13 @@ of form \code{function(x)}, where \code{x} is a vector of distances (in m)
 or directions (0-360 degrees), which return the (relative) probability for
 each value in \code{x}:
 \describe{
-\item{\code{get_beta_function(alpha, beta, upper = 1)}}{Get a Beta
-kernel function specified with distribution parameters \code{alpha}
-and \code{beta}, as well as an optional parameter for
-indicating the \code{upper} limit of \code{x} (default is 1).}
+\item{\code{get_beta_function(alpha, beta, upper = 1, shift = 0)}}{Get a
+Beta kernel function specified with distribution parameters
+\code{alpha} and \code{beta}, as well as optional parameters for the
+\code{upper} limit (default is 1) of \code{x}, and to \code{shift}
+(default is 0) the Beta distribution along the \code{x} axis, wrapping
+the distribution from the \code{upper} limit back to zero, which is
+useful for defining direction kernels.}
 \item{\code{get_cauchy_function(scale)}}{Get a (half) Cauchy kernel
 function specified with distribution parameter \code{scale} (for
 scaling \code{x}).}

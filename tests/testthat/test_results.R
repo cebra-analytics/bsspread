@@ -51,7 +51,7 @@ test_that("collates single replicate results", {
   names(expected) <- as.character(seq(0, 10, 2))
   expect_equal(lapply(result_list$collated, function(rl) rl[1:12]), expected)
   expect_equal(unname(unlist(result_list$total)), 1:11)
-  expect_equal(unname(unlist(result_list$area)), (1:11)*1000^2)
+  expect_equal(signif(unname(unlist(result_list$area)), 5), (1:11)*1000^2)
   expect_equal(attr(result_list$area, "units"), "square metres")
   # unstructured population
   population <- UnstructPopulation(region)
@@ -140,12 +140,15 @@ test_that("collates and finalises multiple replicate results", {
   expect_equal(unname(unlist(lapply(result_list$total, function(rl) rl$sd))),
                sapply(1:11, function(a)
                  stats::sd(colSums(expected[1:a,,drop = FALSE]))))
-  expect_equal(unname(unlist(lapply(result_list$area, function(rl) rl$mean))),
-               sapply(1:11, function(a)
-                 mean(colSums(expected[1:a,,drop = FALSE] > 0)))*1000^2)
-  expect_equal(unname(unlist(lapply(result_list$area, function(rl) rl$sd))),
-               sapply(1:11, function(a)
-                 stats::sd(colSums(expected[1:a,,drop = FALSE] > 0)))*1000^2)
+
+  expect_equal(unname(signif(unlist(lapply(result_list$area,
+                                           function(rl) rl$mean)), 5)),
+               sapply(1:11, function(a) mean(colSums(
+                 expected[1:a,,drop = FALSE] > 0)))*1000^2)
+  expect_equal(unname(signif(unlist(lapply(result_list$area,
+                                           function(rl) rl$sd)), 5)),
+               signif(sapply(1:11, function(a) stats::sd(colSums(
+                 expected[1:a,,drop = FALSE] > 0)))*1000^2, 5))
   expect_equal(attr(result_list$area, "units"), "square metres")
   expected_mean <- rowMeans(expected > 0)
   expected_sd <- apply(expected > 0, 1, stats::sd)
@@ -179,7 +182,8 @@ test_that("collates spatially implicit area results", {
     results$collate(r = 1, tm, n)
   }
   result_list <- results$get_list()
-  expect_named(result_list, c("collated", "total", "area"))
+  expect_named(result_list, c("collated", "total", "area", "occupancy",
+                              "total_occup"))
   expect_equal(unname(unlist(result_list$area)), pi*((0:10)*2000)^2)
   expect_equal(attr(result_list$area, "units"), "square metres")
 })

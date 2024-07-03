@@ -17,10 +17,13 @@
 #'   or directions (0-360 degrees), which return the (relative) probability for
 #'   each value in \code{x}:
 #'   \describe{
-#'     \item{\code{get_beta_function(alpha, beta, upper = 1)}}{Get a Beta
-#'       kernel function specified with distribution parameters \code{alpha}
-#'       and \code{beta}, as well as an optional parameter for
-#'       indicating the \code{upper} limit of \code{x} (default is 1).}
+#'     \item{\code{get_beta_function(alpha, beta, upper = 1, shift = 0)}}{Get a
+#'       Beta kernel function specified with distribution parameters
+#'       \code{alpha} and \code{beta}, as well as optional parameters for the
+#'       \code{upper} limit (default is 1) of \code{x}, and to \code{shift}
+#'       (default is 0) the Beta distribution along the \code{x} axis, wrapping
+#'       the distribution from the \code{upper} limit back to zero, which is
+#'       useful for defining direction kernels.}
 #'     \item{\code{get_cauchy_function(scale)}}{Get a (half) Cauchy kernel
 #'       function specified with distribution parameter \code{scale} (for
 #'       scaling \code{x}).}
@@ -73,9 +76,14 @@ Kernels <- function(multiplier = NULL, ...) {
   self <- structure(list(), class = "Kernels")
 
   # Get a Beta kernel function
-  self$get_beta_function <- function(alpha, beta, upper = 1) {
+  self$get_beta_function <- function(alpha, beta, upper = 1, shift = 0) {
+    if (shift > upper) {
+      stop("The Beta kernel shift parameter must be <= the upper parameter.",
+           call. = FALSE)
+    }
     return(
       function(x) {
+        x <- (x >= shift)*(x - shift) + (x < shift)*(x - shift + upper)
         return(multiplier*(alpha/(alpha + beta))*
                  stats::dbeta(x/upper, shape1 = alpha, shape2 = beta))
       }
