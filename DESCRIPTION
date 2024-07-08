@@ -1,6 +1,6 @@
 Package: bsspread
 Title: Biosecurity Spread Modelling
-Version: 0.1.15
+Version: 0.1.16
 Authors@R: c(person("Sean", "Haythorne", 
                     email = "sean.haythorne@unimelb.edu.au", 
                     role = c("aut", "cre")))
@@ -23,8 +23,9 @@ Suggests:
     testthat
 Collate: 
     'Region.R'
-    'Attractor.R'
     'Dispersal.R'
+    'AreaSpread.R'
+    'Attractor.R'
     'Diffusion.R'
     'Gravity.R'
     'Incursions.R'

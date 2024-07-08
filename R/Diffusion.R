@@ -2,15 +2,14 @@
 #'
 #' Builds a class for representing diffusive dispersal for spread simulations
 #' with functionality inherited from the generic dispersal model.
-#'
-#' Diffusion simulates the local spread of populations into neighboring
+#' Diffusion simulates the local spread of populations into neighbouring
 #' locations (cells) a speed specified by the \code{diffusion_rate} parameter.
 #' Diffusion may be simulated for presence-only, unstructured or stage-based
 #' \code{populations}. For unstructured or stage-based populations, a specified
 #' \code{proportion} of the population at each occupied (cell) location is
 #' selected (sampled) for diffusive dispersal at each simulation time step.
 #' Presence-only populations may diffuse into a specified \code{proportion} of
-#' neighboring locations that are reachable at the specified diffusion rate
+#' neighbouring locations that are reachable at the specified diffusion rate
 #' within each simulation time step. The probability of diffusive dispersal may
 #' optionally be adjusted via \code{direction} functions and/or
 #' \code{attractor} (layer) values, as well as \code{permeability} or
