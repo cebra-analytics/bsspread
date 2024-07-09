@@ -2,11 +2,10 @@
 #'
 #' Builds a class for representing spatially implicit area spread, whereby the
 #' simulated occupied area grows in proportion to the size of an unstructured
-#' or stage-based population. When the population is specified as
-#' capacity-limited, given a capacity per unit area, and a maximum total area
-#' occupied is specified (via the \code{Region} object), then both the
-#' population and its area of occupancy will follow a typical capacity-limited
-#' sigmoid growth curve.
+#' or stage-based population given its capacity per unit area. When a maximum
+#' total area occupied is specified (via the \code{Region} object), then both
+#' the population and its area of occupancy will follow a typical
+#' capacity-limited sigmoid growth curve.
 #'
 #' @param region A \code{Region} or inherited class object representing the
 #'   spatially implicit (single location) region (template) for spread
@@ -78,6 +77,12 @@ AreaSpread <- function(region, population_model, ...) {
                "for area spread."), call. = FALSE)
   }
 
+  # Check that the population capacity is specified
+  if (!is.numeric(population_model$get_capacity())) {
+    stop("The population capacity must be specified for area spread.",
+         call. = FALSE)
+  }
+
   # Configure ... TODO
 
   # Build via base class
@@ -97,23 +102,22 @@ AreaSpread <- function(region, population_model, ...) {
   # Override disperse function
   self$disperse <- function(n) {
 
-    # TODO
-    # Calculate diffusion radius
-    if (is.numeric(attr(n$relocated, "diffusion_radius"))) {
-      diffusion_radius <-
-        attr(n$relocated, "diffusion_radius") + diffusion_rate
-    } else {
-      diffusion_radius <- diffusion_rate
+    # Calculate spread area from population size
+    capacity <- population_model$get_capacity()
+    capacity_area <- attr(capacity, "area")
+    if (population_model$get_type() == "stage_structured") {
+      # TODO
+    } else { # unstructured
+      spread_area <- n$remaining/capacity*capacity_area
     }
 
     # Limit via maximum area when applicable
     if (is.numeric(region$get_max_implicit_area())) {
-      max_radius <- sqrt(region$get_max_implicit_area()/pi)
-      diffusion_radius <- min(diffusion_radius, max_radius)
+      spread_area <- min(spread_area, region$get_max_implicit_area())
     }
 
-    # Attach attribute for diffusion radius
-    attr(n$relocated, "diffusion_radius") <- diffusion_radius
+    # Attach attribute for spread area
+    attr(n$relocated, "spread_area") <- spread_area
 
     return(n)
   }

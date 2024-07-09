@@ -151,6 +151,9 @@ Population.Region <- function(region,
     stop("Population capacity area is required when capacity is specified ",
          "and the region is spatially implicit.", call. = FALSE)
   }
+  if (is.numeric(capacity_area)) { # attach area
+    attr(capacity, "area") <- capacity_area
+  }
 
   # Validate establishment probability via region
   if (!is.null(establish_pr) &&

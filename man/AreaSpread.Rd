@@ -45,11 +45,10 @@ each time step indicative of the area of occupancy.}
 \description{
 Builds a class for representing spatially implicit area spread, whereby the
 simulated occupied area grows in proportion to the size of an unstructured
-or stage-based population. When the population is specified as
-capacity-limited, given a capacity per unit area, and a maximum total area
-occupied is specified (via the \code{Region} object), then both the
-population and its area of occupancy will follow a typical capacity-limited
-sigmoid growth curve.
+or stage-based population given its capacity per unit area. When a maximum
+total area occupied is specified (via the \code{Region} object), then both
+the population and its area of occupancy will follow a typical
+capacity-limited sigmoid growth curve.
 }
 \references{
 Andow, D. A., Kareiva, P. M., Levin, S. A., & Okubo, A. (1990). Spread of

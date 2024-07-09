@@ -62,6 +62,7 @@ test_that("grows populations with capacity", {
   region <- Region()
   population <- UnstructPopulation(region, growth = 1.2, capacity = 300,
                                    capacity_area = 1e+06)
+  expect_equal(attr(population$get_capacity(), "area"), 1e+06)
   n <- 100
   r <- exp(log(1.2)*(1 - n/300))
   set.seed(1243); new_n <- stats::rpois(1, r*100); set.seed(1243)

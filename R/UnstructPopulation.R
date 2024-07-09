@@ -96,18 +96,34 @@ UnstructPopulation <- function(region,
         indices <- indices[!indices %in% zero_idx]
       }
 
-      # Calculate capacity for spatially implicit diffusion
-      if (region$spatially_implicit() &&
-          is.numeric(attr(x, "diffusion_rate")) &&
-          is.numeric(attr(x, "diffusion_radius"))) {
+      # Calculate capacity for spatially implicit diffusion or area spread
+      if (region$spatially_implicit()) {
 
-        # Calculate capacity of diffusion area
-        capacity_radius <-
-          attr(x, "diffusion_radius") + attr(x, "diffusion_rate")
-        area_capacity <- capacity*pi*capacity_radius^2/capacity_area
+        # Diffusion
+        if (is.numeric(attr(x, "diffusion_rate")) &&
+            is.numeric(attr(x, "diffusion_radius"))) {
 
-        # Calculate capacity-limited growth rate
-        r <- exp(log(growth)*(1 - x/area_capacity))
+          # Calculate capacity of diffusion area
+          capacity_radius <-
+            attr(x, "diffusion_radius") + attr(x, "diffusion_rate")
+          area_capacity <- capacity*pi*capacity_radius^2/capacity_area
+
+          # Calculate capacity-limited growth rate
+          r <- exp(log(growth)*(1 - x/area_capacity))
+
+        } else if (is.numeric(capacity_area) &&
+                   is.numeric(region$get_max_implicit_area())) {
+
+          # Calculate capacity of maximum area
+          area_capacity <- (capacity*region$get_max_implicit_area()/
+                              capacity_area)
+
+          # Calculate capacity-limited growth rate
+          r <- exp(log(growth)*(1 - x/area_capacity))
+
+        } else {
+          r <- growth # unlimited
+        }
 
       } else {
 
