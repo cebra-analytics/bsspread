@@ -49,3 +49,37 @@ test_that("performs implicit area spread for an unstructured population", {
   expect_equal(sapply(n_t, function(n) attr(n, "spread_area")),
                pmin(pop*1e6/100, 1e8))
 })
+
+test_that("performs implicit area spread for a staged population", {
+  TEST_DIRECTORY <- test_path("test_inputs")
+  region <- Region()
+  region$set_max_implicit_area(1e8)
+  stage_matrix <- matrix(c(0.0, 4.0, 10.0,
+                           0.4, 0.0, 0.0,
+                           0.0, 0.6, 0.8),
+                         nrow = 3, ncol = 3, byrow = TRUE)
+  population_model <- StagedPopulation(region,
+                                       growth = stage_matrix,
+                                       capacity = 100,
+                                       capacity_area = 1e6,
+                                       capacity_stages = 2:3)
+  expect_silent(area_spread <- AreaSpread(region, population_model))
+  set.seed(1234)
+  n <- population_model$make(initial = 500)
+  n_t <- list()
+  expect_silent({
+    for (i in 1:12) {
+      n <- population_model$grow(n)
+      n <- area_spread$pack(n) # silent
+      n <- area_spread$disperse(n)  # silent
+      n <- area_spread$unpack(n) # silent
+      n_t[[i]] <- n
+    }
+  })
+  pop <- colSums(sapply(n_t, function(x) x)[2:3,])
+  delta_pop <- pop[2:12] - pop[1:11]
+  expect_true(all(delta_pop[2:6] > delta_pop[1:5]))
+  expect_true(all(delta_pop[7:10] < delta_pop[6:9]))
+  expect_equal(sapply(n_t, function(n) attr(n, "spread_area")),
+               pmin(pop*1e6/100, 1e8))
+})

@@ -83,8 +83,6 @@ AreaSpread <- function(region, population_model, ...) {
          call. = FALSE)
   }
 
-  # Configure ... TODO
-
   # Build via base class
   self <- Dispersal(region, population_model,
                     dispersal_stages = NULL,
@@ -106,7 +104,8 @@ AreaSpread <- function(region, population_model, ...) {
     capacity <- population_model$get_capacity()
     capacity_area <- attr(capacity, "area")
     if (population_model$get_type() == "stage_structured") {
-      # TODO
+      stages <- population_model$get_capacity_stages()
+      spread_area <- sum(n$remaining[,stages])/capacity*capacity_area
     } else { # unstructured
       spread_area <- n$remaining/capacity*capacity_area
     }
