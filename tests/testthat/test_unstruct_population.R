@@ -64,8 +64,13 @@ test_that("grows populations with capacity", {
                                    capacity_area = 1e+06)
   expect_equal(attr(population$get_capacity(), "area"), 1e+06)
   n <- 100
+  set.seed(1243); new_n <- stats::rpois(1, 1.2*100)
+  set.seed(1243)
+  expect_equal(population$grow(n), new_n)
+  region$set_max_implicit_area(1e+06)
   r <- exp(log(1.2)*(1 - n/300))
-  set.seed(1243); new_n <- stats::rpois(1, r*100); set.seed(1243)
+  set.seed(1243); new_n <- stats::rpois(1, r*100)
+  set.seed(1243)
   expect_equal(population$grow(n), new_n)
   attr(n, "diffusion_rate") <- 2000
   attr(n, "diffusion_radius") <- 1000

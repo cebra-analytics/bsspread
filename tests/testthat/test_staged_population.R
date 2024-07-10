@@ -148,17 +148,29 @@ test_that("grows populations with capacity", {
   population <- StagedPopulation(region, growth = stage_matrix, capacity = 300,
                                  capacity_area = 1e+06, capacity_stages = 2:3)
   n <- population$make(initial = 350)
-  r <- exp(log(population$get_growth_r())*(1 - sum(n[2:3])/300))
-  r_mult <- get("r_mult", envir = environment(population$grow))
-  mult <- r_mult$mult[which.min(abs(r_mult$r - r))]
   survivals <- attr(stage_matrix, "survivals")
   reproductions <- stage_matrix - survivals
   attr(reproductions, "survivals") <- NULL
   set.seed(1243)
   new_n <- array(0L, c(1, 3))
   for (stage in 1:3) {
-    new_n <- new_n +
-      stats::rpois(3, (n[1, stage]*t(reproductions[, stage])*mult))
+    new_n <- new_n + stats::rpois(3, (n[1, stage]*t(reproductions[, stage])))
+    stage_surv <- stats::rbinom(1, n[1, stage], sum(survivals[, stage]))
+    new_n <- new_n + t(stats::rmultinom(1, size = stage_surv,
+                                        prob = survivals[, stage]))
+  }
+  colnames(new_n) <- c("stage 1", "stage 2", "stage 3")
+  set.seed(1243)
+  expect_equal(population$grow(n), new_n)
+  region$set_max_implicit_area(1e+06)
+  r_mult <- get("r_mult", envir = environment(population$grow))
+  r <- exp(log(population$get_growth_r())*(1 - sum(n[2:3])/300))
+  mult <- r_mult$mult[which.min(abs(r_mult$r - r))]
+  set.seed(1243)
+  new_n <- array(0L, c(1, 3))
+  for (stage in 1:3) {
+    new_n <-
+      new_n + stats::rpois(3, (n[1, stage]*t(reproductions[, stage])*mult))
     stage_surv <- stats::rbinom(1, n[1, stage], sum(survivals[, stage])*mult)
     new_n <- new_n + t(stats::rmultinom(1, size = stage_surv,
                                         prob = survivals[, stage]*mult))
