@@ -175,6 +175,9 @@ Results.Region <- function(region, population_model,
     } else if (region$spatially_implicit() &&
                is.numeric(attr(n, "diffusion_radius"))) {
       total_area <- pi*(attr(n, "diffusion_radius"))^2
+    } else if (region$spatially_implicit() &&
+               is.numeric(attr(n, "spread_area"))) {
+      total_area <- attr(n, "spread_area")
     } else { # patches
       total_area <- length(occupied_idx)
     }

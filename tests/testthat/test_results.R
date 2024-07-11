@@ -168,8 +168,13 @@ test_that("collates and finalises multiple replicate results", {
 
 test_that("collates spatially implicit area results", {
   region <- Region()
-  population <- UnstructPopulation(region)
-  expect_silent(results <- Results(region, population_model = population,
+  region$set_max_implicit_area(1e8)
+  population_model <- UnstructPopulation(region,
+                                         growth = 2,
+                                         capacity = 100,
+                                         capacity_area = 1e6)
+  expect_silent(results <- Results(region,
+                                   population_model = population_model,
                                    time_steps = 10,
                                    step_duration = 1,
                                    step_units = "years",
@@ -185,5 +190,23 @@ test_that("collates spatially implicit area results", {
   expect_named(result_list, c("collated", "total", "area", "occupancy",
                               "total_occup"))
   expect_equal(unname(unlist(result_list$area)), pi*((0:10)*2000)^2)
+  expect_equal(attr(result_list$area, "units"), "square metres")
+  expect_silent(results <- Results(region,
+                                   population_model = population_model,
+                                   time_steps = 10,
+                                   step_duration = 1,
+                                   step_units = "years",
+                                   collation_steps = 2,
+                                   replicates = 1,
+                                   combine_stages = NULL))
+  n <- 100
+  for (tm in 0:10) {
+    attr(n, "spread_area") <- as.numeric(n)/100*1e6
+    results$collate(r = 1, tm, n)
+    n <- n*population_model$get_growth()
+  }
+  result_list <- results$get_list()
+  expect_equal(unname(unlist(result_list$area)),
+               as.numeric(result_list$total)*1e6/100)
   expect_equal(attr(result_list$area, "units"), "square metres")
 })
