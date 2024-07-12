@@ -110,7 +110,7 @@ test_that("attaches attributes for spatially implicit diffusion", {
   expect_diff_radius_1 <- sqrt(4*2000^2/(4*log(2))*1*log(expect_n_1/10))
   expect_silent(results <- simulator$run())
   results_list <- results$get_list()
-  names(results_list$collated) # as.character(0:1)
+  expect_named(results_list$collated, as.character(0:1))
   expect_equal(attributes(results_list$collated[["0"]]),
                list(initial_n = 10, diffusion_rate = 2000,
                     diffusion_radius = 0))
@@ -119,4 +119,62 @@ test_that("attaches attributes for spatially implicit diffusion", {
                     diffusion_radius = expect_diff_radius_1, tm = 1))
   expect_equal(results_list$area[["0"]], 0)
   expect_equal(results_list$area[["1"]], pi*expect_diff_radius_1^2)
+})
+
+test_that("attaches attributes for spatially implicit area spread", {
+  region <- Region()
+  region$set_max_implicit_area(1e8)
+  population_model <- UnstructPopulation(region,
+                                         growth = 2,
+                                         capacity = 100,
+                                         capacity_area = 1e6)
+  initial_n <- 100
+  initializer <- Initializer(initial_n, region = region,
+                             population_model = population_model)
+  area_spread <- AreaSpread(region, population_model)
+  area_capacity <- 100*1e8/1e6
+  r <- exp(log(2)*(1 - initial_n/area_capacity))
+  set.seed(1248)
+  expect_n_1 <- stats::rpois(1, r*initial_n)
+  expect_silent(simulator <- Simulator(region,
+                                       initializer = initializer,
+                                       population_model = population_model,
+                                       dispersal_models = list(area_spread)))
+  set.seed(1248)
+  expect_silent(results <- simulator$run())
+  results_list <- results$get_list()
+  expect_named(results_list$collated, as.character(0:1))
+  expect_equal(attributes(results_list$collated[["0"]]),
+               list(spread_area = 1e6))
+  expect_equal(attributes(results_list$collated[["1"]]),
+               list(spread_area = expect_n_1*1e6/100))
+  expect_equal(results_list$area[["0"]], 1e6)
+  expect_equal(results_list$area[["1"]], expect_n_1*1e6/100)
+  stage_matrix <- matrix(c(0.0, 4.0, 10.0,
+                           0.4, 0.0, 0.0,
+                           0.0, 0.6, 0.8),
+                         nrow = 3, ncol = 3, byrow = TRUE)
+  population_model <- StagedPopulation(region,
+                                       growth = stage_matrix,
+                                       capacity = 100,
+                                       capacity_area = 1e6,
+                                       capacity_stages = 2:3)
+  initializer <- Initializer(initial_n, region = region,
+                             population_model = population_model)
+  area_spread <- AreaSpread(region, population_model)
+  expect_silent(simulator <- Simulator(region,
+                                       initializer = initializer,
+                                       population_model = population_model,
+                                       dispersal_models = list(area_spread)))
+  set.seed(1248)
+  expect_silent(results <- simulator$run())
+  results_list <- results$get_list()
+  expect_equal(attr(results_list$collated[["0"]], "spread_area"),
+               sum(results_list$total[["0"]][,2:3])*1e6/100)
+  expect_equal(attr(results_list$collated[["1"]], "spread_area"),
+               sum(results_list$total[["1"]][,2:3])*1e6/100)
+  expect_equal(results_list$area[["0"]],
+               sum(results_list$total[["0"]][,2:3])*1e6/100)
+  expect_equal(results_list$area[["1"]],
+               sum(results_list$total[["1"]][,2:3])*1e6/100)
 })

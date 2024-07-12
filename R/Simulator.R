@@ -222,15 +222,30 @@ Simulator.Region <- function(region,
 
       # Set diffusion attributes when spatially implicit (single patch)
       if (region$spatially_implicit()) {
-        attr(n, "initial_n") <- n
-        attr(n, "diffusion_rate") <-
-          unlist(lapply(dispersal_models, function(dm) {
-          if (inherits(dm, "Diffusion")) {
-            dm$get_diffusion_rate()
-          }
-        }))[1] # assume one only
-        if (is.numeric(attr(n, "diffusion_rate"))) {
+
+        # Diffusion model
+        if (any(sapply(dispersal_models,
+                       function(dm) inherits(dm, "Diffusion")))) {
+          idx <- which(sapply(dispersal_models,
+                              function(dm) inherits(dm, "Diffusion")))[1]
+          attr(n, "initial_n") <- n
+          attr(n, "diffusion_rate") <-
+            dispersal_models[[idx]]$get_diffusion_rate()
           attr(n, "diffusion_radius") <- 0
+        }
+
+        # Area spread model
+        if (any(sapply(dispersal_models,
+                       function(dm) inherits(dm, "AreaSpread")))) {
+          capacity <- population_model$get_capacity()
+          capacity_area <- attr(capacity, "area")
+          if (population_model$get_type() == "stage_structured") {
+            stages <- population_model$get_capacity_stages()
+            attr(n, "spread_area") <-
+              sum(n[,stages])/as.numeric(capacity)*capacity_area
+          } else { # unstructured
+            attr(n, "spread_area") <- n/as.numeric(capacity)*capacity_area
+          }
         }
       }
 
@@ -240,8 +255,10 @@ Simulator.Region <- function(region,
       # Time steps
       for (tm in 1:time_steps) {
 
-        # Set time step attribute when spatially implicit (single patch)
-        if (region$spatially_implicit()) {
+        # Set time step attribute when spatially implicit diffusion
+        if (region$spatially_implicit() &&
+            any(sapply(dispersal_models,
+                       function(dm) inherits(dm, "Diffusion")))) {
           attr(n, "tm") <- tm
         }
 
