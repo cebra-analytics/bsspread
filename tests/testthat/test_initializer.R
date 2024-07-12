@@ -19,6 +19,33 @@ test_that("initializes with raster layer", {
   expect_is(initializer, "Initializer")
   expect_silent(n <- initializer$initialize())
   expect_equal(n, initial_rast[region$get_indices()][,1])
+  # via mask and size attribute
+  pop_model <- UnstructPopulation(
+    region, establish_pr = (template^10*100)[region$get_indices()][,1])
+  initial_mask <- template > 0.56
+  attr(initial_mask, "size") <- 300
+  expect_silent(initializer <- Initializer(initial_mask, region,
+                                           population_model = pop_model))
+  expect_silent(n <- initializer$initialize())
+  expect_true(all(which(n > 0) %in%
+                    which(initial_mask[region$get_indices()][,1] > 0)))
+  expect_equal(sum(n), 300)
+  stage_matrix <- matrix(c(0.0, 2.0, 5.0,
+                           0.3, 0.0, 0.0,
+                           0.0, 0.6, 0.8),
+                         nrow = 3, ncol = 3, byrow = TRUE)
+  pop_model <- StagedPopulation(
+    region, growth = stage_matrix,
+    capacity = (template^10*5000)[region$get_indices()][,1],
+    capacity_stages = 2:3)
+  initial_mask <- template > 0.56
+  attr(initial_mask, "size") <- 300
+  expect_silent(initializer <- Initializer(initial_mask, region,
+                                           population_model = pop_model))
+  expect_silent(n <- initializer$initialize())
+  expect_true(all(which(rowSums(n) > 0) %in%
+                    which(initial_mask[region$get_indices()][,1] > 0)))
+  expect_equal(sum(n), 300)
 })
 
 test_that("initializes with incursion object", {

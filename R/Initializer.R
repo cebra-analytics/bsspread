@@ -9,7 +9,11 @@
 #'   vector or array defining the initial population distribution (where layers
 #'   or columns optionally represent stages), or an \code{Incursions} or
 #'   inherited class object for generating initial, and optionally continued,
-#'   invasive species incursions.
+#'   invasive species incursions. The initial population distribution may be
+#'   defined with actual populations sizes at appropriate locations (default
+#'   with no \code{size} attribute), or via the combination of a binary mask
+#'   indicating initial locations and an optional attached \code{size}
+#'   attribute indicating the size of the total initial population.
 #' @param region A \code{Region} or inherited class object defining the spatial
 #'   locations included in the spread simulations.
 #' @param population_model A \code{Population} or inherited class object
@@ -53,7 +57,9 @@ Initializer <- function(x,
 Initializer.Raster <- function(x, ...) {
 
   # Call the terra version of the function
-  Initializer(terra::rast(x), ...)
+  x_rast <- terra::rast(x)
+  attr(x_rast, "size") <- attr(x, "size")
+  Initializer(x_rast, ...)
 }
 
 #' @name Initializer
@@ -73,11 +79,13 @@ Initializer.SpatRaster <- function(x,
     }
 
     # Extract values from locations defined by region
-    Initializer(as.matrix(x[region$get_indices()]), ...)
+    x_matrix <- as.matrix(x[region$get_indices()])
 
   } else { # Use all values
-    Initializer(as.matrix(x[]), ...)
+    x_matrix <- as.matrix(x[])
   }
+  attr(x_matrix, "size") <- attr(x, "size")
+  Initializer(x_matrix, ...)
 }
 
 #' @name Initializer
@@ -111,9 +119,24 @@ Initializer.default <- function(x,
     }
   }
 
+  # Check for population size (thus distribution mask)
+  pop_size <- attr(x, "size")
+
   # Collapse when single column
   if (is.matrix(x) && ncol(x) == 1) {
     x <- x[,1]
+  }
+
+  # Convert distribution mask to weightings via capacity/establishment prob.
+  if (is.numeric(pop_size) &&
+      population_model$get_type() %in% c("unstructured", "stage_structured")) {
+    if (is.numeric(population_model$get_capacity())) {
+      x <- (x > 0)*population_model$get_capacity()
+    } else if (is.numeric(population_model$get_establish_pr())) {
+      x <- (x > 0)*population_model$get_establish_pr()
+    } else {
+      x <- +(x > 0)
+    }
   }
 
   # Create a class structure
@@ -122,7 +145,14 @@ Initializer.default <- function(x,
   # Initialize using the population model make function
   self$initialize <- function() {
     if (!is.null(population_model)) {
-      return(population_model$make(initial = x))
+      if (is.numeric(pop_size) &&
+          population_model$get_type() %in% c("unstructured",
+                                             "stage_structured")) {
+        return(population_model$make(
+          initial = stats::rmultinom(1, size = pop_size, prob = x)))
+      } else {
+        return(population_model$make(initial = x))
+      }
     } else {
       return(x)
     }
