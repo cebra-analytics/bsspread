@@ -152,8 +152,7 @@ Gravity <- function(region, population_model, attractors,
   if (!is.null(beta) && (!is.numeric(beta) || beta <= 0)) {
     stop("The beta parameter must be numeric and > 0.", call. = FALSE)
   }
-  if (!is.null(distance_scale) && (!is.numeric(distance_scale) ||
-                                   distance_scale <= 0)) {
+  if (!is.numeric(distance_scale) || distance_scale <= 0) {
     stop("The distance scale parameter must be numeric and > 0.",
          call. = FALSE)
   }

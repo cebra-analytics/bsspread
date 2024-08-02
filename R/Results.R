@@ -646,7 +646,7 @@ Results.Region <- function(region, population_model,
       result_stages <- 1
     }
 
-    # Stage label for plot headings
+    # Stage label for plot headings and files
     stage_label <- ""
     stage_file <- ""
     if (population_model$get_type() == "stage_structured") {

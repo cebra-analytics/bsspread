@@ -185,7 +185,11 @@ Diffusion <- function(region, population_model,
   } else { # patch
 
     # Select in-range patches only
-    max_distance <- diffusion_rate
+    if (!is.null(diffusion_rate) && diffusion_rate > 0) {
+      max_distance <- diffusion_rate
+    } else {
+      max_distance <- NULL
+    }
     combined_function <- NULL
   }
 
