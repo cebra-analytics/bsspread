@@ -42,17 +42,26 @@
 #' @param dispersal_stages Numeric vector of population stages (indices) that
 #'   disperse. Default is all stages (when set to \code{NULL}).
 #' @param proportion The proportion of the (unstructured or staged) population
-#'   that disperses at each time step. This parameter is also used to scale the
-#'   the number of dispersal destinations selected when the population is
-#'   presence-only and the number of dispersal \code{events} is not defined.
-#'   Default is \code{NULL} (producing no dispersal unless the population is
-#'   presence-only and \code{events} is defined).
+#'   that disperses from each occupied location at each time step. It may be a
+#'   vector with a value at each location specified by the \code{region} or a
+#'   single numeric value for all locations. This parameter may also be used to
+#'   scale the the number of dispersal destinations selected when the
+#'   population is presence-only and the number of dispersal \code{events} is
+#'   not defined. Default is \code{NULL} (producing no dispersal unless the
+#'   population is presence-only and \code{events} is defined).
 #' @param events The mean number of dispersal events generated via a Poisson
-#'   distribution for each location at each time step. A dispersal destination
-#'   (location) is selected for each dispersal event. Default is \code{NULL}
-#'   (resulting in destinations being selected for each individual within
-#'   unstructured or staged populations, or stochastic sampling of destinations
-#'   for presence-only populations).
+#'   distribution for each location at each time step. It may be a vector with
+#'   a value at each location specified by the \code{region} or a single
+#'   numeric value for all locations. A dispersal destination (location) is
+#'   selected for each dispersal event. Default is \code{NULL} (resulting in
+#'   destinations being selected for each individual within unstructured or
+#'   staged populations, or stochastic sampling of destinations for
+#'   presence-only populations).
+#' @param density_dependent Logical to indicate that dispersal is density
+#'   dependent, whereby the proportion dispersing and/or the number of
+#'   dispersal events generated is scaled by the (unstructured or staged)
+#'   population density (number/capacity) at each occupied location at each
+#'   simulation time step. Default is \code{FALSE} for no density dependence.
 #' @param distance_function A function (or kernel) in the form
 #'   \code{function(distances)}, that calculates the (relative) probability of
 #'   dispersal for each distance (in m) specified as a numeric vector. Default
@@ -73,11 +82,8 @@
 #'   number of grid cells at each distance. When not specified (\code{NULL}),
 #'   the value will resolve to \code{TRUE} for grid-based regions only.
 #' @param attractors List containing \code{Attractor} (or inherited) class
-#'   objects for spatially weighted dispersal, and/or containing a named
-#'   numeric multiplier \code{source_density = <numeric>}, which (when present)
-#'   is used to dynamically create an "attractor" based on the population
-#'   density (number/capacity) at each dispersal location source (origin) at
-#'   each simulation time step. Default is empty.
+#'   objects for spatially weighted dispersal to destination locations. Default
+#'   is empty.
 #' @param permeability A \code{Permeability} class (or inherited) class object
 #'   for representing spatial permeability or constraints. Default is none.
 #' @param max_distance The maximum dispersal distance (in m) in each time step.
@@ -140,6 +146,7 @@ Dispersal <- function(region, population_model,
                       dispersal_stages = NULL,
                       proportion = NULL,
                       events = NULL,
+                      density_dependent = FALSE,
                       distance_function = NULL,
                       direction_function = NULL,
                       combined_function = NULL,
@@ -157,6 +164,7 @@ Dispersal.Region <- function(region, population_model,
                              dispersal_stages = NULL,
                              proportion = NULL,
                              events = NULL,
+                             density_dependent = FALSE,
                              distance_function = NULL,
                              direction_function = NULL,
                              combined_function = NULL,
@@ -191,12 +199,22 @@ Dispersal.Region <- function(region, population_model,
     }
   }
 
-  # Check proportion, events, distance function, and direction function
-  if (!is.null(proportion) && (!is.numeric(proportion) || proportion <= 0)) {
-    stop("The proportion parameter must be numeric and > 0.", call. = FALSE)
+  # Check proportion, events, density_dependent, distance function, and
+  # direction function
+  if (!is.null(proportion) &&
+      (!is.numeric(proportion) ||  any(proportion < 0) ||
+       !length(proportion) %in% c(1, region$get_locations()))) {
+    stop("The proportion parameter must be numeric >= 0 and consistent with ",
+         "the number of region locations.", call. = FALSE)
   }
-  if (!is.null(events) && (!is.numeric(events) || events <= 0)) {
-    stop("The events parameter must be numeric and > 0.", call. = FALSE)
+  if (!is.null(events) &&
+      (!is.numeric(events) ||  any(events < 0) ||
+       !length(events) %in% c(1, region$get_locations()))) {
+    stop("The events parameter must be numeric >= 0 and consistent with the ",
+         "number of region locations.", call. = FALSE)
+  }
+  if (!is.null(density_dependent) && !is.logical(density_dependent)) {
+    stop("The density dependent parameter must be logical.", call. = FALSE)
   }
   if (!is.null(distance_function) && !is.function(distance_function)) {
     stop("The distance function must be a function.", call. = FALSE)
@@ -208,7 +226,7 @@ Dispersal.Region <- function(region, population_model,
     stop("The combined function must be a function.", call. = FALSE)
   }
   if (!is.null(distance_adjust) && !is.logical(distance_adjust)) {
-    stop("The distance adjust must be logical.", call. = FALSE)
+    stop("The distance adjust parameter must be logical.", call. = FALSE)
   }
   if (is.null(distance_adjust)) {
     distance_adjust <- region$get_type() == "grid"
@@ -217,13 +235,10 @@ Dispersal.Region <- function(region, population_model,
   # Check the attractors
   if (!is.list(attractors) ||
       length(attractors) && !all(sapply(1:length(attractors), function(i) {
-        (inherits(attractors[[i]], "Attractor") ||
-         (is.numeric(attractors[[i]]) & attractors[[i]] > 0 &&
-          names(attractors)[i] == "source_density"))
+        (inherits(attractors[[i]], "Attractor"))
       }))) {
     stop("Attractors must be a list containing zero or more 'Attractor' or ",
-         "inherited class objects, and/or a numeric attractor (> 0) named ",
-         "'source_density'.", call. = FALSE)
+         "inherited class objects.", call. = FALSE)
   }
 
   # Check permeability
@@ -332,8 +347,7 @@ Dispersal.Region <- function(region, population_model,
         aggr_paths_present <- FALSE
       }
 
-      ## Relative dispersal probabilities for source and destination
-      source_p <- 1
+      ## Relative dispersal probabilities for destinations
       destination_p <- list(cell = rep(1,
                                        length(paths$idx[[loc_char]]$cell)))
       if (aggr_paths_present) {
@@ -436,55 +450,55 @@ Dispersal.Region <- function(region, population_model,
 
       ## Adjust (relative) probabilities via attractors
       if (length(attractors)) {
-
-        # Source density attractor
-        if ("source_density" %in% names(attractors)) {
-          cell_k <- population_model$get_capacity(loc_i)
-          if (is.numeric(cell_k)) {
-            if (cell_k > 0) {
-              source_p <- min((attractors$source_density*source_p*
-                                 sum(n$original[i, capacity_stages])/cell_k),
-                              1)
-            } else {
-              source_p <- 0
-            }
-          }
-        }
-
-        # Other attractors
         for (attractor in attractors) {
           if (inherits(attractor, "Attractor")) {
-
-            # Source attractors
-            if (attractor$get_type() %in% c("source", "both")) {
-              source_p <- (source_p*attractor$get_values(loc_i))
-            }
-
-            # Destination attractors
-            if (attractor$get_type() %in% c("destination", "both")) {
-              destination_p$cell <-
-                (destination_p$cell*
-                   attractor$get_values(paths$idx[[loc_char]]$cell))
-              if (aggr_paths_present) {
-                destination_p$aggr <-
-                  (destination_p$aggr*
-                     attractor$get_aggr_values(paths$idx[[loc_char]]$aggr))
-              }
+            destination_p$cell <-
+              (destination_p$cell*
+                 attractor$get_values(paths$idx[[loc_char]]$cell))
+            if (aggr_paths_present) {
+              destination_p$aggr <-
+                (destination_p$aggr*
+                   attractor$get_aggr_values(paths$idx[[loc_char]]$aggr))
             }
           }
         }
+      }
+
+      ## Apply density dependence
+      source_p <- 1
+      if (density_dependent) {
+        cell_k <- population_model$get_capacity(loc_i)
+        if (is.numeric(cell_k)) {
+          if (cell_k > 0) {
+            source_p <- min(sum(n$original[i, capacity_stages])/cell_k, 1)
+          } else {
+            source_p <- 0
+          }
+        }
+      }
+
+      ## Extract proportion and/or events for location
+      if (length(proportion) == region$get_locations()) {
+        proportion_i <- proportion[loc_i]
+      } else {
+        proportion_i <- proportion
+      }
+      if (length(events) == region$get_locations()) {
+        events_i <- events[loc_i]
+      } else {
+        events_i <- events
       }
 
       ## Calculate dispersers from (original) cell population
       dispersers <- FALSE
       if (population_type == "presence_only") {
         dispersers <- TRUE
-      } else if (is.numeric(proportion) && proportion  > 0) {
+      } else if (is.numeric(proportion_i) && proportion_i  > 0) {
 
         # Generate dispersers
         dispersers <- stats::rbinom(length(dispersal_stages),
                                     size = n$original[i, dispersal_stages],
-                                    prob = pmin(proportion*source_p, 1))
+                                    prob = pmin(proportion_i*source_p, 1))
 
         # Ensure there are sufficient remaining (after other dispersals)
         dispersers <- pmin(dispersers, n$remaining[i, dispersal_stages])
@@ -494,10 +508,10 @@ Dispersal.Region <- function(region, population_model,
       dispersals <- FALSE
       if (sum(dispersers) > 0) {
 
-        if (is.numeric(events)) {
+        if (is.numeric(events_i) && events_i > 0) {
 
           # Generate the number of events via Poisson distribution
-          dispersals <- stats::rpois(1, events*source_p)
+          dispersals <- stats::rpois(1, events_i*source_p)
 
           # Distribute dispersers
           if (dispersals > 0) {
@@ -530,7 +544,7 @@ Dispersal.Region <- function(region, population_model,
           if (population_type == "presence_only") {
 
             # Probabilistic dispersal to each reachable destination
-            if (is.numeric(proportion) && proportion  > 0) {
+            if (is.numeric(proportion_i) && proportion_i  > 0) {
               dispersals <- TRUE
             }
 
@@ -562,7 +576,7 @@ Dispersal.Region <- function(region, population_model,
           # Probabilistic dispersal to each reachable destination
           destinations <- which(as.logical(stats::rbinom(
             length(destination_p$cell), size = 1,
-            prob = pmin(destination_p$cell*proportion*source_p, 1))))
+            prob = pmin(destination_p$cell*proportion_i, 1))))
 
           if (aggr_paths_present) {
 
@@ -573,8 +587,7 @@ Dispersal.Region <- function(region, population_model,
             # Sample region cell counts for aggregate cells
             aggr_cells <- stats::rbinom(
               length(destination_p$aggr), size = aggr_cells,
-              prob = pmin(destination_p$aggr*proportion*source_p/aggr_cells,
-                          1))
+              prob = pmin(destination_p$aggr*proportion_i/aggr_cells, 1))
 
             # Replicate aggregate destination cells using cell counts
             aggr_dest <- which(as.logical(aggr_cells))

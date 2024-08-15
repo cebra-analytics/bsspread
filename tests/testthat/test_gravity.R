@@ -15,7 +15,7 @@ test_that("initializes with region, population model, and other parameters", {
                      "'Attractor' or inherited class objects."))
   attractor_vect <- rep(0, region$get_locations())
   attractor_vect[1:5922] <- 1
-  attractor <- Attractor(attractor_vect, region, type = "destination")
+  attractor <- Attractor(attractor_vect, region)
   expect_error(gravity <- Gravity(region, population_model = population,
                                   attractors = list(attractor),
                                   attractor_function = 0),
@@ -44,7 +44,8 @@ test_that("initializes with region, population model, and other parameters", {
                                      list(Attractor(a_vector, region))
                                    },
                                    beta = 2, distance_scale = 1000,
-                                   proportion = 1, events = 5))
+                                   proportion = 1, events = 5,
+                                   density_dependent = TRUE))
   expect_silent(distance_function <-
                   get("distance_function",
                       envir = environment(gravity$disperse)))

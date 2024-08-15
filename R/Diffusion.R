@@ -43,19 +43,23 @@
 #'   patch region, and the asymptotic \code{diffusion_rate} is unknown (thus
 #'   not defined). Default is \code{NULL}.
 #' @param proportion The proportion of the (unstructured or staged) population
-#'   that disperses at each time step, or the proportion of local presence-only
-#'   destinations selected for diffusive dispersal. Default is \code{NULL}
-#'   (producing no diffusive dispersal).
+#'   that disperses from each occupied location at each time step, or the
+#'   proportion of local presence-only destinations selected for diffusive
+#'   dispersal. It may be a vector with a value at each location specified by
+#'   the \code{region} or a single numeric value for all locations. Default is
+#'   \code{NULL} (producing no diffusive dispersal).
+#' @param density_dependent Logical to indicate that dispersal is density
+#'   dependent, whereby the proportion dispersing is scaled by the
+#'   (unstructured or staged) population density (number/capacity) at each
+#'   occupied location at each simulation time step. Default is \code{FALSE}
+#'   for no density dependence.
 #' @param direction_function A function (or kernel) in the form
 #'   \code{function(directions)}, that calculates the (relative) probability of
 #'   dispersal for each direction (0-360 degrees) specified as an integer
 #'   vector. Default is none.
 #' @param attractors List containing \code{Attractor} (or inherited) class
-#'   objects for spatially weighted dispersal, and/or containing a named
-#'   numeric multiplier \code{source_density = <numeric>}, which (when present)
-#'   is used to dynamically create an "attractor" based on the population
-#'   density (number/capacity) at each dispersal location source (origin) at
-#'   each simulation time step. Default is empty.
+#'   objects for spatially weighted dispersal to destination locations. Default
+#'   is empty.
 #' @param permeability A \code{Permeability} class (or inherited) class object
 #'   for representing spatial permeability or constraints. Default is none.
 #' @param ... Additional parameters.
@@ -126,6 +130,7 @@ Diffusion <- function(region, population_model,
                       diffusion_rate = NULL,
                       diffusion_coeff = NULL,
                       proportion = NULL,
+                      density_dependent = FALSE,
                       direction_function = NULL,
                       attractors = list(),
                       permeability = NULL, ...) {
@@ -198,6 +203,7 @@ Diffusion <- function(region, population_model,
                     dispersal_stages = dispersal_stages,
                     proportion = proportion,
                     events = NULL,
+                    density_dependent = density_dependent,
                     distance_function = NULL,
                     direction_function = direction_function,
                     combined_function = combined_function,

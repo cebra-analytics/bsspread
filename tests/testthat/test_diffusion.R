@@ -18,8 +18,10 @@ test_that("initializes with region, population model, and other parameters", {
                                        diffusion_rate = 2000,
                                        diffusion_coeff = 1000000,
                                        proportion = 1,
+                                       density_dependent = TRUE,
                                        direction_function = function(x) x/360,
-                                       attractors = list(source_density = 1),
+                                       attractors = list(Attractor(template,
+                                                                   region)),
                                        permeability = Permeability(template,
                                                                    region)))
 })

@@ -11,11 +11,16 @@ test_that("initializes with region, population model, and other parameters", {
                paste("Population model must be a 'Population' or inherited",
                      "class object."))
   expect_error(dispersal <- Dispersal(region, population_model = population,
-                                      proportion = 0),
-               "The proportion parameter must be numeric and > 0.")
+                                      proportion = -1),
+               paste("The proportion parameter must be numeric >= 0 and",
+                     "consistent with the number of region locations."))
   expect_error(dispersal <- Dispersal(region, population_model = population,
-                                      events = 0),
-               "The events parameter must be numeric and > 0.")
+                                      events = 0:2),
+               paste("The events parameter must be numeric >= 0 and",
+                     "consistent with the number of region locations."))
+  expect_error(dispersal <- Dispersal(region, population_model = population,
+                                      density_dependent = 0),
+               "The density dependent parameter must be logical.")
   expect_error(dispersal <- Dispersal(region, population_model = population,
                                       distance_function = 0),
                "The distance function must be a function.")
@@ -27,12 +32,11 @@ test_that("initializes with region, population model, and other parameters", {
                "The combined function must be a function.")
   expect_error(dispersal <- Dispersal(region, population_model = population,
                                       distance_adjust = "y"),
-               "The distance adjust must be logical.")
+               "The distance adjust parameter must be logical.")
   expect_error(dispersal <- Dispersal(region, population_model = population,
                                       attractors = 0),
                paste("Attractors must be a list containing zero or more",
-                     "'Attractor' or inherited class objects, and/or a",
-                     "numeric attractor (> 0) named 'source_density'."),
+                     "'Attractor' or inherited class objects."),
                fixed = TRUE)
   expect_error(dispersal <- Dispersal(region, population_model = population,
                                       permeability = 0),
@@ -43,12 +47,14 @@ test_that("initializes with region, population model, and other parameters", {
                "The maximum distance parameter must be numeric and > 0.")
   expect_silent(dispersal <- Dispersal(region, population_model = population,
                                        proportion = 1, events = 5,
+                                       density_dependent = TRUE,
                                        distance_function = function(x) 1/x,
                                        direction_function = function(x) x/360,
                                        combined_function = function(x, y)
                                          1/x[[1]]*y/360,
                                        distance_adjust = FALSE,
-                                       attractors = list(source_density = 1),
+                                       attractors = list(Attractor(template,
+                                                                   region)),
                                        permeability = Permeability(template,
                                                                    region),
                                        max_distance = 300000))
@@ -167,7 +173,7 @@ test_that("disperses grid population with attractors", {
   n[5922] <- TRUE
   attractor_vect <- rep(0, region$get_locations())
   attractor_vect[1:5922] <- 1
-  attractor <- Attractor(attractor_vect, region, type = "destination")
+  attractor <- Attractor(attractor_vect, region)
   expect_silent(dispersal <- Dispersal(region, population_model = population,
                                        proportion = 1, max_distance = 10000,
                                        attractors = list(attractor)))
@@ -246,11 +252,14 @@ test_that("disperses unstructured population in a two-tier grid region", {
   region <- Region(template)
   region$set_aggr(aggr_factor = 5, inner_radius = 10000)
   establish_pr = template[region$get_indices()][,1]
-  population <- UnstructPopulation(region, establish_pr = establish_pr)
+  capacity_vect <- establish_pr*0 + 2000
+  population <- UnstructPopulation(region, establish_pr = establish_pr,
+                                   capacity = capacity_vect)
   n <- rep(0, region$get_locations())
   n[5922] <- 2000
-  expect_silent(dispersal <- Dispersal(region, population_model = population,
-                                       proportion = 1, max_distance = 30000))
+  expect_silent(dispersal <- Dispersal(
+    region, population_model = population, proportion = 1,
+    density_dependent = TRUE, max_distance = 30000))
   n <- dispersal$pack(n)
   region$calculate_paths(5922)
   paths <- region$get_paths(5922)
@@ -261,9 +270,19 @@ test_that("disperses unstructured population in a two-tier grid region", {
   expect_true(new_n[5922] == 0)
   expect_true(length(which(new_n > 0)) <= sum(new_n))
   expect_true(all(which(new_n > 0) %in% idx))
-  expect_silent(dispersal <- Dispersal(region, population_model = population,
-                                       proportion = 0.7, events = 100,
-                                       max_distance = 30000))
+  n$original[] <- n$remaining[] <- 1000
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_true(sum(new_n[-5922]) <= (1000 - new_n[5922]))
+  expect_true(round(new_n[5922]/1000, 1) == 0.5)
+  expect_true(all(which(new_n > 0) %in% c(5922, idx)))
+  n$original[] <- n$remaining[] <- 2000
+  proportion_vect <- n$relocated
+  proportion_vect[5922] <- 0.7
+  events_vect <- n$relocated
+  events_vect[5922] <- 100
+  expect_silent(dispersal <- Dispersal(
+    region, population_model = population, proportion = proportion_vect,
+    events = events_vect, max_distance = 30000))
   expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
   expect_true(sum(new_n[-5922]) <= (2000 - new_n[5922]))
   expect_true(round(new_n[5922]/2000, 1) == 0.3)
@@ -392,7 +411,7 @@ test_that("disperses in patch/network with attractors", {
   n[1] <- TRUE
   attractor_vect <- rep(0, region$get_locations())
   attractor_vect[1:8] <- 1
-  attractor <- Attractor(attractor_vect, region, type = "destination")
+  attractor <- Attractor(attractor_vect, region)
   expect_silent(dispersal <- Dispersal(region, population_model = population,
                                        proportion = 1, max_distance = 200000,
                                        attractors = list(attractor)))

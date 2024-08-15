@@ -11,6 +11,7 @@ Dispersal(
   dispersal_stages = NULL,
   proportion = NULL,
   events = NULL,
+  density_dependent = FALSE,
   distance_function = NULL,
   direction_function = NULL,
   combined_function = NULL,
@@ -28,6 +29,7 @@ Dispersal(
   dispersal_stages = NULL,
   proportion = NULL,
   events = NULL,
+  density_dependent = FALSE,
   distance_function = NULL,
   direction_function = NULL,
   combined_function = NULL,
@@ -53,18 +55,28 @@ defining the population representation for the spread simulations.}
 disperse. Default is all stages (when set to \code{NULL}).}
 
 \item{proportion}{The proportion of the (unstructured or staged) population
-that disperses at each time step. This parameter is also used to scale the
-the number of dispersal destinations selected when the population is
-presence-only and the number of dispersal \code{events} is not defined.
-Default is \code{NULL} (producing no dispersal unless the population is
-presence-only and \code{events} is defined).}
+that disperses from each occupied location at each time step. It may be a
+vector with a value at each location specified by the \code{region} or a
+single numeric value for all locations. This parameter may also be used to
+scale the the number of dispersal destinations selected when the
+population is presence-only and the number of dispersal \code{events} is
+not defined. Default is \code{NULL} (producing no dispersal unless the
+population is presence-only and \code{events} is defined).}
 
 \item{events}{The mean number of dispersal events generated via a Poisson
-distribution for each location at each time step. A dispersal destination
-(location) is selected for each dispersal event. Default is \code{NULL}
-(resulting in destinations being selected for each individual within
-unstructured or staged populations, or stochastic sampling of destinations
-for presence-only populations).}
+distribution for each location at each time step. It may be a vector with
+a value at each location specified by the \code{region} or a single
+numeric value for all locations. A dispersal destination (location) is
+selected for each dispersal event. Default is \code{NULL} (resulting in
+destinations being selected for each individual within unstructured or
+staged populations, or stochastic sampling of destinations for
+presence-only populations).}
+
+\item{density_dependent}{Logical to indicate that dispersal is density
+dependent, whereby the proportion dispersing and/or the number of
+dispersal events generated is scaled by the (unstructured or staged)
+population density (number/capacity) at each occupied location at each
+simulation time step. Default is \code{FALSE} for no density dependence.}
 
 \item{distance_function}{A function (or kernel) in the form
 \code{function(distances)}, that calculates the (relative) probability of
@@ -90,11 +102,8 @@ number of grid cells at each distance. When not specified (\code{NULL}),
 the value will resolve to \code{TRUE} for grid-based regions only.}
 
 \item{attractors}{List containing \code{Attractor} (or inherited) class
-objects for spatially weighted dispersal, and/or containing a named
-numeric multiplier \code{source_density = <numeric>}, which (when present)
-is used to dynamically create an "attractor" based on the population
-density (number/capacity) at each dispersal location source (origin) at
-each simulation time step. Default is empty.}
+objects for spatially weighted dispersal to destination locations. Default
+is empty.}
 
 \item{permeability}{A \code{Permeability} class (or inherited) class object
 for representing spatial permeability or constraints. Default is none.}

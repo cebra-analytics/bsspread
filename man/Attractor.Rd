@@ -7,31 +7,13 @@
 \alias{Attractor.numeric}
 \title{Attractor class builder}
 \usage{
-Attractor(
-  x,
-  region,
-  type = c("source", "destination", "both"),
-  multiplier = NULL,
-  ...
-)
+Attractor(x, region, ...)
 
 \method{Attractor}{Raster}(x, ...)
 
-\method{Attractor}{SpatRaster}(
-  x,
-  region,
-  type = c("source", "destination", "both"),
-  multiplier = NULL,
-  ...
-)
+\method{Attractor}{SpatRaster}(x, region, ...)
 
-\method{Attractor}{numeric}(
-  x,
-  region,
-  type = c("source", "destination", "both"),
-  multiplier = NULL,
-  ...
-)
+\method{Attractor}{numeric}(x, region, ...)
 }
 \arguments{
 \item{x}{A \code{raster::RasterLayer} or \code{terra::SpatRaster}
@@ -40,14 +22,6 @@ the simulation region.}
 
 \item{region}{A \code{Region} or inherited class object defining the spatial
 locations included in the spread simulations.}
-
-\item{type}{One of \code{"source"}, \code{"destination"}, or \code{"both"},
-indicating whether attractor values represent scale factors for dispersal
-from source locations, or dispersal likelihood weightings for destination
-locations, or both.}
-
-\item{multiplier}{Optional numeric multiplier for scaling or weighting
-attractor values appropriately (for convenience).}
 
 \item{...}{Additional parameters.}
 }
@@ -58,34 +32,24 @@ accessing attributes:
 \item{\code{get_rast()}}{Get the attractor \code{terra::SpatRaster}
 object.}
 \item{\code{get_values(cells = NULL, na.incl = FALSE)}}{Get the
-attractor values (multiplied by the specified multiplier when present)
-for optionally specified region cell indices, which should only refer
-to all raster indices (including NA-value cells) when specified (via
-\code{na.incl = TRUE}), otherwise the index sequence should skip
-NA-value cells (as per \code{Region get_indices}). Default is all
-non-NA cell values.}
+attractor values for optionally specified region cell indices, which
+should only refer to all raster indices (including NA-value cells)
+when specified (via \code{na.incl = TRUE}), otherwise the index
+sequence should skip NA-value cells (as per
+\code{Region get_indices}). Default is all non-NA cell values.}
 \item{\code{get_aggr_values(cells = NULL, na.incl = FALSE)}}{Get the
-raster aggregated attractor values (multiplied by the specified
-multiplier when present) for optionally specified aggregated region
-cell indices, which should only refer to all raster indices (including
-NA-value cells) when specified (via \code{na.incl = TRUE}), otherwise
-the index sequence should skip NA-value cells. Default is all
-non-NA cell values. Only available for an attractor built with a
+raster aggregated attractor values for optionally specified aggregated
+region cell indices, which should only refer to all raster indices
+(including NA-value cells) when specified (via \code{na.incl = TRUE}),
+otherwise the index sequence should skip NA-value cells. Default is
+all non-NA cell values. Only available for an attractor built with a
 spatial raster layer, and functional when region is two-tiered.}
-\item{\code{get_type())}}{Get the attractor type ("source",
-"destination", or "both").}
 }
 }
 \description{
 Builds a class to represent spatially distributed weights or scaling factors
 assigned to cells/locations to represent an "attractor" that modify the
-likelihood of dispersal from source or to destination locations. Attractor
-values may be used to scale the proportion of each population dispersing
-from each source location, or to scale the number of dispersal events
-originating at each source location. Alternatively, attractor weight values
-may be used to modify the relative likelihood of dispersal to each
-destination location. The \code{type} attribute of an attractor may thus be
-defined as "source", "destination", or "both".
+relative likelihood of dispersal to each destination location.
 }
 \references{
 Bossenbroek, J. M., Kraft, C. E., & Nekola, J. C. (2001). Prediction of
