@@ -661,9 +661,7 @@ Dispersal.Region <- function(region, population_model,
               aggr_p <- rep(1, length(aggr_cells))
               for (attractor in attractors) {
                 if (inherits(attractor, "Attractor")) {
-                  if (attractor$get_type() %in% c("destination", "both")) {
-                    aggr_p <- aggr_p*attractor$get_values(aggr_cells)
-                  }
+                  aggr_p <- aggr_p*attractor$get_values(aggr_cells)
                 }
               }
               aggr_i <- aggr_cells[sample(
