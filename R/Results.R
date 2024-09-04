@@ -42,7 +42,8 @@
 #'     \item{\code{get_params()}}{Get the simulation parameters used.}
 #'     \item{\code{save_rasters(...)}}{Save the collated results as raster TIF
 #'       files when the region is grid-based. \code{Terra} raster write options
-#'       may be passed to the function.}
+#'       may be passed to the function. Returns a list of saved \code{Terra}
+#'       raster layers.}
 #'     \item{\code{save_csv()}}{Save the collated results as comma-separated
 #'       values (CSV) files when the region is patch-based. Also saves the
 #'       population totals and area occupied to CSV files for both grid and
@@ -368,13 +369,6 @@ Results.Region <- function(region, population_model,
   if (region$get_type() == "grid") {
     self$save_rasters  <- function(...) {
 
-      # Replicate summaries or single replicate
-      if (replicates > 1) {
-        summaries <- c("mean", "sd")
-      } else {
-        summaries <- ""
-      }
-
       # Label population appropriately
       if (population_model$get_type() == "presence_only") {
         pop_label <- "occupancy"
@@ -382,15 +376,44 @@ Results.Region <- function(region, population_model,
         pop_label <- "population"
       }
 
-      # Save rasters for each time step
-      for (tmc in names(results$collated)) {
+      # Replicate summaries or single replicate
+      if (replicates > 1) {
+        summaries <- c("mean", "sd")
+      } else {
+        summaries <- ""
+      }
+
+      # Output list
+      output_list <- list()
+
+      # Create and save a results raster per stage/summary/time step
+      if (is.null(stages) || is.numeric(combine_stages)) {
+        stages <- 1
+      }
+      for (i in 1:stages) {
+
+        # Stage post-fix
+        if (population_model$get_type() == "stage_structured" &&
+            is.null(combine_stages)) {
+            ic <- paste0("_stage_", i)
+        } else {
+          ic <- ""
+        }
+
         for (s in summaries) {
 
-          # Create and save a results raster per stage
-          if (is.null(stages) || is.numeric(combine_stages)) {
-            stages <- 1
+          # Summary post-fix
+          if (replicates > 1) {
+            sc <- paste0("_", s)
+          } else {
+            sc <- s
           }
-          for (i in 1:stages) {
+
+          # Add nested list to output list
+          output_key <- paste0(pop_label, ic, sc)
+          output_list[[output_key]] <- list()
+
+          for (tmc in names(results$collated)) {
 
             # Create result raster
             if (population_model$get_type() == "stage_structured") {
@@ -402,10 +425,8 @@ Results.Region <- function(region, population_model,
               }
               if (is.null(combine_stages)) {
                 names(output_rast) <- stage_labels[i]
-                i <- paste0("_stage_", i)
               } else if (is.numeric(combine_stages)) {
                 names(output_rast) <- "combined"
-                i <- ""
               }
             } else {
               if (replicates > 1) {
@@ -413,44 +434,56 @@ Results.Region <- function(region, population_model,
               } else {
                 output_rast <- region$get_rast(results$collated[[tmc]])
               }
-              i <- ""
             }
 
-            # Write raster to file
-            if (replicates > 1) {
-              sc <- paste0("_", s)
-            } else {
-              sc <- s
-            }
+            # Write raster to file and add to output list
             filename <- sprintf(paste0(pop_label, "%s_t%0",
                                        nchar(as.character(time_steps)),
-                                       "d%s.tif"), i, as.integer(tmc), sc)
-            terra::writeRaster(output_rast, filename, ...)
+                                       "d%s.tif"), ic, as.integer(tmc), sc)
+            output_list[[output_key]][[tmc]] <-
+              terra::writeRaster(output_rast, filename, ...)
           }
         }
       }
 
-      # Save occupancy rasters for each time step
+      # Save occupancy rasters for each summary/time step
       if (include_occupancy) {
-        for (tmc in names(results$occupancy)) {
-          for (s in summaries) {
+        for (s in summaries) {
+
+          # Summary post-fix
+          if (replicates > 1) {
+            sc <- paste0("_", s)
+          } else {
+            sc <- s
+          }
+
+          # Add nested list to output list
+          output_key <- paste0("occupancy", sc)
+          output_list[[output_key]] <- list()
+
+          for (tmc in names(results$occupancy)) {
 
             # Copy results into a raster
             if (replicates > 1) {
               output_rast <- region$get_rast(results$occupancy[[tmc]][[s]])
-              s <- paste0("_", s)
             } else {
               output_rast <- region$get_rast(results$occupancy[[tmc]])
             }
 
-            # Write raster to file
+            # Write raster to file and add to output list
             filename <- sprintf(paste0("occupancy_t%0",
                                        nchar(as.character(time_steps)),
-                                       "d%s.tif"), as.integer(tmc), s)
-            terra::writeRaster(output_rast, filename, ...)
+                                       "d%s.tif"), as.integer(tmc), sc)
+            output_list[[output_key]][[tmc]] <-
+              terra::writeRaster(output_rast, filename, ...)
           }
         }
       }
+
+      # Return output list as multi-layer rasters
+      return(lapply(output_list, function(rast_list) {
+        terra::rast(rast_list)
+      }))
     }
   }
 
