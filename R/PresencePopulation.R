@@ -65,7 +65,11 @@ PresencePopulation <- function(region,
 
     # Convert to initial values to logical
     if (!is.null(initial)) {
+      initial_age <- attr(initial, "age")
       initial <- as.logical(initial)
+      if (!is.null(initial_age)) { # re-attach
+        attr(initial, "age") <- initial_age + initial*0 # as vector
+      }
     }
 
     # Run inherited function
@@ -74,10 +78,13 @@ PresencePopulation <- function(region,
 
     # Set attributes for type and spread delay
     if (is.null(current)) {
-      attributes(values) <- list(type = self$get_type(),
-                                 spread_delay = NULL)
+      attr(values, "type") <- self$get_type()
       if (is.numeric(spread_delay)) {
         attr(values, "spread_delay") <- rep(NA, region$get_locations())
+        if (!is.null(attr(values, "age"))) {
+          attr(values, "spread_delay")[which(values)] <-
+            pmax(0, spread_delay - attr(values, "age")[which(values)] + 1)
+        }
       }
     } else {
       attributes(values) <- attributes(current)

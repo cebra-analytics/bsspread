@@ -45,7 +45,13 @@ invasive species incursions. The initial population distribution may be
 defined with actual populations sizes at appropriate locations (default
 with no \code{size} attribute), or via the combination of a binary mask
 indicating initial locations and an optional attached \code{size}
-attribute indicating the size of the total initial population.}
+attribute indicating the size of the total initial population. The initial
+population distribution may also specify the age distribution of the
+initial population (in simulation time steps) via an optional attached
+\code{age} attribute (a single value or vector of values at each location
+specified by the \code{region}). When present the \code{age} attribute is
+used to adjust any initial spread delays for presence-only models, or to
+determine which stages are initially present in stage-based models.}
 
 \item{region}{A \code{Region} or inherited class object defining the spatial
 locations included in the spread simulations.}

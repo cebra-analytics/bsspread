@@ -14,22 +14,31 @@ test_that("initializes with raster layer", {
                                           population_model = 1:10),
                "Population model must be a 'Population' or inherited class object.")
   pop_model <- Population(region)
+  attr(initial_rast, "age") <- 1:10
+  expect_error(initializer <- Initializer(initial_rast, region,
+                                          population_model = pop_model),
+               paste("Initial age values must be consistent with the number",
+                     "of region locations."))
+  attr(initial_rast, "age") <- initial_rast[region$get_indices()][,1]
   expect_silent(initializer <- Initializer(initial_rast, region,
                                            population_model = pop_model))
   expect_is(initializer, "Initializer")
   expect_silent(n <- initializer$initialize())
-  expect_equal(n, initial_rast[region$get_indices()][,1])
+  expect_equal(as.numeric(n), initial_rast[region$get_indices()][,1])
+  expect_equal(attr(n, "age"), attr(initial_rast, "age"))
   # via mask and size attribute
   pop_model <- UnstructPopulation(
     region, establish_pr = (template^10*100)[region$get_indices()][,1])
   initial_mask <- template > 0.56
   attr(initial_mask, "size") <- 300
+  attr(initial_mask, "age") <- 2
   expect_silent(initializer <- Initializer(initial_mask, region,
                                            population_model = pop_model))
   expect_silent(n <- initializer$initialize())
   expect_true(all(which(n > 0) %in%
                     which(initial_mask[region$get_indices()][,1] > 0)))
   expect_equal(sum(n), 300)
+  expect_equal(attr(n, "age"), 2)
   stage_matrix <- matrix(c(0.0, 2.0, 5.0,
                            0.3, 0.0, 0.0,
                            0.0, 0.6, 0.8),

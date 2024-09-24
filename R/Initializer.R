@@ -13,7 +13,13 @@
 #'   defined with actual populations sizes at appropriate locations (default
 #'   with no \code{size} attribute), or via the combination of a binary mask
 #'   indicating initial locations and an optional attached \code{size}
-#'   attribute indicating the size of the total initial population.
+#'   attribute indicating the size of the total initial population. The initial
+#'   population distribution may also specify the age distribution of the
+#'   initial population (in simulation time steps) via an optional attached
+#'   \code{age} attribute (a single value or vector of values at each location
+#'   specified by the \code{region}). When present the \code{age} attribute is
+#'   used to adjust any initial spread delays for presence-only models, or to
+#'   determine which stages are initially present in stage-based models.
 #' @param region A \code{Region} or inherited class object defining the spatial
 #'   locations included in the spread simulations.
 #' @param population_model A \code{Population} or inherited class object
@@ -59,6 +65,7 @@ Initializer.Raster <- function(x, ...) {
   # Call the terra version of the function
   x_rast <- terra::rast(x)
   attr(x_rast, "size") <- attr(x, "size")
+  attr(x_rast, "age") <- attr(x, "age")
   Initializer(x_rast, ...)
 }
 
@@ -85,7 +92,9 @@ Initializer.SpatRaster <- function(x,
     x_matrix <- as.matrix(x[])
   }
   attr(x_matrix, "size") <- attr(x, "size")
-  Initializer(x_matrix, ...)
+  attr(x_matrix, "age") <- attr(x, "age")
+  Initializer(x_matrix,
+              region = region, ...)
 }
 
 #' @name Initializer
@@ -122,6 +131,14 @@ Initializer.default <- function(x,
   # Check for population size (thus distribution mask)
   pop_size <- attr(x, "size")
 
+  # Check initial age distribution
+  initial_age <- attr(x, "age")
+  if (!is.null(initial_age) &&
+      !length(initial_age) %in% c(1, region$get_locations())) {
+    stop("Initial age values must be consistent with the number of region ",
+         "locations.", call. = FALSE)
+  }
+
   # Collapse when single column
   if (is.matrix(x) && ncol(x) == 1) {
     x <- x[,1]
@@ -139,6 +156,9 @@ Initializer.default <- function(x,
     }
   }
 
+  # Re-attach initial age
+  attr(x, "age") <- initial_age
+
   # Create a class structure
   self <- structure(list(), class = c(class, "Initializer"))
 
@@ -148,8 +168,9 @@ Initializer.default <- function(x,
       if (is.numeric(pop_size) &&
           population_model$get_type() %in% c("unstructured",
                                              "stage_structured")) {
-        return(population_model$make(
-          initial = stats::rmultinom(1, size = pop_size, prob = x)))
+        gen_x <- stats::rmultinom(1, size = pop_size, prob = x)
+        attr(gen_x, "age") <- initial_age
+        return(population_model$make(initial = gen_x))
       } else {
         return(population_model$make(initial = x))
       }

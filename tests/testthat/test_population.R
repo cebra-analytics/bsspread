@@ -21,6 +21,8 @@ test_that("makes populations with initial values", {
                      "number of region locations."))
   initial_pop <- round(template[region$get_indices()]*30)[,1]
   expect_equal(population$make(initial = initial_pop), initial_pop)
+  attr(initial_pop, "age") <- 2
+  expect_equal(population$make(initial = initial_pop), initial_pop)
 })
 
 test_that("makes populations with incursions", {
