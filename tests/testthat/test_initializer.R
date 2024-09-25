@@ -17,8 +17,8 @@ test_that("initializes with raster layer", {
   attr(initial_rast, "age") <- 1:10
   expect_error(initializer <- Initializer(initial_rast, region,
                                           population_model = pop_model),
-               paste("Initial age values must be consistent with the number",
-                     "of region locations."))
+               paste("Initial age values must be numeric and consistent with",
+                     "the number of region locations."))
   attr(initial_rast, "age") <- initial_rast[region$get_indices()][,1]
   expect_silent(initializer <- Initializer(initial_rast, region,
                                            population_model = pop_model))
@@ -43,17 +43,30 @@ test_that("initializes with raster layer", {
                            0.3, 0.0, 0.0,
                            0.0, 0.6, 0.8),
                          nrow = 3, ncol = 3, byrow = TRUE)
+  attr(stage_matrix, "labels") <- c("a", "b", "c")
   pop_model <- StagedPopulation(
     region, growth = stage_matrix,
     capacity = (template^10*5000)[region$get_indices()][,1],
     capacity_stages = 2:3)
   initial_mask <- template > 0.56
   attr(initial_mask, "size") <- 300
+  attr(initial_mask, "stages") <- 3:4
+  expect_error(initializer <- Initializer(initial_mask, region,
+                                          population_model = pop_model),
+               paste("First occupancy stages should specify index values",
+                     "between 1 and 3."))
+  attr(initial_mask, "stages") <- 2
+  age_vect <- rep(0, region$get_locations())
+  idx <- which(initial_mask[region$get_indices()][,1] > 0)
+  age_vect[idx[1:10]] <- 1
+  attr(initial_mask, "age") <- age_vect
   expect_silent(initializer <- Initializer(initial_mask, region,
                                            population_model = pop_model))
   expect_silent(n <- initializer$initialize())
-  expect_true(all(which(rowSums(n) > 0) %in%
-                    which(initial_mask[region$get_indices()][,1] > 0)))
+  expect_true(all(which(rowSums(n) > 0) %in% idx))
+  expect_equal(colSums(n[idx[1:10],]) > 0, c(a = TRUE, b = FALSE, c = TRUE))
+  expect_equal(colSums(n[idx[11:length(idx)],]) > 0,
+               c(a = FALSE, b = TRUE, c = FALSE))
   expect_equal(sum(n), 300)
 })
 

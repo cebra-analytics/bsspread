@@ -196,6 +196,25 @@ StagedPopulation <- function(region, growth,
       # Calculate ratio for stable distribution of stages
       ratio <- abs(Re((eigen(growth)$vectors)[,1]))
 
+      # Select initial stages based on initial age
+      if (!is.null(initial) && !is.null(attr(initial, "stages"))) {
+        if (!is.null(attr(initial, "age"))) {
+          initial_age <- attr(initial, "age") + as.numeric(initial)*0
+        } else {
+          initial_age <- as.numeric(initial)*0
+        }
+        unique_ages <- sort(unique(c(0, initial_age)))
+        ratio_list <- lapply(unique_ages,
+                             function(age) array(0, c(stages, 1)))
+        names(ratio_list) <- as.character(unique_ages)
+        ratio_list[["0"]][attr(initial, "stages"),] <-
+          ratio[attr(initial, "stages")]
+        for (age in unique_ages[-1]) {
+          ratio_list[[as.character(age)]] <-
+            (growth %*% ratio_list[[as.character(age - 1)]] > 0)*ratio
+        }
+      }
+
       # Select incursion stages only
       if (!is.null(incursion) && !is.null(incursion_stages)) {
         ratio[which(!1:stages %in% incursion_stages)] <- 0
@@ -204,6 +223,9 @@ StagedPopulation <- function(region, growth,
       # Distribute across stages for occupied indices
       values <- array(values, c(length(values), stages))
       for (i in which(values[,1] > 0)) {
+        if (!is.null(initial) && !is.null(attr(initial, "stages"))) {
+          ratio <- ratio_list[[as.character(initial_age[i])]]
+        }
         values[i,] <- stats::rmultinom(1, size = values[i,], prob = ratio)
       }
     }

@@ -51,7 +51,10 @@ initial population (in simulation time steps) via an optional attached
 \code{age} attribute (a single value or vector of values at each location
 specified by the \code{region}). When present the \code{age} attribute is
 used to adjust any initial spread delays for presence-only models, or to
-determine which stages are initially present in stage-based models.}
+determine which stages are initially present in stage-based models. For
+stage-based models the optionally attached \code{stages} attribute may be
+used to specify the stages present at first occupancy, when \code{age = 0}
+if \code{age} is specified, else at the beginning of the simulation.}
 
 \item{region}{A \code{Region} or inherited class object defining the spatial
 locations included in the spread simulations.}

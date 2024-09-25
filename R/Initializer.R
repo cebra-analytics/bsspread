@@ -19,7 +19,10 @@
 #'   \code{age} attribute (a single value or vector of values at each location
 #'   specified by the \code{region}). When present the \code{age} attribute is
 #'   used to adjust any initial spread delays for presence-only models, or to
-#'   determine which stages are initially present in stage-based models.
+#'   determine which stages are initially present in stage-based models. For
+#'   stage-based models the optionally attached \code{stages} attribute may be
+#'   used to specify the stages present at first occupancy, when \code{age = 0}
+#'   if \code{age} is specified, else at the beginning of the simulation.
 #' @param region A \code{Region} or inherited class object defining the spatial
 #'   locations included in the spread simulations.
 #' @param population_model A \code{Population} or inherited class object
@@ -66,6 +69,7 @@ Initializer.Raster <- function(x, ...) {
   x_rast <- terra::rast(x)
   attr(x_rast, "size") <- attr(x, "size")
   attr(x_rast, "age") <- attr(x, "age")
+  attr(x_rast, "stages") <- attr(x, "stages")
   Initializer(x_rast, ...)
 }
 
@@ -93,6 +97,7 @@ Initializer.SpatRaster <- function(x,
   }
   attr(x_matrix, "size") <- attr(x, "size")
   attr(x_matrix, "age") <- attr(x, "age")
+  attr(x_matrix, "stages") <- attr(x, "stages")
   Initializer(x_matrix,
               region = region, ...)
 }
@@ -131,12 +136,23 @@ Initializer.default <- function(x,
   # Check for population size (thus distribution mask)
   pop_size <- attr(x, "size")
 
-  # Check initial age distribution
+  # Check initial age distribution attribute
   initial_age <- attr(x, "age")
   if (!is.null(initial_age) &&
-      !length(initial_age) %in% c(1, region$get_locations())) {
-    stop("Initial age values must be consistent with the number of region ",
-         "locations.", call. = FALSE)
+      (!is.numeric(initial_age) ||
+       !length(initial_age) %in% c(1, region$get_locations()))) {
+    stop("Initial age values must be numeric and consistent with the number ",
+         "of region locations.", call. = FALSE)
+  }
+
+  # Check first occupancy stages attribute
+  first_stages <- attr(x, "stages")
+  if (!is.null(first_stages) &&
+      population_model$get_type() == "stage_structured" &&
+      (!is.numeric(first_stages) ||
+       !all(first_stages %in% 1:population_model$get_stages()))) {
+    stop(paste0("First occupancy stages should specify index values between ",
+                "1 and ", population_model$get_stages(), "."), call. = FALSE)
   }
 
   # Collapse when single column
@@ -156,8 +172,9 @@ Initializer.default <- function(x,
     }
   }
 
-  # Re-attach initial age
+  # Re-attach initial age and first stages
   attr(x, "age") <- initial_age
+  attr(x, "stages") <- first_stages
 
   # Create a class structure
   self <- structure(list(), class = c(class, "Initializer"))
@@ -170,6 +187,7 @@ Initializer.default <- function(x,
                                              "stage_structured")) {
         gen_x <- stats::rmultinom(1, size = pop_size, prob = x)
         attr(gen_x, "age") <- initial_age
+        attr(gen_x, "stages") <- first_stages
         return(population_model$make(initial = gen_x))
       } else {
         return(population_model$make(initial = x))

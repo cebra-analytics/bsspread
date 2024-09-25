@@ -58,6 +58,39 @@ test_that("initializes with region and other parameters", {
                                                capacity_area = 1e+06))
 })
 
+test_that("makes populations with initial ages and first stages", {
+  TEST_DIRECTORY <- test_path("test_inputs")
+  template <- terra::rast(file.path(TEST_DIRECTORY, "greater_melb.tif"))
+  region <- Region(template)
+  stage_matrix <- matrix(c(0.0, 2.0, 5.0,
+                           0.3, 0.0, 0.0,
+                           0.0, 0.6, 0.8),
+                         nrow = 3, ncol = 3, byrow = TRUE)
+  attr(stage_matrix, "labels") <- c("a", "b", "c")
+  expect_silent(population <- StagedPopulation(region, growth = stage_matrix))
+  initial_n <- +(template[region$get_indices()][,1] > 0.5)
+  idx <- which(initial_n > 0)
+  initial_n[idx] <- stats::rpois(length(idx), 20)
+  initial_age <- initial_n*0
+  initial_age[idx[1:150]] <- c(rep(3,50), rep(2,50), rep(1,50))
+  attr(initial_n, "age") <- initial_age
+  attr(initial_n, "stages") <- 1
+  expect_silent(n <- population$make(initial = initial_n))
+  expect_equal(dim(n), c(region$get_locations(), 3))
+  expect_equal(colnames(n), c("a", "b", "c"))
+
+  expect_equal(rowSums(n[idx,]), initial_n[idx])
+  expect_true(all(rowSums(n[-idx,]) == 0))
+  expect_equal(colSums(n[idx[1:50],]) > 0, c(a = TRUE, b = TRUE, c = TRUE))
+  expect_equal(sum(n[idx[1:50],]), sum(initial_n[idx[1:50]]))
+  expect_equal(colSums(n[idx[51:100],]) > 0, c(a = TRUE, b = FALSE, c = TRUE))
+  expect_equal(sum(n[idx[51:100],]), sum(initial_n[idx[51:100]]))
+  expect_equal(colSums(n[idx[101:150],]),
+               c(a = 0, b = sum(initial_n[idx[101:150]]), c = 0))
+  expect_equal(colSums(n[idx[151:length(idx)],]),
+               c(a = sum(initial_n[idx[151:length(idx)]]), b = 0, c = 0))
+})
+
 test_that("makes populations with incursions", {
   TEST_DIRECTORY <- test_path("test_inputs")
   template <- terra::rast(file.path(TEST_DIRECTORY, "greater_melb.tif"))
