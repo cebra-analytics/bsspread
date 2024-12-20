@@ -171,17 +171,22 @@ Region.SpatRaster <- function(x, ...) {
                  "matching the number of region locations."), call. = FALSE)
     }
 
-    # Get a template raster to populate
-    value_rast <- self$get_template()
-
-    # Set categories when present
+    # Set values raster as appropriate type
     if (is.factor(values)) {
+      value_rast <- terra::as.factor(self$get_template())
+      terra::set.values(value_rast, indices, values)
       levels(value_rast) <- data.frame(ID = 1:length(levels(values)),
                                        category = levels(values))
+    } else if (is.logical(values)) {
+      value_rast <- terra::as.bool(self$get_template())
+      terra::set.values(value_rast, indices, values)
+    } else if (is.integer(values)) {
+      value_rast <- terra::as.int(self$get_template())
+      terra::set.values(value_rast, indices, values)
+    } else {
+      value_rast <- as.numeric(self$get_template())
+      terra::set.values(value_rast, indices, values)
     }
-
-    # Set values
-    value_rast[indices] <- values
 
     return(value_rast)
   }

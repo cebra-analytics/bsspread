@@ -35,8 +35,17 @@ test_that("gets a raster with specified values", {
                rep(10, region$get_locations()))
   expect_silent(value_rast <- region$get_rast(1:region$get_locations()))
   expect_equal(value_rast[region$get_indices()][,1], 1:region$get_locations())
+  expect_true(terra::is.int(value_rast))
+  region <- Region(terra::as.int(template*10))
+  expect_true(terra::is.int(region$get_template()))
+  expect_silent(value_rast <- region$get_rast(
+    round(runif(region$get_locations()), 1)))
+  expect_false(terra::is.int(value_rast))
+  expect_true(all(
+    unique(value_rast[region$get_indices()][,1]) %in% ((0:10)/10)))
   cat_values <- factor(c("a", rep(c("b", "c"), 5915)), c("a", "b", "c", "d"))
   expect_silent(value_rast <- region$get_rast(cat_values))
+  expect_true(terra::is.factor(value_rast))
   expect_equal(terra::cats(value_rast)[[1]],
                data.frame(ID = 1:4, category = c("a", "b", "c", "d")))
   expect_equal(value_rast[region$get_indices()][,1], cat_values)
