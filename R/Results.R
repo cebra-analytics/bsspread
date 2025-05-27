@@ -421,13 +421,19 @@ Results.Region <- function(region, population_model,
 
           for (tmc in names(results$collated)) {
 
-            # Create result raster
+            # Create result raster and update non-zero indicator
             if (population_model$get_type() == "stage_structured") {
               if (replicates > 1) {
                 output_rast <-
                   region$get_rast(results$collated[[tmc]][[s]][,i])
+                nonzero_list[[output_key]] <-
+                  (nonzero_list[[output_key]] |
+                     sum(results$collated[[tmc]][[s]][,i]) > 0)
               } else {
                 output_rast <- region$get_rast(results$collated[[tmc]][,i])
+                nonzero_list[[output_key]] <-
+                  (nonzero_list[[output_key]] |
+                     sum(results$collated[[tmc]][,i]) > 0)
               }
               if (is.null(combine_stages)) {
                 names(output_rast) <- stage_labels[i]
@@ -437,20 +443,15 @@ Results.Region <- function(region, population_model,
             } else {
               if (replicates > 1) {
                 output_rast <- region$get_rast(results$collated[[tmc]][[s]])
+                nonzero_list[[output_key]] <-
+                  (nonzero_list[[output_key]] |
+                     sum(results$collated[[tmc]][[s]]) > 0)
               } else {
                 output_rast <- region$get_rast(results$collated[[tmc]])
+                nonzero_list[[output_key]] <-
+                  (nonzero_list[[output_key]] |
+                     sum(results$collated[[tmc]]) > 0)
               }
-            }
-
-            # Update non-zero indicator
-            if (replicates > 1) {
-              nonzero_list[[output_key]] <-
-                (nonzero_list[[output_key]] |
-                   sum(results$collated[[tmc]][[s]]) > 0)
-            } else {
-              nonzero_list[[output_key]] <-
-                (nonzero_list[[output_key]] |
-                   sum(results$collated[[tmc]]) > 0)
             }
 
             # Write raster to file and add to output list
