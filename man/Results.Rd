@@ -80,13 +80,15 @@ area).}
 \item{\code{save_rasters(...)}}{Save the collated results as raster TIF
 files when the region is grid-based. \code{Terra} raster write options
 may be passed to the function. Returns a list of saved \code{Terra}
-raster layers.}
+raster layers with attached attributes indicating if each layer
+contains non-zero values.}
 \item{\code{save_csv()}}{Save the collated results as comma-separated
 values (CSV) files when the region is patch-based. Also saves the
 population totals and area occupied to CSV files for both grid and
 patch-based region types.}
-\item{\code{save_plots()}}{Save plots of the population (staged) totals
-and the area occupied as PNG files.}
+\item{\code{save_plots(width = 480, height = 480)}}{Save plots of the
+population (staged) totals and the area occupied as PNG files having
+specified \code{width} and \code{height} in pixels.}
 }
 }
 \description{

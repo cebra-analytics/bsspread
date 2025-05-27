@@ -43,13 +43,15 @@
 #'     \item{\code{save_rasters(...)}}{Save the collated results as raster TIF
 #'       files when the region is grid-based. \code{Terra} raster write options
 #'       may be passed to the function. Returns a list of saved \code{Terra}
-#'       raster layers.}
+#'       raster layers with attached attributes indicating if each layer
+#'       contains non-zero values.}
 #'     \item{\code{save_csv()}}{Save the collated results as comma-separated
 #'       values (CSV) files when the region is patch-based. Also saves the
 #'       population totals and area occupied to CSV files for both grid and
 #'       patch-based region types.}
-#'     \item{\code{save_plots()}}{Save plots of the population (staged) totals
-#'       and the area occupied as PNG files.}
+#'     \item{\code{save_plots(width = 480, height = 480)}}{Save plots of the
+#'       population (staged) totals and the area occupied as PNG files having
+#'       specified \code{width} and \code{height} in pixels.}
 #'   }
 #' @references
 #'   Bradhurst, R., Spring, D., Stanaway, M., Milner, J., & Kompas, T. (2021).
@@ -383,8 +385,9 @@ Results.Region <- function(region, population_model,
         summaries <- ""
       }
 
-      # Output list
+      # Output and non-zero indicator lists
       output_list <- list()
+      nonzero_list <- list()
 
       # Create and save a results raster per stage/summary/time step
       if (is.null(stages) || is.numeric(combine_stages)) {
@@ -413,6 +416,9 @@ Results.Region <- function(region, population_model,
           output_key <- paste0(pop_label, ic, sc)
           output_list[[output_key]] <- list()
 
+          # Initialise non-zero indicator
+          nonzero_list[[output_key]] <- FALSE
+
           for (tmc in names(results$collated)) {
 
             # Create result raster
@@ -436,6 +442,17 @@ Results.Region <- function(region, population_model,
               }
             }
 
+            # Update non-zero indicator
+            if (replicates > 1) {
+              nonzero_list[[output_key]] <-
+                (nonzero_list[[output_key]] |
+                   sum(results$collated[[tmc]][[s]]) > 0)
+            } else {
+              nonzero_list[[output_key]] <-
+                (nonzero_list[[output_key]] |
+                   sum(results$collated[[tmc]]) > 0)
+            }
+
             # Write raster to file and add to output list
             filename <- sprintf(paste0(pop_label, "%s_t%0",
                                        nchar(as.character(time_steps)),
@@ -443,6 +460,10 @@ Results.Region <- function(region, population_model,
             output_list[[output_key]][[tmc]] <-
               terra::writeRaster(output_rast, filename, ...)
           }
+
+          # Add non-zero indicator as an attribute
+          attr(output_list[[output_key]], "nonzero") <-
+            nonzero_list[[output_key]]
         }
       }
 
@@ -461,13 +482,22 @@ Results.Region <- function(region, population_model,
           output_key <- paste0("occupancy", sc)
           output_list[[output_key]] <- list()
 
+          # Initialise non-zero indicator
+          nonzero_list[[output_key]] <- FALSE
+
           for (tmc in names(results$occupancy)) {
 
-            # Copy results into a raster
+            # Copy results into a raster & update non-zero indicator
             if (replicates > 1) {
               output_rast <- region$get_rast(results$occupancy[[tmc]][[s]])
+              nonzero_list[[output_key]] <-
+                (nonzero_list[[output_key]] |
+                   sum(results$occupancy[[tmc]][[s]]) > 0)
             } else {
               output_rast <- region$get_rast(results$occupancy[[tmc]])
+              nonzero_list[[output_key]] <-
+                (nonzero_list[[output_key]] |
+                   sum(results$occupancy[[tmc]]) > 0)
             }
 
             # Write raster to file and add to output list
@@ -477,12 +507,18 @@ Results.Region <- function(region, population_model,
             output_list[[output_key]][[tmc]] <-
               terra::writeRaster(output_rast, filename, ...)
           }
+
+          # Add non-zero indicator as an attribute
+          attr(output_list[[output_key]], "nonzero") <-
+            nonzero_list[[output_key]]
         }
       }
 
       # Return output list as multi-layer rasters
       return(lapply(output_list, function(rast_list) {
-        terra::rast(rast_list)
+        raster_layers <- terra::rast(rast_list)
+        attr(raster_layers, "nonzero") <- attr(rast_list, "nonzero")
+        raster_layers
       }))
     }
   }
@@ -671,7 +707,7 @@ Results.Region <- function(region, population_model,
   }
 
   # Plot total population (per stage) and area occupied as PNG files
-  self$save_plots  <- function() {
+  self$save_plots  <- function(width = 480, height = 480) {
 
     # Resolve the number of (combined) stages used in the results
     result_stages <- stages
@@ -740,7 +776,7 @@ Results.Region <- function(region, population_model,
                              substr(main_title, 2, nchar(main_title)))
         y_label <- paste0(toupper(substr(pop_label, 1, 1)),
                              substr(pop_label, 2, nchar(pop_label)))
-        grDevices::png(filename = filename)
+        grDevices::png(filename = filename, width = width, height = height)
         graphics::plot(0:time_steps, totals$mean[s,], type = "l",
                        main = main_title,
                        xlab = plot_x_label, ylab = y_label,
@@ -762,7 +798,7 @@ Results.Region <- function(region, population_model,
         filename <- "total_area_occupied.png"
         main_title <- "Total area occupied (mean +/- 2 SD)"
       }
-      grDevices::png(filename = filename)
+      grDevices::png(filename = filename, width = width, height = height)
       graphics::plot(0:time_steps, areas$mean, type = "l",
                      main = main_title,
                      xlab = plot_x_label,
@@ -783,7 +819,7 @@ Results.Region <- function(region, population_model,
           filename <- "total_occupancy.png"
           main_title <- "Total occupancy (mean +/- 2 SD)"
         }
-        grDevices::png(filename = filename)
+        grDevices::png(filename = filename, width = width, height = height)
         graphics::plot(0:time_steps, occup$mean, type = "l",
                        main = main_title,
                        xlab = plot_x_label,
@@ -815,7 +851,7 @@ Results.Region <- function(region, population_model,
                              substr(main_title, 2, nchar(main_title)))
         y_label <- paste0(toupper(substr(pop_label, 1, 1)),
                           substr(pop_label, 2, nchar(pop_label)))
-        grDevices::png(filename = filename)
+        grDevices::png(filename = filename, width = width, height = height)
         graphics::plot(0:time_steps, totals[s,], type = "l",
                        main = main_title,
                        xlab = plot_x_label, ylab = y_label,
@@ -831,7 +867,7 @@ Results.Region <- function(region, population_model,
         filename <- "total_area_occupied.png"
         main_title <- "Total area occupied"
       }
-      grDevices::png(filename = filename)
+      grDevices::png(filename = filename, width = width, height = height)
       graphics::plot(0:time_steps, areas, type = "l",
                      main = main_title,
                      xlab = plot_x_label,
@@ -849,7 +885,7 @@ Results.Region <- function(region, population_model,
           filename <- "total_occupancy.png"
           main_title <- "Total occupancy"
         }
-        grDevices::png(filename = filename)
+        grDevices::png(filename = filename, width = width, height = height)
         graphics::plot(0:time_steps, occup, type = "l",
                        main = main_title,
                        xlab = plot_x_label,
