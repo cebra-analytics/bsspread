@@ -77,15 +77,16 @@
 #'     \item{\code{unpack(n)}}{Unpacks a population list by combining the
 #'       \code{remaining} and \code{relocated} population values to form a
 #'       new post-dispersal population vector or matrix.}
-#'     \item{\code{disperse(n)}}{Perform location dispersal on a list \code{n}
-#'       of vectors or matrices, representing the occupied \code{cells}
-#'       (indices), the \code{original} occupied populations, the
-#'       \code{remaining} occupied populations, and the \code{relocated}
-#'       populations (at all region cells), and return the transformed list of
-#'       vectors or matrices. The separation of original, remaining and
-#'       relocated populations enables multiple models for different dispersal
-#'       vectors to run in sequence. Spatially implicit diffusion attaches a
-#'       \code{diffusion_radius} attribute to \code{n} at each time step.}
+#'     \item{\code{disperse(n, tm)}}{Perform location dispersal at simulation
+#'       time step \code{tm} on a list \code{n} of vectors or matrices,
+#'       representing the occupied \code{cells} (indices), the \code{original}
+#'       occupied populations, the \code{remaining} occupied populations, and
+#'       the \code{relocated} populations (at all region cells), and return
+#'       the transformed list of vectors or matrices. The separation of
+#'       original, remaining and relocated populations enables multiple models
+#'       for different dispersal vectors to run in sequence. Spatially implicit
+#'       diffusion attaches a \code{diffusion_radius} attribute to \code{n} at
+#'       each time step.}
 #'     \item{\code{get_diffusion_rate()}}{Get the defined or calculated
 #'       (asymptotic) speed of diffusion.}
 #'   }
@@ -264,7 +265,7 @@ Diffusion <- function(region, population_model,
       }
 
       # Override disperse function
-      self$disperse <- function(n) {
+      self$disperse <- function(n, tm) { # TODO tm no longer needs to be attached
 
         # Extract initial population size
         if (is.numeric(attr(n$relocated, "initial_n"))) {

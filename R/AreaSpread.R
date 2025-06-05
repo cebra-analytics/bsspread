@@ -29,13 +29,14 @@
 #'     \item{\code{unpack(n)}}{Unpacks a population list by combining the
 #'       \code{remaining} and \code{relocated} population values to form a
 #'       new post-dispersal population vector or matrix.}
-#'     \item{\code{disperse(n)}}{Perform area spread dispersal on a list
-#'       \code{n} of vectors or matrices, representing the single occupied
-#'       location (\code{cells}) (indices), the \code{original} population, the
-#'       \code{remaining} population, and the \code{relocated} population, and
-#'       return the transformed list of vectors or matrices. Spatially implicit
-#'       spread attaches a \code{diffusion_radius} attribute to \code{n} at
-#'       each time step indicative of the area of occupancy.}
+#'     \item{\code{disperse(n, tm)}}{Perform area spread dispersal at
+#'       simulation time step \code{tm}  on a list \code{n} of vectors or
+#'       matrices, representing the single occupied location (\code{cells})
+#'       (indices), the \code{original} population, the \code{remaining}
+#'       population, and the \code{relocated} population, and return the
+#'       transformed list of vectors or matrices. Spatially implicit spread
+#'       attaches a \code{diffusion_radius} attribute to \code{n} at each time
+#'       step indicative of the area of occupancy.}
 #'   }
 #' @references
 #'   Andow, D. A., Kareiva, P. M., Levin, S. A., & Okubo, A. (1990). Spread of
@@ -98,7 +99,7 @@ AreaSpread <- function(region, population_model, ...) {
                     class = "AreaSpread", ...)
 
   # Override disperse function
-  self$disperse <- function(n) {
+  self$disperse <- function(n, tm) {
 
     # Calculate spread area from population size
     capacity <- population_model$get_capacity()

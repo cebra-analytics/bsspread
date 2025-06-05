@@ -108,14 +108,15 @@
 #'     \item{\code{unpack(n)}}{Unpacks a population list by combining the
 #'       \code{remaining} and \code{relocated} population values to form a
 #'       new post-dispersal population vector or matrix.}
-#'     \item{\code{disperse(n)}}{Perform location dispersal on a list \code{n}
-#'       of vectors or matrices, representing the occupied location (cell or
-#'       patch) \code{indices}, the \code{original} occupied populations, the
-#'       \code{remaining} occupied populations, and the \code{relocated}
-#'       populations (at all region locations), and return the transformed list
-#'       of vectors or matrices. The separation of original, remaining and
-#'       relocated populations enables multiple models for different dispersal
-#'       vectors to run in sequence.}
+#'     \item{\code{disperse(n, tm)}}{Perform location dispersal at simulation
+#'       time step \code{tm} on a list \code{n} of vectors or matrices,
+#'       representing the occupied location (cell or patch) \code{indices},
+#'       the \code{original} occupied populations, the \code{remaining}
+#'       occupied populations, and the \code{relocated} populations (at all
+#'       region locations), and return the transformed list of vectors or
+#'       matrices. The separation of original, remaining and relocated
+#'       populations enables multiple models for different dispersal vectors
+#'       to run in sequence.}
 #'   }
 #' @references
 #'   Bradhurst, R., Spring, D., Stanaway, M., Milner, J., & Kompas, T. (2021).
@@ -300,7 +301,7 @@ Dispersal.Region <- function(region, population_model,
   }
 
   # Generic disperse method (may be overridden in subclass)
-  self$disperse <- function(n) {
+  self$disperse <- function(n, tm) {
 
     # Ensure cell characters are stored without scientific notation
     options(scipen = 999)

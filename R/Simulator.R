@@ -255,15 +255,8 @@ Simulator.Region <- function(region,
       # Time steps
       for (tm in 1:time_steps) {
 
-        # Set time step attribute when spatially implicit diffusion
-        if (region$spatially_implicit() &&
-            any(sapply(dispersal_models,
-                       function(dm) inherits(dm, "Diffusion")))) {
-          attr(n, "tm") <- tm
-        }
-
         # Population growth
-        n <- population_model$grow(n)
+        n <- population_model$grow(n, tm)
 
         # Dispersal for each spread vector
         if (length(dispersal_models)) {
@@ -273,7 +266,7 @@ Simulator.Region <- function(region,
 
           # Perform dispersal for each spread vector
           for (i in 1:length(dispersal_models)) {
-            n <- dispersal_models[[i]]$disperse(n)
+            n <- dispersal_models[[i]]$disperse(n, tm)
           }
 
           # Unpack population array from separated list

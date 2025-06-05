@@ -7,21 +7,28 @@
 #'   spatial region (template) for the spread simulations.
 #' @param growth Numeric growth rate or lambda (e.g. 1.2 for 20% growth per
 #'   time step). Default is \code{1.0} for no increase.
-#' @param capacity A vector of carrying capacity values of the invasive species
-#'   at each location specified by the \code{region}, or per unit area defined
-#'   by \code{capacity_area} when the \code{region} is spatially implicit.
-#'   Default is \code{NULL} for when growth is not capacity-limited.
+#' @param capacity A (static) vector or matrix (containing temporal columns) of
+#'   carrying capacity values of the invasive species at each location (row)
+#'   specified by the \code{region}, or per unit area defined by
+#'   \code{capacity_area} when the \code{region} is spatially implicit. Default
+#'   is \code{NULL} for when growth is not capacity-limited. The number of
+#'   columns for temporal capacity should coincide with the number of
+#'   simulation time steps, or a cyclic pattern (e.g. 12 columns for seasonal
+#'   variation with monthly time steps).
 #' @param capacity_area Carrying capacity area (in m^2) specified for
 #'   capacity-limited growth in a spatially implicit (single patch)
 #'   \code{region}. For example, use a value of \code{1e+06} when
 #'   \code{capacity} is specified in km^2. Default is \code{NULL}, although a
 #'   value is required when \code{capacity} is specified for a spatially
 #'   implicit region.
-#' @param establish_pr An optional vector of probability values (0-1) to
-#'   represent the likelihood of establishment at each location specified by
-#'   the \code{region}. This may be used to avoid transient/unsuccessful
-#'   incursions or migrations from being presented in the simulation results.
-#'   Default is \code{NULL}.
+#' @param establish_pr An optional (static) vector or matrix (containing
+#'   temporal columns) of probability values (0-1) to represent the likelihood
+#'   of establishment at each location (row) specified by the \code{region}.
+#'   This may be used to avoid transient/unsuccessful incursion or migration
+#'   arrivals from being presented in the simulation results. Default is
+#'   \code{NULL}. The number of columns for temporal capacity should
+#'   coincide with the number of simulation time steps, or a cyclic pattern
+#'   (e.g. 12 columns for seasonal variation with monthly time steps).
 #' @param incursion_mean Numeric mean population size for incursion locations.
 #'   The population size is sampled from the Poisson distribution for each
 #'   incursion location.
@@ -32,16 +39,23 @@
 #'     \item{\code{get_region()}}{Get the region object.}
 #'     \item{\code{get_type()}}{Get the population representation type.}
 #'     \item{\code{get_growth()}}{Get the growth rate.}
-#'     \item{\code{get_capacity()}}{Get the carrying capacity as a vector of
-#'       values for each location.}
-#'     \item{\code{get_establish_pr()}}{Get the establishment probability as a
-#'       vector of values for each location.}
+#'     \item{\code{get_capacity(cells = NULL, tm = NULL)}}{Get the carrying
+#'       capacity as a vector of values for each region location or optionally
+#'       specified region locations \code{cells} (indices) at (optional)
+#'       simulation time step \code{tm} (for temporally defined capacity).}
+#'     \item{\code{get_establish_pr(cells = NULL, tm = NULL)}}{Get the
+#'       establishment probability as a vector of values for each region
+#'       location or optionally specified region locations \code{cells}
+#'       (indices) at (optional) simulation time step \code{tm} (for
+#'       temporally defined establishment probability).}
 #'     \item{\code{set_incursion_mean(m)}}{Set the incursion mean.}
-#'     \item{\code{make(initial, current, incursion)}}{Make a population vector
-#'       via using vectors of the \code{initial} or \code{current} and
-#'       \code{incursion} population at each region location.}
-#'     \item{\code{grow(x)}}{Performs logistic (capacity-limited) growth on the
-#'       population \code{x} vector, and returns the transformed vector.}
+#'     \item{\code{make(initial, current, incursion, tm)}}{Make a population
+#'       vector via using vectors of the \code{initial} or \code{current} and
+#'       \code{incursion} population at each region location at simulation time
+#'       step \code{tm}.}
+#'     \item{\code{grow(x, tm)}}{Performs logistic (capacity-limited) growth on
+#'       the population \code{x} vector at simulation time step \code{tm}, and
+#'       returns the transformed vector.}
 #'   }
 #' @references
 #'   Beverton, R. J. H., & Holt, S. J. (1957). On the dynamics of exploited
@@ -81,7 +95,7 @@ UnstructPopulation <- function(region,
                      class = "UnstructPopulation")
 
   # Grow method - override for logistic (capacity-limited) growth
-  self$grow <- function(x) {
+  self$grow <- function(x, tm) { # TODO temporal
 
     # Indices of occupied locations
     indices <- which(x > 0)
