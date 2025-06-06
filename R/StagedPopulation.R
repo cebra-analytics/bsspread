@@ -199,11 +199,11 @@ StagedPopulation <- function(region, growth,
   # Make method (extends inherited function from Population class)
   inherited_make <- self$make
   self$make <- function(initial = NULL, current = NULL, incursion = NULL,
-                        tm = NULL) { # TODO temporal
+                        tm = NULL) {
 
     # Run inherited function for initial or incursion only
     values <- inherited_make(initial = initial, current = NULL,
-                             incursion = incursion)
+                             incursion = incursion, tm = tm)
 
     # Distribute single location values across stages if required
     if (ncol(as.matrix(values)) == 1) {
@@ -281,14 +281,17 @@ StagedPopulation <- function(region, growth,
     # Indices of occupied locations
     indices <- which(rowSums(x) > 0)
 
+    # Get capacity at time step
+    capacity_tm <- self$get_capacity(tm = tm)
+
     if (length(indices)) { # grow occupied populations
 
       # Calculate logistic growth rates and their equivalent matrix multipliers
-      if (is.numeric(capacity)) { # capacity-limited
+      if (is.numeric(capacity_tm)) { # capacity-limited
 
         # Remove populations at locations having zero capacity
-        if (any(capacity[indices] <= 0)) {
-          zero_idx <- indices[which(capacity[indices] <= 0)]
+        if (any(capacity_tm[indices] <= 0)) {
+          zero_idx <- indices[which(capacity_tm[indices] <= 0)]
           x[zero_idx,] <- 0
           indices <- indices[!indices %in% zero_idx]
         }
@@ -303,7 +306,7 @@ StagedPopulation <- function(region, growth,
             # Calculate capacity of diffusion area
             capacity_radius <-
               attr(x, "diffusion_radius") + attr(x, "diffusion_rate")
-            area_capacity <- capacity*pi*capacity_radius^2/capacity_area
+            area_capacity <- capacity_tm*pi*capacity_radius^2/capacity_area
 
             # Calculate capacity-limited growth rate
             r <- exp(log(growth_r)*(1 - sum(x[capacity_stages])/area_capacity))
@@ -312,7 +315,7 @@ StagedPopulation <- function(region, growth,
                      is.numeric(region$get_max_implicit_area())) {
 
             # Calculate capacity of maximum area
-            area_capacity <- (capacity*region$get_max_implicit_area()/
+            area_capacity <- (capacity_tm*region$get_max_implicit_area()/
                                 capacity_area)
 
             # Calculate capacity-limited growth rate
@@ -327,7 +330,7 @@ StagedPopulation <- function(region, growth,
           # Calculate capacity-limited growth rates for each occupied location
           r <- exp(log(growth_r)*(1 - (rowSums(x[indices, capacity_stages,
                                                  drop = FALSE])/
-                                         capacity[indices])))
+                                         capacity_tm[indices])))
         }
 
         # Look-up stage/age matrix multiplier for each occupied location

@@ -32,8 +32,8 @@ test_that("initializes with region and other parameters", {
   attr(stage_matrix, "labels") <- c("a", "b", "c")
   expect_error(population <- StagedPopulation(region, growth = stage_matrix,
                                                 capacity = 30),
-               paste("Population capacity should be a vector with a value for",
-                     "each region location."))
+               paste("Population capacity should be a vector or matrix with",
+                     "a value or row for each region location."))
 
   expect_silent(population <- StagedPopulation(region, growth = stage_matrix))
   expect_equal(attr(population$get_growth(), "labels"), c("a", "b", "c"))
@@ -144,7 +144,7 @@ test_that("grows populations without capacity", {
   initial[idx] <- stats::rpois(length(idx), 20)
   expect_silent(n <- population$make(initial = initial))
   idx <- which(rowSums(n) > 0)
-  expect_true(abs(mean(rowSums(population$grow(n)[idx,]))/20 -
+  expect_true(abs(mean(rowSums(population$grow(n, 1)[idx,]))/20 -
                     Re((eigen(stage_matrix,)$values)[1])) < 0.05)
 })
 
@@ -162,6 +162,7 @@ test_that("grows populations with capacity", {
              0.0, 0.6, 0.8),
            nrow = 3, ncol = 3, byrow = TRUE)
   capacity <- template[region$get_indices()][,1]*10
+  capacity <- cbind(capacity, capacity*1.5)
   expect_error(population <- StagedPopulation(region, growth = stage_matrix,
                                               capacity = capacity,
                                               capacity_stages = 2:4),
@@ -172,11 +173,20 @@ test_that("grows populations with capacity", {
 
   idx <- which(template[region$get_indices()] > 0)
   initial <- rep(0, region$get_locations())
-  initial[idx] <- stats::rpois(length(idx), capacity[idx]*3)
-  expect_silent(n <- population$make(initial = initial))
+  initial[idx] <- stats::rpois(length(idx), capacity[idx, 1]*3)
+  n <- population$make(initial = initial) # silent
   idx <- which(rowSums(n) > 0)
-  expect_equal(round(mean(rowSums(population$grow(n)[idx,]))/
-                       mean(rowSums(n[idx,])), 1), 1.0)
+  set.seed(1243)
+  expect_silent(n1 <- population$grow(n, 1))
+  mean_growth_1 <- mean(rowSums(n1[idx,])/rowSums(n[idx,]))
+  expect_equal(round(mean_growth_1, 1), 1.0)
+  set.seed(1243)
+  expect_silent(n2 <- population$grow(n, 2))
+  mean_growth_2 <- mean(rowSums(n2[idx,])/rowSums(n[idx,]))
+  expect_true(mean_growth_2 > mean_growth_1)
+  set.seed(1243)
+  expect_silent(n3 <- population$grow(n, 3))
+  expect_equal(n3, n1)
   region <- Region()
   population <- StagedPopulation(region, growth = stage_matrix, capacity = 300,
                                  capacity_area = 1e+06, capacity_stages = 2:3)
@@ -194,7 +204,7 @@ test_that("grows populations with capacity", {
   }
   colnames(new_n) <- c("stage 1", "stage 2", "stage 3")
   set.seed(1243)
-  expect_equal(population$grow(n), new_n)
+  expect_equal(population$grow(n, 1), new_n)
   region$set_max_implicit_area(1e+06)
   r_mult <- get("r_mult", envir = environment(population$grow))
   r <- exp(log(population$get_growth_r())*(1 - sum(n[2:3])/300))
@@ -210,7 +220,7 @@ test_that("grows populations with capacity", {
   }
   colnames(new_n) <- c("stage 1", "stage 2", "stage 3")
   set.seed(1243)
-  expect_equal(population$grow(n), new_n)
+  expect_equal(population$grow(n, 1), new_n)
   attr(n, "diffusion_rate") <- 2000
   attr(n, "diffusion_radius") <- 1000
   r <- exp(log(population$get_growth_r())*
@@ -229,5 +239,5 @@ test_that("grows populations with capacity", {
   attr(new_n, "diffusion_rate") <- 2000
   attr(new_n, "diffusion_radius") <- 1000
   set.seed(1243)
-  expect_equal(population$grow(n), new_n)
+  expect_equal(population$grow(n, 1), new_n)
 })

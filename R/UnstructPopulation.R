@@ -95,17 +95,20 @@ UnstructPopulation <- function(region,
                      class = "UnstructPopulation")
 
   # Grow method - override for logistic (capacity-limited) growth
-  self$grow <- function(x, tm) { # TODO temporal
+  self$grow <- function(x, tm) {
 
     # Indices of occupied locations
     indices <- which(x > 0)
 
+    # Get capacity at time step
+    capacity_tm <- self$get_capacity(tm = tm)
+
     # Calculate logistic growth rates
-    if (is.numeric(capacity)) { # capacity-limited
+    if (is.numeric(capacity_tm)) { # capacity-limited
 
       # Remove populations at locations having zero capacity
-      if (any(capacity[indices] <= 0)) {
-        zero_idx <- indices[which(capacity[indices] <= 0)]
+      if (any(capacity_tm[indices] <= 0)) {
+        zero_idx <- indices[which(capacity_tm[indices] <= 0)]
         x[zero_idx] <- 0
         indices <- indices[!indices %in% zero_idx]
       }
@@ -120,7 +123,7 @@ UnstructPopulation <- function(region,
           # Calculate capacity of diffusion area
           capacity_radius <-
             attr(x, "diffusion_radius") + attr(x, "diffusion_rate")
-          area_capacity <- capacity*pi*capacity_radius^2/capacity_area
+          area_capacity <- capacity_tm*pi*capacity_radius^2/capacity_area
 
           # Calculate capacity-limited growth rate
           r <- exp(log(growth)*(1 - x/area_capacity))
@@ -129,7 +132,7 @@ UnstructPopulation <- function(region,
                    is.numeric(region$get_max_implicit_area())) {
 
           # Calculate capacity of maximum area
-          area_capacity <- (capacity*region$get_max_implicit_area()/
+          area_capacity <- (capacity_tm*region$get_max_implicit_area()/
                               capacity_area)
 
           # Calculate capacity-limited growth rate
@@ -142,7 +145,7 @@ UnstructPopulation <- function(region,
       } else {
 
         # Calculate capacity-limited growth rates for each occupied location
-        r <- exp(log(growth)*(1 - x[indices]/capacity[indices]))
+        r <- exp(log(growth)*(1 - x[indices]/capacity_tm[indices]))
       }
 
     } else {

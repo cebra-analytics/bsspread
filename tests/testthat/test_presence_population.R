@@ -41,13 +41,13 @@ test_that("grows populations with spread delay", {
   incursion[idx] <- TRUE
   expect_silent(n <- population$make(incursion = incursion))
   expect_true(all(is.na(attr(n, "spread_delay"))))
-  expect_silent(n <- population$grow(n))
+  expect_silent(n <- population$grow(n, 1))
   expect_true(all(attr(n, "spread_delay")[idx] == 2))
-  n <- population$grow(n)
+  n <- population$grow(n, 2)
   expect_true(all(attr(n, "spread_delay")[idx] == 1))
-  n <- population$grow(n)
+  n <- population$grow(n, 3)
   expect_true(all(attr(n, "spread_delay")[idx] == 0))
-  n <- population$grow(n)
+  n <- population$grow(n, 4)
   expect_true(all(attr(n, "spread_delay")[idx] == 0)) # again
   expect_true(all(is.na(attr(n, "spread_delay")[-idx])))
   initial_age <- incursion*0
@@ -56,14 +56,14 @@ test_that("grows populations with spread delay", {
   expect_silent(n <- population$make(initial = incursion))
   expect_equal(attr(n, "spread_delay")[idx],
                c(rep(0,50), rep(1,50), rep(2,50), rep(3,155)))
-  expect_silent(n <- population$grow(n))
+  expect_silent(n <- population$grow(n, 1))
   expect_equal(attr(n, "spread_delay")[idx],
                c(rep(0,100), rep(1,50), rep(2,155)))
-  n <- population$grow(n) # silent
+  n <- population$grow(n, 2) # silent
   expect_equal(attr(n, "spread_delay")[idx], c(rep(0,150), rep(1,155)))
-  n <- population$grow(n)
+  n <- population$grow(n, 3)
   expect_true(all(attr(n, "spread_delay")[idx] == 0))
-  n <- population$grow(n)
+  n <- population$grow(n, 4)
   expect_true(all(attr(n, "spread_delay")[idx] == 0)) # again
   expect_true(all(is.na(attr(n, "spread_delay")[-idx])))
 })

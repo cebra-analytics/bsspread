@@ -69,7 +69,7 @@ PresencePopulation <- function(region,
   # Make method (extends inherited function from Population class)
   inherited_make <- self$make
   self$make <- function(initial = NULL, current = NULL, incursion = NULL,
-                        tm = NULL) { # TODO temporal
+                        tm = NULL) {
 
     # Convert to initial values to logical
     if (!is.null(initial)) {
@@ -82,7 +82,7 @@ PresencePopulation <- function(region,
 
     # Run inherited function
     values <- inherited_make(initial = initial, current = current,
-                             incursion = incursion)
+                             incursion = incursion, tm = tm)
 
     # Set attributes for type and spread delay
     if (is.null(current)) {
@@ -103,7 +103,7 @@ PresencePopulation <- function(region,
 
   # Grow method - override for implicit (spread) delay-based growth
   if (is.numeric(spread_delay)) {
-    self$grow <- function(x, tm) { # TODO temporal
+    self$grow <- function(x, tm) {
 
       # Decrement spread delay on previously occupied cells
       idx <- which(attr(x, "spread_delay") > 0)

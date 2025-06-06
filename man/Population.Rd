@@ -42,11 +42,14 @@ transition rates (matrix) for each time step when
 \code{type = "stage_structured"}. Default is \code{NULL} for when
 \code{type = "presence_only"}.}
 
-\item{capacity}{A vector of carrying capacity values of the invasive species
-at each location specified by the \code{region}, or per unit area defined
-by \code{capacity_area} when the \code{region} is spatially implicit.
-Default is \code{NULL} for when \code{type = "presence_only"} or growth is
-not capacity-limited.}
+\item{capacity}{A (static) vector or matrix (containing temporal columns) of
+carrying capacity values of the invasive species at each location (row)
+specified by the \code{region}, or per unit area defined by
+\code{capacity_area} when the \code{region} is spatially implicit. Default
+is \code{NULL} for when \code{type = "presence_only"} or growth is not
+capacity-limited. The number of columns for temporal capacity should
+coincide with the number of simulation time steps, or a cyclic pattern
+(e.g. 12 columns for seasonal variation with monthly time steps).}
 
 \item{capacity_area}{Carrying capacity area (in m^2) specified for
 capacity-limited growth in a spatially implicit (single patch)
@@ -55,12 +58,15 @@ capacity-limited growth in a spatially implicit (single patch)
 value is required when \code{capacity} is specified for a spatially
 implicit region.}
 
-\item{establish_pr}{An optional vector of probability values (0-1) to
-represent the likelihood of establishment at each location specified by
-the \code{region}. This may be used to avoid transient/unsuccessful
-incursion or migration arrivals from being presented in the simulation
-results, and/or from subsequently contributing to spread in presence-only
-models. Default is \code{NULL}.}
+\item{establish_pr}{An optional (static) vector or matrix (containing
+temporal columns) of probability values (0-1) to represent the likelihood
+of establishment at each location (row) specified by the \code{region}.
+This may be used to avoid transient/unsuccessful incursion or migration
+arrivals from being presented in the simulation results, and/or from
+subsequently contributing to spread in presence-only models. Default is
+\code{NULL}. The number of columns for temporal capacity should
+coincide with the number of simulation time steps, or a cyclic pattern
+(e.g. 12 columns for seasonal variation with monthly time steps).}
 
 \item{incursion_mean}{Numeric mean population size for unstructured and
 stage structured populations applied at incursion locations. The
@@ -83,21 +89,25 @@ representation, and simulating growth:
 matrix.}
 \item{\code{get_stages()}}{Get the number of stages in a age/stage-based
 representation.}
-\item{\code{get_capacity(cells = NULL)}}{Get the carrying capacity as a
-vector of values for each region location or optionally specified
-region locations (indices).}
-\item{\code{get_establish_pr(cells = NULL)}}{Get the establishment
-probability as a vector of values for each region location or
-optionally specified region locations (indices).}
+\item{\code{get_capacity(cells = NULL, tm = NULL)}}{Get the carrying
+capacity as a vector of values for each region location or optionally
+specified region locations \code{cells} (indices) at (optional)
+simulation time step \code{tm} (for temporally defined capacity).}
+\item{\code{get_establish_pr(cells = NULL, tm = NULL)}}{Get the
+establishment probability as a vector of values for each region
+location or optionally specified region locations \code{cells}
+(indices) at (optional) simulation time step \code{tm} (for
+temporally defined establishment probability).}
 \item{\code{set_incursion_mean(m)}}{Set the incursion mean.}
-\item{\code{make(initial, current, incursion)}}{Make a population vector
-or array (rows:stages x columns:locations) via the defined population
-representation using vectors or arrays of the \code{initial} or
-\code{current} and \code{incursion} population at each region
-location.}
-\item{\code{grow(x)}}{Performs growth or age/stage-based transitions on
-population \code{x} vector/array (stages by locations), and returns
-the transformed vector/array.}
+\item{\code{make(initial, current, incursion, tm)}}{Make a population
+vector or array (rows:stages x columns:locations) via the defined
+population representation using vectors or arrays of the
+\code{initial} or \code{current} and \code{incursion} population at
+each region location at simulation time step \code{tm}.}
+\item{\code{grow(x, tm)}}{Performs growth or age/stage-based transitions
+on population \code{x} vector/array (stages by locations) at
+simulation time step \code{tm}, and returns the transformed
+vector/array.}
 }
 }
 \description{

@@ -10,12 +10,15 @@ PresencePopulation(region, establish_pr = NULL, spread_delay = NULL, ...)
 \item{region}{A \code{Region} or inherited class object representing the
 spatial region (template) for the spread simulations.}
 
-\item{establish_pr}{An optional vector of probability values (0-1) to
-represent the likelihood of establishment at each location specified by
-the \code{region}. This may be used to avoid transient/unsuccessful
-incursions or migrations from being presented in the simulation results,
-and/or from subsequently contributing to spread in presence-only models.
-Default is \code{NULL}.}
+\item{establish_pr}{An optional (static) vector or matrix (containing
+temporal columns) of probability values (0-1) to represent the likelihood
+of establishment at each location (row) specified by the \code{region}.
+This may be used to avoid transient/unsuccessful incursion or migration
+arrivals from being presented in the simulation results, and/or from
+subsequently contributing to spread. Default is \code{NULL}. The number
+of columns for temporal capacity should coincide with the number of
+simulation time steps, or a cyclic pattern (e.g. 12 columns for seasonal
+variation with monthly time steps).}
 
 \item{spread_delay}{Number of simulation time steps before an incursion at
 a newly established location can spread to other locations. This provides
@@ -29,15 +32,19 @@ for accessing attributes and simulating (implicit) growth:
 \describe{
 \item{\code{get_region()}}{Get the region object.}
 \item{\code{get_type()}}{Get the population representation type.}
-\item{\code{get_establish_pr()}}{Get the establishment probability as a
-vector of values for each location.}
+\item{\code{get_establish_pr(cells = NULL, tm = NULL)}}{Get the
+establishment probability as a vector of values for each region
+location or optionally specified region locations \code{cells}
+(indices) at (optional) simulation time step \code{tm} (for
+temporally defined establishment probability).}
 \item{\code{get_spread_delay()}}{Get the delay in spread ability.}
-\item{\code{make(initial, current, incursion)}}{Make a population vector
-using vectors of the \code{initial} or \code{current} and
-\code{incursion} population at each region location.}
-\item{\code{grow(x)}}{Performs implicit growth on the population
-\code{x} vector via spread delay when present, and returns the
-transformed vector.}
+\item{\code{make(initial, current, incursion, tm)}}{Make a population
+vector using vectors of the \code{initial} or \code{current} and
+\code{incursion} population at each region location at simulation time
+step \code{tm}.}
+\item{\code{grow(x, tm)}}{Performs implicit growth on the population
+\code{x} vector at simulation time step \code{tm} via spread delay
+when present, and returns the transformed vector.}
 }
 }
 \description{

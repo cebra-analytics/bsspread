@@ -144,15 +144,19 @@ Population.Region <- function(region,
   }
 
   # Validate capacity and area via region
-  if (!is.null(capacity) && (!is.numeric(capacity) ||
-                             length(capacity) != region$get_locations())) {
-    stop("Population capacity should be a vector with a value for each ",
-         "region location.", call. = FALSE)
+  if (!is.null(capacity) &&
+      (!is.numeric(capacity) ||
+       nrow(as.matrix(capacity)) != region$get_locations())) {
+    stop(paste("Population capacity should be a vector or matrix with a",
+               "value or row for each region location."), call. = FALSE)
   }
   if (!is.null(capacity_area) && (!is.numeric(capacity_area) ||
                                   capacity_area <= 0)) {
     stop("Population capacity area should be a numeric value > 0.",
          call. = FALSE)
+  }
+  if (is.numeric(capacity)) {
+    capacity <- as.matrix(capacity)
   }
 
   # Capacity area required when capacity specified and spatially implicit
@@ -168,9 +172,12 @@ Population.Region <- function(region,
   # Validate establishment probability via region
   if (!is.null(establish_pr) &&
       (!is.numeric(establish_pr) ||
-       length(establish_pr) != region$get_locations())) {
-    stop("Establishment probability should be a vector with a value for each ",
-         "region location.", call. = FALSE)
+       nrow(as.matrix(establish_pr)) != region$get_locations())) {
+    stop(paste("Establishment probability should be a vector or matrix with a",
+               "value or row for each region location."), call. = FALSE)
+  }
+  if (is.numeric(establish_pr)) {
+    establish_pr <- as.matrix(establish_pr)
   }
 
   # Validate incursion mean
@@ -206,20 +213,42 @@ Population.Region <- function(region,
   # Get carrying capacity for specified region (non-NA) cell indices
   # at specified time step when capacity is temporal (matrix)
   self$get_capacity <- function(cells = NULL, tm = NULL) {
-    if (is.numeric(capacity) && is.numeric(cells)) { # TODO temporal
-      return(capacity[cells])
+    if (is.numeric(capacity)) {
+      if (!is.numeric(tm) || (is.numeric(tm) && tm == 0)) {
+        tm = 1
+      } else { # wrap
+        tm <- ((tm + (ncol(capacity) - 1)) %% ncol(capacity)) + 1
+      }
+      if (is.numeric(cells)) {
+        selected_capacity <- capacity[cells, tm]
+      } else {
+        selected_capacity <- capacity[, tm]
+      }
+      if (is.numeric(capacity_area)) { # attach area
+        attr(selected_capacity, "area") <- capacity_area
+      }
+      return(selected_capacity)
     } else {
-      return(capacity)
+      return(NULL)
     }
   }
 
   # Get establishment probability for specified region (non-NA) cell indices
-  # at specified time step when capacity is temporal (matrix)
-  self$get_establish_pr <- function(cells = NULL, tm = NULL) { # TODO temporal
-    if (is.numeric(establish_pr) && is.numeric(cells)) {
-      return(establish_pr[cells])
+  # at specified time step when establishment probability is temporal (matrix)
+  self$get_establish_pr <- function(cells = NULL, tm = NULL) {
+    if (is.numeric(establish_pr)) {
+      if (!is.numeric(tm) || (is.numeric(tm) && tm == 0)) {
+        tm = 1
+      } else { # wrap
+        tm <- ((tm + (ncol(establish_pr) - 1)) %% ncol(establish_pr)) + 1
+      }
+      if (is.numeric(cells)) {
+        return(establish_pr[cells, tm])
+      } else {
+        return(establish_pr[, tm])
+      }
     } else {
-      return(establish_pr)
+      return(NULL)
     }
   }
 
@@ -230,7 +259,7 @@ Population.Region <- function(region,
 
   # Generic make method (extended/overridden in subclasses)
   self$make <- function(initial = NULL, current = NULL, incursion = NULL,
-                        tm = NULL) { # TODO temporal
+                        tm = NULL) {
 
     # Initial values only (ignore current and incursion)
     if (!is.null(initial)) {
@@ -266,10 +295,16 @@ Population.Region <- function(region,
         # Indices of incursion locations
         indices <- which(incursion)
 
+        # Set time step as a valid initial index
+        if (!is.numeric(tm) || (is.numeric(tm) && tm == 0)) {
+          tm = 1
+        }
+
         # Select incursions via binomial sampling
         incursion[indices] <- as.logical(
           stats::rbinom(length(indices), size = 1,
-                        prob = establish_pr[indices]))
+                        prob = self$get_establish_pr(cells = indices,
+                                                     tm = tm)))
       }
 
       # Generate population size values

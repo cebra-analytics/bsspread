@@ -51,6 +51,10 @@ test_that("makes populations with establishment prob", {
   template <- terra::rast(file.path(TEST_DIRECTORY, "greater_melb.tif"))
   region <- Region(template)
   establish <- template[region$get_indices()][,1]
+  expect_error(Population(region, establish_pr = matrix(1:12, ncol = 3)/20),
+               paste("Establishment probability should be a vector or matrix",
+                     "with a value or row for each region location."))
+
   expect_silent(population <- Population(region, establish_pr = establish))
   incursion <- rep(TRUE, region$get_locations())
   attr(incursion, "type") <- "weight"
@@ -58,8 +62,23 @@ test_that("makes populations with establishment prob", {
   expect_equal(sum(population$make(incursion = incursion)),
                region$get_locations())
   attr(incursion, "type") <- "prob"
-  expect_true(sum(population$make(incursion = incursion)) <
-                region$get_locations())
-  expect_true(sum(population$make(incursion = incursion)) <=
-                sum(establish > 0))
+  set.seed(1234)
+  expect_silent(expected_t1 <- population$make(incursion = incursion))
+  sum(expected_t1) < region$get_locations() # TRUE
+  sum(expected_t1) <= sum(establish > 0) # TRUE
+  set.seed(1234)
+  all(population$make(incursion = incursion, tm = 2) == expected_t1)
+  temp_establish <- cbind(establish, establish*0.8, establish*0.6)
+  expect_silent(population <- Population(region,
+                                         establish_pr = temp_establish))
+  set.seed(1234)
+  expect_equal(population$make(incursion = incursion, tm = 0), expected_t1)
+  set.seed(1234)
+  expect_silent(expected_t2 <- population$make(incursion = incursion, tm = 2))
+  expect_true(sum(expected_t2) < sum(expected_t1))
+  set.seed(1234)
+  expect_true(sum(population$make(incursion = incursion, tm = 3)) <
+                sum(expected_t2))
+  set.seed(1234)
+  expect_equal(population$make(incursion = incursion, tm = 4), expected_t1)
 })
