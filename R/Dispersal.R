@@ -468,7 +468,7 @@ Dispersal.Region <- function(region, population_model,
       ## Apply density dependence
       source_p <- 1
       if (density_dependent) {
-        cell_k <- population_model$get_capacity(loc_i)
+        cell_k <- population_model$get_capacity(cells = loc_i, tm = tm)
         if (is.numeric(cell_k)) {
           if (cell_k > 0) {
             source_p <- min(sum(n$original[i, capacity_stages])/cell_k, 1)
@@ -695,7 +695,8 @@ Dispersal.Region <- function(region, population_model,
         }
 
         # Apply establishment survival to dispersers (some deaths)
-        establish_p <- population_model$get_establish_pr(destinations)
+        establish_p <- population_model$get_establish_pr(cells = destinations,
+                                                         tm = tm)
         if (is.numeric(establish_p)) {
           if (population_type == "presence_only" && is.null(events)) {
             destinations <- destinations[which(as.logical(

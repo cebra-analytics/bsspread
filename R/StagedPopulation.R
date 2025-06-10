@@ -276,7 +276,7 @@ StagedPopulation <- function(region, growth,
   }
 
   # Grow method - override for logistic (capacity-limited) growth
-  self$grow <- function(x, tm) { # TODO temporal
+  self$grow <- function(x, tm) {
 
     # Indices of occupied locations
     indices <- which(rowSums(x) > 0)

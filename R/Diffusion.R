@@ -221,7 +221,7 @@ Diffusion <- function(region, population_model,
     if (population_model$get_type() == "presence_only") { # radial diffusion
 
       # Override disperse function
-      self$disperse <- function(n) {
+      self$disperse <- function(n, tm) {
 
         # Calculate diffusion radius
         if (is.numeric(attr(n$relocated, "diffusion_radius"))) {
@@ -265,21 +265,13 @@ Diffusion <- function(region, population_model,
       }
 
       # Override disperse function
-      self$disperse <- function(n, tm) { # TODO tm no longer needs to be attached
+      self$disperse <- function(n, tm) {
 
         # Extract initial population size
         if (is.numeric(attr(n$relocated, "initial_n"))) {
           initial_n <- sum(attr(n$relocated, "initial_n"))
         } else {
           stop(paste("The initial population needs to be set as an attribute",
-                     "for reaction-diffusion calculations."), call. = FALSE)
-        }
-
-        # Extract time step
-        if (is.numeric(attr(n$relocated, "tm"))) {
-          tm <- attr(n$relocated, "tm")
-        } else {
-          stop(paste("The current time step needs to be set as an attribute",
                      "for reaction-diffusion calculations."), call. = FALSE)
         }
 

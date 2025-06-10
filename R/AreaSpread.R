@@ -102,7 +102,7 @@ AreaSpread <- function(region, population_model, ...) {
   self$disperse <- function(n, tm) {
 
     # Calculate spread area from population size
-    capacity <- population_model$get_capacity()
+    capacity <- population_model$get_capacity(tm = tm)
     capacity_area <- attr(capacity, "area")
     if (population_model$get_type() == "stage_structured") {
       stages <- population_model$get_capacity_stages()

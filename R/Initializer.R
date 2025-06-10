@@ -255,7 +255,8 @@ Initializer.Incursions <- function(x,
           if (tm > 1 && tm %% x$get_time_steps() == 0) {
             x_i <- x$generate()
             if (!is.null(population_model)) {
-              return(population_model$make(current = n, incursion = x_i))
+              return(population_model$make(current = n, incursion = x_i,
+                                           tm = tm))
             } else {
               return(as.logical(n) | x_i)
             }

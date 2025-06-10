@@ -116,7 +116,7 @@ test_that("attaches attributes for spatially implicit diffusion", {
                     diffusion_radius = 0))
   expect_equal(attributes(results_list$collated[["1"]]),
                list(initial_n = 10, diffusion_rate = 2000,
-                    diffusion_radius = expect_diff_radius_1, tm = 1))
+                    diffusion_radius = expect_diff_radius_1))
   expect_equal(results_list$area[["0"]], 0)
   expect_equal(results_list$area[["1"]], pi*expect_diff_radius_1^2)
 })

@@ -35,9 +35,9 @@ test_that("performs implicit area spread for an unstructured population", {
   set.seed(1234)
   expect_silent({
     for (i in 1:12) {
-      n <- population_model$grow(n)
+      n <- population_model$grow(n, tm = i)
       n <- area_spread$pack(n) # silent
-      n <- area_spread$disperse(n)  # silent
+      n <- area_spread$disperse(n, tm = i)  # silent
       n <- area_spread$unpack(n) # silent
       n_t[[i]] <- n
     }
@@ -69,9 +69,9 @@ test_that("performs implicit area spread for a staged population", {
   n_t <- list()
   expect_silent({
     for (i in 1:12) {
-      n <- population_model$grow(n)
+      n <- population_model$grow(n, tm = i)
       n <- area_spread$pack(n) # silent
-      n <- area_spread$disperse(n)  # silent
+      n <- area_spread$disperse(n, tm = i)  # silent
       n <- area_spread$unpack(n) # silent
       n_t[[i]] <- n
     }

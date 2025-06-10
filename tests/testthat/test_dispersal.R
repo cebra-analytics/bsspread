@@ -95,25 +95,29 @@ test_that("disperses population in a raster grid region", {
   population <- Population(region)
   dispersal <- Dispersal(region, population_model = population)
   n <- rep(FALSE, region$get_locations())
-  expect_equal(dispersal$unpack(dispersal$disperse(dispersal$pack(n))), n)
+  expect_equal(dispersal$unpack(
+    dispersal$disperse(dispersal$pack(n), tm = 1)), n)
   n[5922] <- TRUE
   n <- dispersal$pack(n)
-  expect_equal(dispersal$unpack(dispersal$disperse(n)), dispersal$unpack(n))
+  expect_equal(dispersal$unpack(dispersal$disperse(n, tm = 1)),
+               dispersal$unpack(n))
   dispersal <- Dispersal(region, population_model = population,
                          proportion = 1)
-  expect_true(all(dispersal$unpack(dispersal$disperse(n))))
+  expect_true(all(dispersal$unpack(dispersal$disperse(n, tm = 1))))
   dispersal <- Dispersal(region, population_model = population,
                          proportion = 0.5)
   expect_equal(round(sum(
-    dispersal$unpack(dispersal$disperse(n)))/region$get_locations(), 1), 0.5)
+    dispersal$unpack(dispersal$disperse(n, tm = 1)))/
+      region$get_locations(), 1), 0.5)
   dispersal <- Dispersal(region, population_model = population,
                          events = 100)
   set.seed(1234); new_locs <- stats::rpois(1, 100); set.seed(1234)
-  expect_true(sum(dispersal$unpack(dispersal$disperse(n))) <= new_locs + 1)
+  expect_true(sum(
+    dispersal$unpack(dispersal$disperse(n, tm = 1))) <= new_locs + 1)
   dispersal <- Dispersal(region, population_model = population,
                          proportion = 1, max_distance = 10000)
   idx <- region$get_paths(5922, max_distance = 10000)$idx[["5922"]]$cell
-  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))
   expect_equal(sum(new_n), length(idx) + 1)
   expect_true(all(new_n[c(5922, idx)]))
 })
@@ -136,7 +140,7 @@ test_that("disperses grid population with distance and direction functions", {
   directions <-
     region$get_paths(5922, directions = TRUE,
                      max_distance = 10000)$directions[["5922"]]$cell
-  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))
   expect_equal(sum(new_n), length(which(directions <= 180)) + 1)
   expect_true(all(new_n[idx[which(directions <= 180)]]))
 })
@@ -159,7 +163,7 @@ test_that("disperses grid population with combined function", {
   directions <-
     region$get_paths(5922, directions = TRUE,
                      max_distance = 10000)$directions[["5922"]]$cell
-  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))
   expect_equal(sum(new_n), length(which(directions <= 180)) + 1)
   expect_true(all(new_n[idx[which(directions <= 180)]]))
 })
@@ -180,7 +184,7 @@ test_that("disperses grid population with attractors", {
   n <- dispersal$pack(n)
   region$calculate_paths(5922)
   idx <- region$get_paths(5922, max_distance = 10000)$idx[["5922"]]$cell
-  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))
   expect_equal(sum(new_n), length(which(idx < 5922)) + 1)
   expect_true(all(new_n[idx[which(idx < 5922)]]))
 })
@@ -206,7 +210,7 @@ test_that("disperses grid population with permeability", {
   idx <- paths$idx[["5922"]]$cell[which(perm_dist <= 20000)]
   distances <- paths$distances[["5922"]]$cell[which(perm_dist <= 20000)]
   expect_true(all(distances <= 20000*0.5))
-  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))
   expect_true(all(which(new_n) <= 5922))
   expect_equal(sum(new_n), length(idx) + 1)
   expect_true(all(new_n[idx]))
@@ -236,14 +240,15 @@ test_that("disperses population in a two-tier raster grid region", {
   idx <- c(paths$idx$`5922`$cell,
            region$get_aggr()$get_cells(
              paths$idx$`5922`$aggr[which(perm_dist <= 60000)]))
-  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))
   expect_equal(sort(which(new_n)), sort(c(5922, idx)))
   expect_true(all(which(new_n) <= 5922))
   expect_silent(dispersal <- Dispersal(region, population_model = population,
                          events = 400, max_distance = 60000,
                          permeability = permeability))
   expect_true(
-    all(which(dispersal$unpack(dispersal$disperse(n))) %in% c(5922, idx)))
+    all(which(dispersal$unpack(
+      dispersal$disperse(n, tm = 1))) %in% c(5922, idx)))
 })
 
 test_that("disperses unstructured population in a two-tier grid region", {
@@ -265,13 +270,13 @@ test_that("disperses unstructured population in a two-tier grid region", {
   paths <- region$get_paths(5922)
   idx <- c(paths$idx$`5922`$cell,
            region$get_aggr()$get_cells(paths$idx$`5922`$aggr))
-  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))
   expect_true(sum(new_n) < 2000)
   expect_true(new_n[5922] == 0)
   expect_true(length(which(new_n > 0)) <= sum(new_n))
   expect_true(all(which(new_n > 0) %in% idx))
   n$original[] <- n$remaining[] <- 1000
-  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))
   expect_true(sum(new_n[-5922]) <= (1000 - new_n[5922]))
   expect_true(round(new_n[5922]/1000, 1) == 0.5)
   expect_true(all(which(new_n > 0) %in% c(5922, idx)))
@@ -283,7 +288,7 @@ test_that("disperses unstructured population in a two-tier grid region", {
   expect_silent(dispersal <- Dispersal(
     region, population_model = population, proportion = proportion_vect,
     events = events_vect, max_distance = 30000))
-  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))
   expect_true(sum(new_n[-5922]) <= (2000 - new_n[5922]))
   expect_true(round(new_n[5922]/2000, 1) == 0.3)
   expect_true(all(which(new_n > 0) %in% c(5922, idx)))
@@ -314,7 +319,7 @@ test_that("disperses staged population in a two-tier raster grid region", {
   paths <- region$get_paths(5922)
   idx <- c(paths$idx$`5922`$cell,
            region$get_aggr()$get_cells(paths$idx$`5922`$aggr))
-  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))
   expect_true(all(new_n[5922,] == c(0, 0, n$original[3])))
   expect_true(all(colSums(new_n)[1:2] < n$original[,1:2]))
   expect_true(all(which(rowSums(new_n) > 0) %in% c(5922, idx)))
@@ -322,7 +327,7 @@ test_that("disperses staged population in a two-tier raster grid region", {
                                        dispersal_stages = 1:2,
                                        proportion = 0.7, events = 100,
                                        max_distance = 30000))
-  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))
   expect_true(all(new_n[5922, 3] == n$original[3]))
   expect_true(all(colSums(new_n)[1:2] < n$original[,1:2]))
   expect_true(all(colSums(new_n[-5922,]) <= (n$original - new_n[5922,])))
@@ -339,23 +344,26 @@ test_that("disperses population in a patch/network region", {
   n[1] <- TRUE
   expect_silent(dispersal <- Dispersal(region, population_model = population))
   n <- dispersal$pack(n)
-  expect_equal(dispersal$unpack(dispersal$disperse(n)), dispersal$unpack(n))
+  expect_equal(dispersal$unpack(dispersal$disperse(n, tm = 1)),
+               dispersal$unpack(n))
   dispersal <- Dispersal(region, population_model = population,
                          proportion = 1)
-  expect_true(all(dispersal$unpack(dispersal$disperse(n))))
+  expect_true(all(dispersal$unpack(dispersal$disperse(n, tm = 1))))
   dispersal <- Dispersal(region, population_model = population,
                          proportion = 0.5)
   set.seed(4321); new_locs <- sum(stats::rbinom(13, size = 1, prob = 0.5))
   set.seed(4321)
-  expect_equal(sum(dispersal$unpack(dispersal$disperse(n))), new_locs + 1)
+  expect_equal(sum(dispersal$unpack(dispersal$disperse(n, tm = 1))),
+               new_locs + 1)
   dispersal <- Dispersal(region, population_model = population,
                          events = 8)
   set.seed(4321); new_locs <- stats::rpois(1, 8); set.seed(4321)
-  expect_true(sum(dispersal$unpack(dispersal$disperse(n))) <= new_locs + 1)
+  expect_true(sum(dispersal$unpack(
+    dispersal$disperse(n, tm = 1))) <= new_locs + 1)
   dispersal <- Dispersal(region, population_model = population,
                          proportion = 1, max_distance = 200000)
   idx <- region$get_paths(1, max_distance = 200000)$idx[["1"]]
-  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))
   expect_equal(sum(new_n), length(idx) + 1)
   expect_true(all(new_n[c(1, idx)]))
 })
@@ -375,8 +383,9 @@ test_that("disperses in patch/network with distance and direction functions", {
   n <- dispersal$pack(n)
   region$calculate_paths(1)
   idx <- region$get_paths(1, max_distance = 200000)$idx[["1"]]
-  directions <- region$get_paths(1, directions = TRUE, max_distance = 200000)$directions[["1"]]
-  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  directions <- region$get_paths(1, directions = TRUE,
+                                 max_distance = 200000)$directions[["1"]]
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))
   expect_equal(sum(new_n), length(which(directions <= 150)) + 1)
   expect_true(all(new_n[idx[which(directions <= 150)]]))
 })
@@ -396,8 +405,9 @@ test_that("disperses in patch/network with combined function", {
   n <- dispersal$pack(n)
   region$calculate_paths(1)
   idx <- region$get_paths(1, max_distance = 200000)$idx[["1"]]
-  directions <- region$get_paths(1, directions = TRUE, max_distance = 200000)$directions[["1"]]
-  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  directions <- region$get_paths(1, directions = TRUE,
+                                 max_distance = 200000)$directions[["1"]]
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))
   expect_equal(sum(new_n), length(which(directions <= 150)) + 1)
   expect_true(all(new_n[idx[which(directions <= 150)]]))
 })
@@ -418,7 +428,7 @@ test_that("disperses in patch/network with attractors", {
   n <- dispersal$pack(n)
   region$calculate_paths(1)
   idx <- region$get_paths(1, max_distance = 200000)$idx[["1"]]
-  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))
   expect_equal(sum(new_n), length(which(idx <= 8)) + 1)
   expect_true(all(new_n[idx[which(idx <= 8)]]))
 })
@@ -455,7 +465,7 @@ test_that("disperses in patch/network with permeability", {
   perm_dist <- paths$perm_dist[["1"]]
   idx <- paths$idx[["1"]][which(perm_dist <= 200000)]
   distances <- paths$distances[["1"]][which(perm_dist <= 200000)]
-  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))
   expect_equal(sum(new_n), length(idx) + 1)
   expect_true(all(new_n[idx]))
 })
@@ -474,14 +484,14 @@ test_that("disperses unstructured population in patch/network", {
   region$calculate_paths(1)
   paths <- region$get_paths(1)
   idx <- paths$idx$`1`
-  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))
   expect_true(sum(new_n) < 2000)
   expect_true(new_n[1] == 0)
   expect_true(all(which(new_n > 0) %in% idx))
   expect_silent(dispersal <- Dispersal(region, population_model = population,
                                        proportion = 0.7, events = 3,
                                        max_distance = 200000))
-  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))
   expect_true(sum(new_n[-1]) <= (2000 - new_n[1]))
   expect_true(round(new_n[1]/2000, 1) == 0.3)
   expect_true(all(which(new_n > 0) %in% c(1, idx)))
@@ -510,7 +520,7 @@ test_that("disperses staged population in patch/network", {
   region$calculate_paths(1)
   paths <- region$get_paths(1)
   idx <- paths$idx$`1`
-  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))
   expect_true(all(new_n[1,] == c(n$original[1], 0, 0)))
   expect_true(all(colSums(new_n)[2:3] < n$original[,2:3]))
   expect_true(all(which(rowSums(new_n) > 0) %in% c(1, idx)))
@@ -518,15 +528,10 @@ test_that("disperses staged population in patch/network", {
                                        dispersal_stages = 2:3,
                                        proportion = 0.7, events = 100,
                                        max_distance = 200000))
-  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n)))
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))
   expect_true(all(new_n[1,1] == n$original[1]))
   expect_true(all(colSums(new_n)[2:3] < n$original[,2:3]))
   expect_true(all(colSums(new_n[-1,]) <= (n$original - new_n[1,])))
   expect_true(all(new_n[1, 2:3]/n$original[,2:3] > 0.2))
   expect_true(all(which(rowSums(new_n) > 0) %in% c(1, idx)))
-})
-
-test_that("next", {
-  TEST_DIRECTORY <- test_path("test_inputs")
-  expect_true(TRUE)
 })
