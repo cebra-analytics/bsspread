@@ -42,7 +42,23 @@ test_that("grows populations without capacity", {
   incursion[idx] <- TRUE
   expect_silent(n <- population$make(incursion = incursion))
   idx <- which(n > 0)
+  set.seed(1243)
+  expect_silent(n1 <- population$grow(n, 1))
+  expect_equal(round(mean(n1[idx]/n[idx]), 1), 1.2)
+  # growth variation
+  growth_mult <- rep(1, region$get_locations())
+  growth_mult <- cbind(growth_mult, growth_mult*0.8, growth_mult*0.6)
+  expect_silent(population <- UnstructPopulation(region, growth = 1.2,
+                                                 growth_mult = growth_mult,
+                                                 incursion_mean = 10))
+  set.seed(1243)
   expect_equal(round(mean(population$grow(n, 1)[idx]/n[idx]), 1), 1.2)
+  expect_true(abs(round(mean(population$grow(n, 2)[idx]/n[idx]), 2) -
+                    0.96) <= 0.02)
+  expect_true(abs(round(mean(population$grow(n, 3)[idx]/n[idx]), 2) -
+                    0.72) <= 0.02)
+  expect_true(abs(round(mean(population$grow(n, 5)[idx]/n[idx]), 2) -
+                    0.96) <= 0.02)
 })
 
 test_that("grows populations with capacity", {
@@ -62,6 +78,22 @@ test_that("grows populations with capacity", {
   set.seed(1243)
   expect_silent(n1 <- population$grow(n, 1))
   expect_equal(round(mean(n1[idx]/n[idx]), 1), 1.0)
+  # growth variation
+  growth_mult <- rep(1, region$get_locations())
+  growth_mult <- cbind(growth_mult, growth_mult*0.8, growth_mult*0.6)
+  expect_silent(population <- UnstructPopulation(region, growth = 1.2,
+                                                 growth_mult = growth_mult,
+                                                 capacity = capacity,
+                                                 incursion_mean = 10))
+  set.seed(1243)
+  expect_equal(mean(population$grow(n, 1)[idx]/n[idx]), mean(n1[idx]/n[idx]))
+  expect_true(abs(round(mean(population$grow(n, 2)[idx]/n[idx]), 2) -
+                    0.96) <= 0.02)
+  expect_true(abs(round(mean(population$grow(n, 3)[idx]/n[idx]), 2) -
+                    0.72) <= 0.02)
+  expect_true(abs(round(mean(population$grow(n, 5)[idx]/n[idx]), 2) -
+                    0.96) <= 0.02)
+  # temporal capacity
   temp_capacity <- cbind(capacity, capacity*0.8, capacity*1.2)
   expect_silent(population <- UnstructPopulation(region, growth = 1.2,
                                                  capacity = temp_capacity,

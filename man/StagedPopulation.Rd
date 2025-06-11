@@ -7,6 +7,7 @@
 StagedPopulation(
   region,
   growth,
+  growth_mult = NULL,
   capacity = NULL,
   capacity_area = NULL,
   capacity_stages = NULL,
@@ -26,6 +27,16 @@ may be used to differentiate the survival rates, otherwise survival rates
 are assumed to be any non-zero values on the lower (left) triangle of the
 matrix, including those on the diagonal. The stages/ages may also be
 labelled via an optional attribute \code{labels}.}
+
+\item{growth_mult}{Optional matrix of spatial (rows) and/or temporal
+(columns) growth rate multipliers (0-1), which are applied to the
+\code{growth} stage age matrix. Spatial multipliers should be specified
+via a row for each location, else a single row may specify temporal
+variation only. Likewise, a single column may specify spatial variation
+only. The number of columns for temporal variation should coincide with
+the number of simulation time steps, or a cyclic pattern (e.g. 12 columns
+for seasonal variation with monthly time steps). Default is \code{NULL}
+for when no spatio-temporal variation in growth is applicable.}
 
 \item{capacity}{A (static) vector or matrix (containing temporal columns) of
 carrying capacity values of the invasive species at each location (row)

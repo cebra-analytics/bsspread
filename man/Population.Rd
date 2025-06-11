@@ -9,6 +9,7 @@ Population(
   region,
   type = c("presence_only", "unstructured", "stage_structured"),
   growth = NULL,
+  growth_mult = NULL,
   capacity = NULL,
   capacity_area = NULL,
   establish_pr = NULL,
@@ -21,6 +22,7 @@ Population(
   region,
   type = c("presence_only", "unstructured", "stage_structured"),
   growth = NULL,
+  growth_mult = NULL,
   capacity = NULL,
   capacity_area = NULL,
   establish_pr = NULL,
@@ -41,6 +43,18 @@ time step) when \code{type = "unstructured"}, or age/stage-based
 transition rates (matrix) for each time step when
 \code{type = "stage_structured"}. Default is \code{NULL} for when
 \code{type = "presence_only"}.}
+
+\item{growth_mult}{Optional matrix of spatial (rows) and/or temporal
+(columns) growth rate multipliers (0-1), which are applied to the
+\code{growth} rate (when \code{type = "unstructured"}) or stage/age matrix
+(when \code{type = "stage_structured"}). Spatial multipliers should be
+specified via a row for each location, else a single row may specify
+temporal variation only. Likewise, a single column may specify spatial
+variation only. The number of columns for temporal variation should
+coincide with the number of simulation time steps, or a cyclic pattern
+(e.g. 12 columns for seasonal variation with monthly time steps). Default
+is \code{NULL} for when no spatio-temporal variation in growth is
+applicable or \code{type = "presence_only"}.}
 
 \item{capacity}{A (static) vector or matrix (containing temporal columns) of
 carrying capacity values of the invasive species at each location (row)

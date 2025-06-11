@@ -7,6 +7,15 @@
 #'   spatial region (template) for the spread simulations.
 #' @param growth Numeric growth rate or lambda (e.g. 1.2 for 20% growth per
 #'   time step). Default is \code{1.0} for no increase.
+#' @param growth_mult Optional matrix of spatial (rows) and/or temporal
+#'   (columns) growth rate multipliers (0-1), which are applied to the
+#'   \code{growth} rate. Spatial multipliers should be specified via a row for
+#'   each location, else a single row may specify temporal variation only.
+#'   Likewise, a single column may specify spatial variation only. The number
+#'   of columns for temporal variation should coincide with the number of
+#'   simulation time steps, or a cyclic pattern (e.g. 12 columns for seasonal
+#'   variation with monthly time steps). Default is \code{NULL} for when no
+#'   spatio-temporal variation in growth is applicable.
 #' @param capacity A (static) vector or matrix (containing temporal columns) of
 #'   carrying capacity values of the invasive species at each location (row)
 #'   specified by the \code{region}, or per unit area defined by
@@ -79,6 +88,7 @@
 #' @export
 UnstructPopulation <- function(region,
                                growth = 1.0,
+                               growth_mult = NULL,
                                capacity = NULL,
                                capacity_area = NULL,
                                establish_pr = NULL,
@@ -88,6 +98,7 @@ UnstructPopulation <- function(region,
   self <- Population(region,
                      type = "unstructured",
                      growth = growth,
+                     growth_mult = growth_mult,
                      capacity = capacity,
                      capacity_area = capacity_area,
                      establish_pr = establish_pr,
@@ -103,60 +114,75 @@ UnstructPopulation <- function(region,
     # Get capacity at time step
     capacity_tm <- self$get_capacity(tm = tm)
 
-    # Calculate logistic growth rates
-    if (is.numeric(capacity_tm)) { # capacity-limited
-
-      # Remove populations at locations having zero capacity
+    # Remove populations at locations having zero capacity
+    if (length(indices) && is.numeric(capacity_tm)) {
       if (any(capacity_tm[indices] <= 0)) {
         zero_idx <- indices[which(capacity_tm[indices] <= 0)]
         x[zero_idx] <- 0
         indices <- indices[!indices %in% zero_idx]
       }
+    }
 
-      # Calculate capacity for spatially implicit diffusion or area spread
-      if (region$spatially_implicit()) {
+    # Grow occupied populations
+    if (length(indices)) {
 
-        # Diffusion
-        if (is.numeric(attr(x, "diffusion_rate")) &&
-            is.numeric(attr(x, "diffusion_radius"))) {
+      # Get growth rate at time step for indices
+      if (is.matrix(growth_mult)) {
+        growth_tm <- growth*self$get_growth_mult(cells = indices, tm = tm)
+      } else {
+        growth_tm <- growth
+      }
 
-          # Calculate capacity of diffusion area
-          capacity_radius <-
-            attr(x, "diffusion_radius") + attr(x, "diffusion_rate")
-          area_capacity <- capacity_tm*pi*capacity_radius^2/capacity_area
+      # Calculate logistic growth rates
+      if (is.numeric(capacity_tm)) { # capacity-limited
 
-          # Calculate capacity-limited growth rate
-          r <- exp(log(growth)*(1 - x/area_capacity))
+        # Calculate capacity for spatially implicit diffusion or area spread
+        if (region$spatially_implicit()) {
 
-        } else if (is.numeric(capacity_area) &&
-                   is.numeric(region$get_max_implicit_area())) {
+          # Diffusion
+          if (is.numeric(attr(x, "diffusion_rate")) &&
+              is.numeric(attr(x, "diffusion_radius"))) {
 
-          # Calculate capacity of maximum area
-          area_capacity <- (capacity_tm*region$get_max_implicit_area()/
-                              capacity_area)
+            # Calculate capacity of diffusion area
+            capacity_radius <-
+              attr(x, "diffusion_radius") + attr(x, "diffusion_rate")
+            area_capacity <- capacity_tm*pi*capacity_radius^2/capacity_area
 
-          # Calculate capacity-limited growth rate
-          r <- exp(log(growth)*(1 - x/area_capacity))
+            # Calculate capacity-limited growth rate
+            r <- min(exp(log(growth_tm)*
+                           (-1*(growth_tm < 1) + (growth_tm >= 1))*
+                           (1 - x/area_capacity)), growth_tm)
+
+          } else if (is.numeric(capacity_area) &&
+                     is.numeric(region$get_max_implicit_area())) {
+
+            # Calculate capacity of maximum area
+            area_capacity <- (capacity_tm*region$get_max_implicit_area()/
+                                capacity_area)
+
+            # Calculate capacity-limited growth rate
+            r <- min(exp(log(growth_tm)*
+                           (-1*(growth_tm < 1) + (growth_tm >= 1))*
+                           (1 - x/area_capacity)), growth_tm)
+
+          } else {
+            r <- growth_tm # unlimited
+          }
 
         } else {
-          r <- growth # unlimited
+
+          # Calculate capacity-limited growth rates for each occupied location
+          r <- pmin(exp(log(growth_tm)*(-1*(growth_tm < 1) + (growth_tm >= 1))*
+                          (1 - x[indices]/capacity_tm[indices])), growth_tm)
         }
 
       } else {
-
-        # Calculate capacity-limited growth rates for each occupied location
-        r <- exp(log(growth)*(1 - x[indices]/capacity_tm[indices]))
+        r <- growth_tm
       }
 
-    } else {
-      r <- growth
-    }
-
-    # Sample the new population values via the Poisson distribution
-    if (length(indices)) {
+      # Sample the new population values via the Poisson distribution
       x[indices] <- stats::rpois(length(indices), r*x[indices])
     }
-
     return(x)
   }
 

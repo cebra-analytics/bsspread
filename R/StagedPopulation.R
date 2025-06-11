@@ -11,6 +11,15 @@
 #'   are assumed to be any non-zero values on the lower (left) triangle of the
 #'   matrix, including those on the diagonal. The stages/ages may also be
 #'   labelled via an optional attribute \code{labels}.
+#' @param growth_mult Optional matrix of spatial (rows) and/or temporal
+#'   (columns) growth rate multipliers (0-1), which are applied to the
+#'   \code{growth} stage age matrix. Spatial multipliers should be specified
+#'   via a row for each location, else a single row may specify temporal
+#'   variation only. Likewise, a single column may specify spatial variation
+#'   only. The number of columns for temporal variation should coincide with
+#'   the number of simulation time steps, or a cyclic pattern (e.g. 12 columns
+#'   for seasonal variation with monthly time steps). Default is \code{NULL}
+#'   for when no spatio-temporal variation in growth is applicable.
 #' @param capacity A (static) vector or matrix (containing temporal columns) of
 #'   carrying capacity values of the invasive species at each location (row)
 #'   specified by the \code{region}, or per unit area defined by
@@ -101,6 +110,7 @@
 #' @include Population.R
 #' @export
 StagedPopulation <- function(region, growth,
+                             growth_mult = NULL,
                              capacity = NULL,
                              capacity_area = NULL,
                              capacity_stages = NULL,
@@ -112,6 +122,7 @@ StagedPopulation <- function(region, growth,
   self <- Population(region,
                      type = "stage_structured",
                      growth = growth,
+                     growth_mult = growth_mult,
                      capacity = capacity,
                      capacity_area = capacity_area,
                      establish_pr = establish_pr,
@@ -262,7 +273,7 @@ StagedPopulation <- function(region, growth,
   }
 
   # Look-up table of matrix multipliers for equivalent growth rates
-  if (is.numeric(capacity)) { # capacity-limited
+  if (is.matrix(growth_mult) || is.numeric(capacity)) {
 
     # Maximum multiplier when 100% survival
     max_mult <- max(1/max(colSums(survivals), 0.001), 1)
@@ -284,17 +295,27 @@ StagedPopulation <- function(region, growth,
     # Get capacity at time step
     capacity_tm <- self$get_capacity(tm = tm)
 
-    if (length(indices)) { # grow occupied populations
+    # Remove populations at locations having zero capacity
+    if (length(indices) && is.numeric(capacity_tm)) {
+      if (any(capacity_tm[indices] <= 0)) {
+        zero_idx <- indices[which(capacity_tm[indices] <= 0)]
+        x[zero_idx] <- 0
+        indices <- indices[!indices %in% zero_idx]
+      }
+    }
+
+    # Grow occupied populations
+    if (length(indices)) {
+
+      # Get equivalent growth rate at time step for indices
+      if (is.matrix(growth_mult)) {
+        growth_r_tm <- growth_r*self$get_growth_mult(cells = indices, tm = tm)
+      } else {
+        growth_r_tm <- growth_r
+      }
 
       # Calculate logistic growth rates and their equivalent matrix multipliers
       if (is.numeric(capacity_tm)) { # capacity-limited
-
-        # Remove populations at locations having zero capacity
-        if (any(capacity_tm[indices] <= 0)) {
-          zero_idx <- indices[which(capacity_tm[indices] <= 0)]
-          x[zero_idx,] <- 0
-          indices <- indices[!indices %in% zero_idx]
-        }
 
         # Calculate capacity for spatially implicit diffusion or area spread
         if (region$spatially_implicit()) {
@@ -309,7 +330,10 @@ StagedPopulation <- function(region, growth,
             area_capacity <- capacity_tm*pi*capacity_radius^2/capacity_area
 
             # Calculate capacity-limited growth rate
-            r <- exp(log(growth_r)*(1 - sum(x[capacity_stages])/area_capacity))
+            r <- min(exp(log(growth_r_tm)*
+                           (-1*(growth_r_tm < 1) + (growth_r_tm >= 1))*
+                           (1 - sum(x[capacity_stages])/area_capacity)),
+                     growth_r_tm)
 
           } else if (is.numeric(capacity_area) &&
                      is.numeric(region$get_max_implicit_area())) {
@@ -319,58 +343,64 @@ StagedPopulation <- function(region, growth,
                                 capacity_area)
 
             # Calculate capacity-limited growth rate
-            r <- exp(log(growth_r)*(1 - sum(x[capacity_stages])/area_capacity))
+            r <- min(exp(log(growth_r_tm)*
+                           (-1*(growth_r_tm < 1) + (growth_r_tm >= 1))*
+                           (1 - sum(x[capacity_stages])/area_capacity)),
+                     growth_r_tm)
 
           } else {
-            r <- growth_r # unlimited
+            r <- growth_r_tm # unlimited
           }
 
         } else {
 
           # Calculate capacity-limited growth rates for each occupied location
-          r <- exp(log(growth_r)*(1 - (rowSums(x[indices, capacity_stages,
-                                                 drop = FALSE])/
-                                         capacity_tm[indices])))
+          r <- pmin(exp(log(growth_r_tm)*
+                          (-1*(growth_r_tm < 1) + (growth_r_tm >= 1))*
+                          (1 - (rowSums(x[indices, capacity_stages,
+                                          drop = FALSE])/
+                                  capacity_tm[indices]))), growth_r_tm)
         }
+      } else {
+        r <- growth_r_tm # unlimited
+      }
 
-        # Look-up stage/age matrix multiplier for each occupied location
+      # Look-up stage/age matrix multiplier for each occupied location
+      if (is.matrix(growth_mult) || is.numeric(capacity)) {
         mult <- sapply(r, function(r) {
           r_mult$mult[which.min(abs(r_mult$r - r))]})
-
       } else {
         mult <- rep(1, length(indices))
       }
 
       # Sample the new population values (reproduction and survival)
-      if (length(indices)) {
-        new_x <- array(0L, c(length(indices), stages))
-        for (stage in 1:stages) {
+      new_x <- array(0L, c(length(indices), stages))
+      for (stage in 1:stages) {
 
-          # Sample stage reproduction via a Poisson distribution
-          new_x <- new_x + stats::rpois(
-            length(indices)*stages,
-            (x[indices, stage]*
-               t(reproductions[, rep(stage, length(indices))])*mult))
+        # Sample stage reproduction via a Poisson distribution
+        new_x <- new_x + stats::rpois(
+          length(indices)*stages,
+          (x[indices, stage]*
+             t(reproductions[, rep(stage, length(indices))])*mult))
 
-          # Sample stage survival via a binomial distribution
-          stage_surv <- stats::rbinom(length(indices), x[indices, stage],
-                                      rep(sum(survivals[, stage]),
-                                          length(indices))*mult)
+        # Sample stage survival via a binomial distribution
+        stage_surv <- stats::rbinom(length(indices), x[indices, stage],
+                                    rep(sum(survivals[, stage]),
+                                        length(indices))*mult)
 
-          # Distribute survivals across stages via multinomial sampling
-          new_x <- new_x + t(sapply(1:length(indices), function(i) {
-            if (any(survivals[, stage]*mult[i] > 0)) {
-              stats::rmultinom(1, size = stage_surv[i],
-                               prob = survivals[, stage]*mult[i])
-            } else {
-              matrix(0, nrow = nrow(survivals), ncol = 1)
-            }
-          }))
-        }
-
-        # Update populations at occupied locations
-        x[indices,] <- new_x
+        # Distribute survivals across stages via multinomial sampling
+        new_x <- new_x + t(sapply(1:length(indices), function(i) {
+          if (any(survivals[, stage]*mult[i] > 0)) {
+            stats::rmultinom(1, size = stage_surv[i],
+                             prob = survivals[, stage]*mult[i])
+          } else {
+            matrix(0, nrow = nrow(survivals), ncol = 1)
+          }
+        }))
       }
+
+      # Update populations at occupied locations
+      x[indices,] <- new_x
     }
 
     return(x)
