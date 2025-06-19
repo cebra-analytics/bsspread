@@ -103,6 +103,11 @@ representation, and simulating growth:
 matrix.}
 \item{\code{get_stages()}}{Get the number of stages in a age/stage-based
 representation.}
+\item{\code{get_growth_mult(cells = NULL, tm = NULL)}}{Get the growth
+rate multipliers as a vector of values for each region location or
+optionally specified region locations \code{cells} (indices) at
+(optional) simulation time step \code{tm} (for temporally defined
+multipliers).}
 \item{\code{get_capacity(cells = NULL, tm = NULL)}}{Get the carrying
 capacity as a vector of values for each region location or optionally
 specified region locations \code{cells} (indices) at (optional)

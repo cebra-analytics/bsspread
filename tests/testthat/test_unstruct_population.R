@@ -51,6 +51,7 @@ test_that("grows populations without capacity", {
   expect_silent(population <- UnstructPopulation(region, growth = 1.2,
                                                  growth_mult = growth_mult,
                                                  incursion_mean = 10))
+  expect_equal(population$get_growth_mult(cells = 1:10, tm = 3), rep(0.6, 10))
   set.seed(1243)
   expect_equal(round(mean(population$grow(n, 1)[idx]/n[idx]), 1), 1.2)
   expect_true(abs(round(mean(population$grow(n, 2)[idx]/n[idx]), 2) -

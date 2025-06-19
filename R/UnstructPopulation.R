@@ -48,6 +48,11 @@
 #'     \item{\code{get_region()}}{Get the region object.}
 #'     \item{\code{get_type()}}{Get the population representation type.}
 #'     \item{\code{get_growth()}}{Get the growth rate.}
+#'     \item{\code{get_growth_mult(cells = NULL, tm = NULL)}}{Get the growth
+#'       rate multipliers as a vector of values for each region location or
+#'       optionally specified region locations \code{cells} (indices) at
+#'       (optional) simulation time step \code{tm} (for temporally defined
+#'       multipliers).}
 #'     \item{\code{get_capacity(cells = NULL, tm = NULL)}}{Get the carrying
 #'       capacity as a vector of values for each region location or optionally
 #'       specified region locations \code{cells} (indices) at (optional)
