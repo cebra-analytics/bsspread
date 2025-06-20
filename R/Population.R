@@ -244,11 +244,10 @@ Population.Region <- function(region,
         tm <- ((tm + (ncol(growth_mult) - 1)) %% ncol(growth_mult)) + 1
       }
       if (is.numeric(cells) && nrow(growth_mult) > 1) {
-        selected_growth_mult <- growth_mult[cells, tm]
+        return(unlist(growth_mult[cells, tm]))
       } else {
-        selected_growth_mult <- growth_mult[, tm]
+        return(unlist(growth_mult[, tm]))
       }
-      return(selected_growth_mult)
     } else {
       return(NULL)
     }
@@ -269,9 +268,9 @@ Population.Region <- function(region,
         tm <- ((tm + (ncol(capacity) - 1)) %% ncol(capacity)) + 1
       }
       if (is.numeric(cells)) {
-        selected_capacity <- capacity[cells, tm]
+        selected_capacity <- unlist(capacity[cells, tm])
       } else {
-        selected_capacity <- capacity[, tm]
+        selected_capacity <- unlist(capacity[, tm])
       }
       if (is.numeric(capacity_area)) { # attach area
         attr(selected_capacity, "area") <- capacity_area
@@ -292,9 +291,9 @@ Population.Region <- function(region,
         tm <- ((tm + (ncol(establish_pr) - 1)) %% ncol(establish_pr)) + 1
       }
       if (is.numeric(cells)) {
-        return(establish_pr[cells, tm])
+        return(unlist(establish_pr[cells, tm]))
       } else {
-        return(establish_pr[, tm])
+        return(unlist(establish_pr[, tm]))
       }
     } else {
       return(NULL)
