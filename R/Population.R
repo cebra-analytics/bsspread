@@ -12,17 +12,6 @@
 #'   transition rates (matrix) for each time step when
 #'   \code{type = "stage_structured"}. Default is \code{NULL} for when
 #'   \code{type = "presence_only"}.
-#' @param growth_mult Optional matrix of spatial (rows) and/or temporal
-#'   (columns) growth rate multipliers (0-1), which are applied to the
-#'   \code{growth} rate (when \code{type = "unstructured"}) or stage/age matrix
-#'   (when \code{type = "stage_structured"}). Spatial multipliers should be
-#'   specified via a row for each location, else a single row may specify
-#'   temporal variation only. Likewise, a single column may specify spatial
-#'   variation only. The number of columns for temporal variation should
-#'   coincide with the number of simulation time steps, or a cyclic pattern
-#'   (e.g. 12 columns for seasonal variation with monthly time steps). Default
-#'   is \code{NULL} for when no spatio-temporal variation in growth is
-#'   applicable or \code{type = "presence_only"}.
 #' @param capacity A (static) vector or matrix (containing temporal columns) of
 #'   carrying capacity values of the invasive species at each location (row)
 #'   specified by the \code{region}, or per unit area defined by
@@ -63,11 +52,6 @@
 #'       matrix.}
 #'     \item{\code{get_stages()}}{Get the number of stages in a age/stage-based
 #'       representation.}
-#'     \item{\code{get_growth_mult(cells = NULL, tm = NULL)}}{Get the growth
-#'       rate multipliers as a vector of values for each region location or
-#'       optionally specified region locations \code{cells} (indices) at
-#'       (optional) simulation time step \code{tm} (for temporally defined
-#'       multipliers).}
 #'     \item{\code{get_capacity(cells = NULL, tm = NULL)}}{Get the carrying
 #'       capacity as a vector of values for each region location or optionally
 #'       specified region locations \code{cells} (indices) at (optional)
@@ -117,7 +101,6 @@ Population <- function(region,
                        type = c("presence_only", "unstructured",
                                 "stage_structured"),
                        growth = NULL,
-                       growth_mult = NULL,
                        capacity = NULL,
                        capacity_area = NULL,
                        establish_pr = NULL,
@@ -132,7 +115,6 @@ Population.Region <- function(region,
                               type = c("presence_only", "unstructured",
                                        "stage_structured"),
                               growth = NULL,
-                              growth_mult = NULL,
                               capacity = NULL,
                               capacity_area = NULL,
                               establish_pr = NULL,
@@ -144,8 +126,15 @@ Population.Region <- function(region,
   if (type == "presence_only") {
     stages = NULL
   } else if (type == "unstructured") {
-    if (length(growth) > 1) {
-      stop("Population growth should be a single value (e.g. 1.2).",
+    if (!is.numeric(growth) ||
+        (!is.matrix(growth) && length(growth) > 1) ||
+        (is.matrix(growth) &&
+         !(nrow(growth) %in% c(1, region$get_locations())))) {
+      stop(paste("Population growth should be a single value (e.g. 1.2) or",
+                 "a matrix with a single row or a row for each region",
+                 "location."), call. = FALSE)
+    } else if (any(growth < 0)) {
+      stop("Population growth values should be >= 0.",
            call. = FALSE)
     }
     stages = NULL
@@ -159,17 +148,6 @@ Population.Region <- function(region,
   } else {
     stop("Population type should be 'presence_only', 'unstructured', or ",
          "'stage_structured'.", call. = FALSE)
-  }
-
-  # Validate growth rate multipliers
-  if (!is.null(growth_mult)) {
-    if (!is.matrix(growth_mult) ||
-        !(nrow(growth_mult) %in% c(1, region$get_locations()))) {
-      stop(paste("Growth multiplier should be a matrix with a single row or a",
-                 "row for each region location."), call. = FALSE)
-    } else if (any(growth_mult < 0) || any(growth_mult > 1)) {
-      stop("Growth multiplier values should be >= 0 and <= 1.", call. = FALSE)
-    }
   }
 
   # Validate capacity and area via region
@@ -232,25 +210,6 @@ Population.Region <- function(region,
   # Get growth
   self$get_growth <- function() {
     return(growth)
-  }
-
-  # Get growth rate multipliers for specified region (non-NA) cell indices
-  # at specified time step.
-  self$get_growth_mult <- function(cells = NULL, tm = NULL) {
-    if (is.matrix(growth_mult)) {
-      if (!is.numeric(tm) || (is.numeric(tm) && tm == 0)) {
-        tm = 1
-      } else { # wrap
-        tm <- ((tm + (ncol(growth_mult) - 1)) %% ncol(growth_mult)) + 1
-      }
-      if (is.numeric(cells) && nrow(growth_mult) > 1) {
-        return(unlist(growth_mult[cells, tm]))
-      } else {
-        return(unlist(growth_mult[, tm]))
-      }
-    } else {
-      return(NULL)
-    }
   }
 
   # Get stages

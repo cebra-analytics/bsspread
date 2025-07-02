@@ -7,7 +7,6 @@
 UnstructPopulation(
   region,
   growth = 1,
-  growth_mult = NULL,
   capacity = NULL,
   capacity_area = NULL,
   establish_pr = NULL,
@@ -20,17 +19,15 @@ UnstructPopulation(
 spatial region (template) for the spread simulations.}
 
 \item{growth}{Numeric growth rate or lambda (e.g. 1.2 for 20\% growth per
-time step). Default is \code{1.0} for no increase.}
-
-\item{growth_mult}{Optional matrix of spatial (rows) and/or temporal
-(columns) growth rate multipliers (0-1), which are applied to the
-\code{growth} rate. Spatial multipliers should be specified via a row for
-each location, else a single row may specify temporal variation only.
+time step). Optionally, when applicable, growth rates may be specified
+with spatial and/or temporal variation via a matrix of spatial (rows)
+and/or temporal (columns). Spatial values should be specified via a row
+for each location, else a single row may specify temporal variation only.
 Likewise, a single column may specify spatial variation only. The number
 of columns for temporal variation should coincide with the number of
 simulation time steps, or a cyclic pattern (e.g. 12 columns for seasonal
-variation with monthly time steps). Default is \code{NULL} for when no
-spatio-temporal variation in growth is applicable.}
+variation with monthly time steps). Default is a single value \code{1.0}
+for no increase.}
 
 \item{capacity}{A (static) vector or matrix (containing temporal columns) of
 carrying capacity values of the invasive species at each location (row)
@@ -70,11 +67,6 @@ for accessing attributes and simulating growth:
 \item{\code{get_region()}}{Get the region object.}
 \item{\code{get_type()}}{Get the population representation type.}
 \item{\code{get_growth()}}{Get the growth rate.}
-\item{\code{get_growth_mult(cells = NULL, tm = NULL)}}{Get the growth
-rate multipliers as a vector of values for each region location or
-optionally specified region locations \code{cells} (indices) at
-(optional) simulation time step \code{tm} (for temporally defined
-multipliers).}
 \item{\code{get_capacity(cells = NULL, tm = NULL)}}{Get the carrying
 capacity as a vector of values for each region location or optionally
 specified region locations \code{cells} (indices) at (optional)

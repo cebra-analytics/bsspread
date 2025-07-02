@@ -82,39 +82,3 @@ test_that("makes populations with establishment prob", {
   set.seed(1234)
   expect_equal(population$make(incursion = incursion, tm = 4), expected_t1)
 })
-
-test_that("makes populations with variable growth rates", {
-  TEST_DIRECTORY <- test_path("test_inputs")
-  template <- terra::rast(file.path(TEST_DIRECTORY, "greater_melb.tif"))
-  region <- Region(template)
-  expect_error(Population(region, growth = 1.2, growth_mult = as.matrix(1:5)),
-               paste("Growth multiplier should be a matrix with a single row",
-                     "or a row for each region location."))
-  expect_error(Population(region, growth = 1.2,
-                          growth_mult = t(as.matrix(-1:5))),
-               "Growth multiplier values should be >= 0 and <= 1.")
-  growth_mult_s <- as.matrix(template[region$get_indices()][,1])
-  growth_mult_st <- cbind(growth_mult_s, growth_mult_s*0.8, growth_mult_s*0.6)
-  growth_mult_t <- growth_mult_st[1,,drop = F]
-  expect_silent(population <- Population(region, growth = 1.2,
-                                         growth_mult = growth_mult_s))
-  expect_equal(population$get_growth_mult(cells = 1:10), growth_mult_s[1:10,])
-  expect_equal(population$get_growth_mult(tm = 2), as.numeric(growth_mult_s))
-  expect_equal(population$get_growth_mult(cells = 1:10, tm = 2),
-               growth_mult_s[1:10,])
-  expect_silent(population <- Population(region, growth = 1.2,
-                                         growth_mult = growth_mult_t))
-  expect_equal(population$get_growth_mult(cells = 1:10), growth_mult_t[1])
-  expect_equal(population$get_growth_mult(tm = 2), growth_mult_t[2])
-  expect_equal(population$get_growth_mult(cells = 1:10, tm = 2),
-               growth_mult_t[2])
-  expect_silent(population <- Population(region, growth = 1.2,
-                                         growth_mult = growth_mult_st))
-  expect_equal(population$get_growth_mult(cells = 1:10),
-               growth_mult_st[1:10,1])
-  expect_equal(population$get_growth_mult(tm = 2), growth_mult_st[,2])
-  expect_equal(population$get_growth_mult(cells = 1:10, tm = 2),
-               growth_mult_st[1:10,2])
-  expect_equal(population$get_growth_mult(cells = 1:10, tm = 5),
-               growth_mult_st[1:10,2])
-})

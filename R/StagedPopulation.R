@@ -178,6 +178,36 @@ StagedPopulation <- function(region, growth,
   reproductions <- growth - survivals
   attr(reproductions, "survivals") <- NULL
 
+  # Validate growth rate multipliers
+  if (!is.null(growth_mult)) {
+    if (!is.matrix(growth_mult) ||
+        !(nrow(growth_mult) %in% c(1, region$get_locations()))) {
+      stop(paste("Growth multiplier should be a matrix with a single row or a",
+                 "row for each region location."), call. = FALSE)
+    } else if (any(growth_mult < 0) || any(growth_mult > 1)) {
+      stop("Growth multiplier values should be >= 0 and <= 1.", call. = FALSE)
+    }
+  }
+
+  # Get growth rate multipliers for specified region (non-NA) cell indices
+  # at specified time step.
+  self$get_growth_mult <- function(cells = NULL, tm = NULL) {
+    if (is.matrix(growth_mult)) {
+      if (!is.numeric(tm) || (is.numeric(tm) && tm == 0)) {
+        tm = 1
+      } else { # wrap
+        tm <- ((tm + (ncol(growth_mult) - 1)) %% ncol(growth_mult)) + 1
+      }
+      if (is.numeric(cells) && nrow(growth_mult) > 1) {
+        return(unlist(growth_mult[cells, tm]))
+      } else {
+        return(unlist(growth_mult[, tm]))
+      }
+    } else {
+      return(NULL)
+    }
+  }
+
   # Validate capacity stages
   if (is.null(capacity_stages)) {
     if (!is.null(capacity)) { # default values

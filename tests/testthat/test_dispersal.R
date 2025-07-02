@@ -79,7 +79,7 @@ test_that("unpacks population array", {
   TEST_DIRECTORY <- test_path("test_inputs")
   locations <- utils::read.csv(file.path(TEST_DIRECTORY, "vic_cities.csv"))
   region <- Region(locations)
-  population <- Population(region, type = "unstructured")
+  population <- UnstructPopulation(region)
   expect_silent(dispersal <- Dispersal(region, population_model = population))
   n <- c((4:1)*10, rep(0, 10))
   expect_silent(n <- dispersal$pack(n))

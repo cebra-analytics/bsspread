@@ -5,8 +5,11 @@ test_that("initializes with region and other parameters", {
   template <- terra::rast(file.path(TEST_DIRECTORY, "greater_melb.tif"))
   region <- Region(template)
   expect_error(population <- UnstructPopulation(region, growth = c(1.1, 1.2)),
-               "Population growth should be a single value (e.g. 1.2).",
-               fixed = TRUE)
+               paste("Population growth should be a single value (e.g. 1.2)",
+                     "or a matrix with a single row or a row for each region",
+                     "location."), fixed = TRUE)
+  expect_error(population <- UnstructPopulation(region, growth = -1),
+               "Population growth values should be >= 0.")
   expect_error(population <- UnstructPopulation(region, growth = 1.2,
                                                 capacity = 30),
                paste("Population capacity should be a vector or matrix",
@@ -46,12 +49,10 @@ test_that("grows populations without capacity", {
   expect_silent(n1 <- population$grow(n, 1))
   expect_equal(round(mean(n1[idx]/n[idx]), 1), 1.2)
   # growth variation
-  growth_mult <- rep(1, region$get_locations())
-  growth_mult <- cbind(growth_mult, growth_mult*0.8, growth_mult*0.6)
-  expect_silent(population <- UnstructPopulation(region, growth = 1.2,
-                                                 growth_mult = growth_mult,
+  growth <- rep(1.2, region$get_locations())
+  growth <- cbind(growth, growth*0.8, growth*0.6)
+  expect_silent(population <- UnstructPopulation(region, growth = growth,
                                                  incursion_mean = 10))
-  expect_equal(population$get_growth_mult(cells = 1:10, tm = 3), rep(0.6, 10))
   set.seed(1243)
   expect_equal(round(mean(population$grow(n, 1)[idx]/n[idx]), 1), 1.2)
   expect_true(abs(round(mean(population$grow(n, 2)[idx]/n[idx]), 2) -
@@ -80,10 +81,9 @@ test_that("grows populations with capacity", {
   expect_silent(n1 <- population$grow(n, 1))
   expect_equal(round(mean(n1[idx]/n[idx]), 1), 1.0)
   # growth variation
-  growth_mult <- rep(1, region$get_locations())
-  growth_mult <- cbind(growth_mult, growth_mult*0.8, growth_mult*0.6)
-  expect_silent(population <- UnstructPopulation(region, growth = 1.2,
-                                                 growth_mult = growth_mult,
+  growth <- rep(1.2, region$get_locations())
+  growth <- cbind(growth, growth*0.8, growth*0.6)
+  expect_silent(population <- UnstructPopulation(region, growth = growth,
                                                  capacity = capacity,
                                                  incursion_mean = 10))
   set.seed(1243)
