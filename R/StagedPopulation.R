@@ -404,6 +404,9 @@ StagedPopulation <- function(region, growth,
       if (is.matrix(growth_mult) || is.numeric(capacity)) {
         mult <- sapply(r, function(r) {
           r_mult$mult[which.min(abs(r_mult$r - r))]})
+        if (length(mult) == 1) {
+          mult <- rep(mult, length(indices))
+        }
       } else {
         mult <- rep(1, length(indices))
       }
