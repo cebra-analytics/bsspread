@@ -51,8 +51,7 @@ test_that("generates various kernel functions", {
                                                             scale = 2))
 })
 
-test_that("generates various kernel functions", {
-  ## generates table look-up function
+test_that("generates table look-up function", {
   kernel_gen <- Kernels(multiplier = 0.3)
   lookup_table <- data.frame(value = 1:4, pr = 1/(1:4))
   expect_silent(lookup_function <-

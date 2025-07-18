@@ -9,8 +9,10 @@
 #'
 #' @param multiplier Optional numeric multiplier for scaling the (relative)
 #'   probabilities returned by the kernel functions.
+#' @param class Character class name for inherited classes. Default is
+#'   \code{NULL}.
 #' @param ... Additional parameters.
-#' @return A \code{Kernel} class object (list) containing functions for
+#' @return A \code{Kernels} class object (list) containing functions for
 #'   generating distance or direction kernel functions for calculating the
 #'   (relative) probability of dispersal. The generated (returned) functions
 #'   of form \code{function(x)}, where \code{x} is a vector of distances (in m)
@@ -62,7 +64,8 @@
 #'   Distance. \emph{Proceedings B: Biological Sciences}, 259(1356), 243–248.
 #'   \doi{10.1098/rspb.1995.0036}
 #' @export
-Kernels <- function(multiplier = NULL, ...) {
+Kernels <- function(multiplier = NULL,
+                    class = character(), ...) {
 
   # Check/set multiplier
   if (!is.null(multiplier) && (!is.numeric(multiplier) || multiplier <= 0)) {
@@ -73,7 +76,7 @@ Kernels <- function(multiplier = NULL, ...) {
   }
 
   # Create a class structure
-  self <- structure(list(), class = "Kernels")
+  self <- structure(list(), class = c(class, "Kernels"))
 
   # Get a Beta kernel function
   self$get_beta_function <- function(alpha, beta, upper = 1, shift = 0) {
@@ -141,7 +144,7 @@ Kernels <- function(multiplier = NULL, ...) {
 
   # Get a table look-up kernel function
   self$get_lookup_function <- function(table) {
-    table <- table[order(table[,1]),]
+    table <- unique(table[order(table[,1]),])
     return(
       function(x) {
 

@@ -4,16 +4,19 @@
 \alias{Kernels}
 \title{Kernel functions generation class builder}
 \usage{
-Kernels(multiplier = NULL, ...)
+Kernels(multiplier = NULL, class = character(), ...)
 }
 \arguments{
 \item{multiplier}{Optional numeric multiplier for scaling the (relative)
 probabilities returned by the kernel functions.}
 
+\item{class}{Character class name for inherited classes. Default is
+\code{NULL}.}
+
 \item{...}{Additional parameters.}
 }
 \value{
-A \code{Kernel} class object (list) containing functions for
+A \code{Kernels} class object (list) containing functions for
 generating distance or direction kernel functions for calculating the
 (relative) probability of dispersal. The generated (returned) functions
 of form \code{function(x)}, where \code{x} is a vector of distances (in m)
