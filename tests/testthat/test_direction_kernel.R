@@ -82,4 +82,25 @@ test_that("generates table look-up direction function", {
   expect_silent(
     lookup_function <- kernel_gen$get_lookup_function(table = lookup_table))
   expect_equal(lookup_function((0:12)*30), expected[c(10:1, 12:10)])
+  lookup_table <- data.frame(direction = c(0, 120, 360), prob = c(0, 1, 0))
+  expect_silent(kernel_gen <- DirectionKernel(
+    direction_type = "trigonometric", orientation = "to"))
+  expect_silent(lookup_function <- kernel_gen$get_lookup_function(table = lookup_table))
+  expected <- c((0:4)/4, (7:0)/8)
+  expect_equal(lookup_function((0:12)*30), expected[1:13])
+  expect_silent(kernel_gen <- DirectionKernel(
+    direction_type = "trigonometric", orientation = "from"))
+  expect_silent(
+    lookup_function <- kernel_gen$get_lookup_function(table = lookup_table))
+  expect_equal(lookup_function((0:12)*30), expected[c(7:12, 1:7)])
+  expect_silent(kernel_gen <- DirectionKernel(
+    direction_type = "navigational", orientation = "to"))
+  expect_silent(
+    lookup_function <- kernel_gen$get_lookup_function(table = lookup_table))
+  expect_equal(lookup_function((0:12)*30), expected[c(4:1, 12:4)])
+  expect_silent(kernel_gen <- DirectionKernel(
+    direction_type = "navigational", orientation = "from"))
+  expect_silent(
+    lookup_function <- kernel_gen$get_lookup_function(table = lookup_table))
+  expect_equal(lookup_function((0:12)*30), expected[c(10:1, 12:10)])
 })

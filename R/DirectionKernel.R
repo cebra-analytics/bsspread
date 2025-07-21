@@ -115,6 +115,13 @@ DirectionKernel <- function(direction_type = c("trigonometric",
       if (360 %in% table[,1] && !(0 %in% table[,1])) {
         table <- rbind(table, c(0, table[which(table[,1] == 360),2]))
       }
+    } else {
+      i_min <- which.min(table[,1])
+      i_max <- which.max(table[,1])
+      prob_0 <- (
+        table[i_max, 2] + (table[i_min, 2] - table[i_max, 2])*
+          (360 - table[i_max, 1])/(360 + table[i_min, 1] - table[i_max, 1]))
+      table <- rbind(c(0, prob_0), table, c(360, prob_0))
     }
     return(super$get_lookup_function(table))
   }
