@@ -33,19 +33,19 @@ labelled via an optional attribute \code{labels}.}
 \code{growth} stage age matrix. Spatial multipliers should be specified
 via a row for each location, else a single row may specify temporal
 variation only. Likewise, a single column may specify spatial variation
-only. The number of columns for temporal variation should coincide with
-the number of simulation time steps, or a cyclic pattern (e.g. 12 columns
-for seasonal variation with monthly time steps). Default is \code{NULL}
-for when no spatio-temporal variation in growth is applicable.}
+only. The number of columns for temporal variation should either coincide
+with the number of simulation time steps, or be a cyclic pattern (e.g. 12
+columns for seasonal variation with monthly time steps). Default is
+\code{NULL} for when no spatio-temporal variation in growth is applicable.}
 
 \item{capacity}{A (static) vector or matrix (containing temporal columns) of
 carrying capacity values of the invasive species at each location (row)
 specified by the \code{region}, or per unit area defined by
 \code{capacity_area} when the \code{region} is spatially implicit. Default
 is \code{NULL} for when growth is not capacity-limited. The number of
-columns for temporal capacity should coincide with the number of
-simulation time steps, or a cyclic pattern (e.g. 12 columns for seasonal
-variation with monthly time steps).}
+columns for temporal capacity should either coincide with the number of
+simulation time steps, or be a cyclic pattern (e.g. 12 columns for
+seasonal variation with monthly time steps).}
 
 \item{capacity_area}{Carrying capacity area (in m^2) specified for
 capacity-limited growth in a spatially implicit (single patch)
@@ -66,8 +66,8 @@ of establishment at each location (row) specified by the \code{region}.
 This may be used to avoid transient/unsuccessful incursion or migration
 arrivals from being presented in the simulation results. Default is
 \code{NULL}. The number of columns for temporal capacity should
-coincide with the number of simulation time steps, or a cyclic pattern
-(e.g. 12 columns for seasonal variation with monthly time steps).}
+either coincide with the number of simulation time steps, or be a cyclic
+pattern (e.g. 12 columns for seasonal variation with monthly time steps).}
 
 \item{incursion_mean}{Numeric mean population size for incursion locations.
 The population size is sampled from the Poisson distribution for each

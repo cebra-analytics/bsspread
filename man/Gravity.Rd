@@ -52,22 +52,34 @@ distances in metres. Use 1000 to scale distances to kilometres.}
 disperse. Default is all stages (when set to \code{NULL}).}
 
 \item{proportion}{The proportion of the (unstructured or staged) population
-that disperses from each occupied location at each time step. It may be a
-vector with a value at each location specified by the \code{region} or a
-single numeric value for all locations. This parameter may also be used to
-scale the the number of dispersal destinations selected when the
-population is presence-only and the number of dispersal \code{events} is
-not defined. Default is \code{NULL} (producing no dispersal unless the
-population is presence-only and \code{events} is defined).}
+that disperses from each occupied location at each time step. It may be
+specified as a single numeric value or, when applicable, with spatial
+and/or temporal variation via a matrix of spatial (rows) and/or temporal
+(columns). Spatial values should be specified via a row for each location,
+else a single row may specify temporal variation only. Likewise, a single
+column may specify spatial variation only. The number of columns for
+temporal variation should either coincide with the number of simulation
+time steps, or be a cyclic pattern (e.g. 12 columns for seasonal variation
+with monthly time steps). This parameter may also be used to scale the
+number of dispersal destinations selected when the population is
+presence-only and the number of dispersal \code{events} is not defined.
+Default is \code{NULL} (producing no dispersal unless the population is
+presence-only and \code{events} is defined).}
 
 \item{events}{The mean number of dispersal events generated via a Poisson
-distribution for each location at each time step. It may be a vector with
-a value at each location specified by the \code{region} or a single
-numeric value for all locations. A dispersal destination (location) is
-selected for each dispersal event. Default is \code{NULL} (resulting in
-destinations being selected for each individual within unstructured or
-staged populations, or stochastic sampling of destinations for
-presence-only populations).}
+distribution for each location at each time step. It may be specified as
+a single numeric value or, when applicable, with spatial and/or temporal
+variation via a matrix of spatial (rows) and/or temporal (columns).
+Spatial values should be specified via a row for each location, else a
+single row may specify temporal variation only. Likewise, a single column
+may specify spatial variation only. The number of columns for temporal
+variation should either coincide with the number of simulation time steps,
+or be a cyclic pattern (e.g. 12 columns for seasonal variation with
+monthly time steps). A dispersal destination (location) is selected for
+each dispersal event. Default is \code{NULL} (resulting in destinations
+being selected for each individual within unstructured or staged
+populations, or stochastic sampling of destinations for presence-only
+populations).}
 
 \item{density_dependent}{Logical to indicate that dispersal is density
 dependent, whereby the proportion dispersing and/or the number of

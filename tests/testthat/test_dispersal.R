@@ -12,12 +12,12 @@ test_that("initializes with region, population model, and other parameters", {
                      "class object."))
   expect_error(dispersal <- Dispersal(region, population_model = population,
                                       proportion = -1),
-               paste("The proportion parameter must be numeric >= 0 and",
-                     "consistent with the number of region locations."))
+               "The proportion parameter must be numeric >= 0.")
   expect_error(dispersal <- Dispersal(region, population_model = population,
                                       events = 0:2),
-               paste("The events parameter must be numeric >= 0 and",
-                     "consistent with the number of region locations."))
+               paste("The events parameter should be a single value or a",
+                     "matrix with a single row or a row for each region",
+                     "location."))
   expect_error(dispersal <- Dispersal(region, population_model = population,
                                       density_dependent = 0),
                "The density dependent parameter must be logical.")
@@ -114,6 +114,32 @@ test_that("disperses population in a raster grid region", {
   set.seed(1234); new_locs <- stats::rpois(1, 100); set.seed(1234)
   expect_true(sum(
     dispersal$unpack(dispersal$disperse(n, tm = 1))) <= new_locs + 1)
+  # spatio-temporal
+  prop_matrix <- matrix(rep(0, region$get_locations()),
+                        nrow = region$get_locations(), ncol = 3)
+  prop_matrix[5922,] <- c(1, 0.5, 0.2)
+  expect_silent(dispersal <- Dispersal(region, population_model = population,
+                                       proportion = prop_matrix))
+  expect_equal(round(sum(dispersal$unpack(dispersal$disperse(n, tm = 1)))/
+                       region$get_locations(), 1), 1)
+  expect_equal(round(sum(dispersal$unpack(dispersal$disperse(n, tm = 2)))/
+                       region$get_locations(), 1), 0.5)
+  expect_equal(round(sum(dispersal$unpack(dispersal$disperse(n, tm = 3)))/
+                       region$get_locations(), 1), 0.2)
+  events_matrix <- matrix(rep(0, region$get_locations()),
+                          nrow = region$get_locations(), ncol = 3)
+  events_matrix[5922,] <- c(100, 50, 20)
+  expect_silent(dispersal <- Dispersal(region, population_model = population,
+                                       events = events_matrix))
+  set.seed(1234); new_locs <- stats::rpois(1, 100); set.seed(1234)
+  expect_true(sum(
+    dispersal$unpack(dispersal$disperse(n, tm = 1))) <= new_locs + 1)
+  set.seed(1234); new_locs <- stats::rpois(1, 50); set.seed(1234)
+  expect_true(sum(
+    dispersal$unpack(dispersal$disperse(n, tm = 2))) <= new_locs + 1)
+  set.seed(1234); new_locs <- stats::rpois(1, 20); set.seed(1234)
+  expect_true(sum(
+    dispersal$unpack(dispersal$disperse(n, tm = 3))) <= new_locs + 1)
   dispersal <- Dispersal(region, population_model = population,
                          proportion = 1, max_distance = 10000)
   idx <- region$get_paths(5922, max_distance = 10000)$idx[["5922"]]$cell

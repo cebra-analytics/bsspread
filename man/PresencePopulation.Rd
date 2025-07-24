@@ -16,9 +16,9 @@ of establishment at each location (row) specified by the \code{region}.
 This may be used to avoid transient/unsuccessful incursion or migration
 arrivals from being presented in the simulation results, and/or from
 subsequently contributing to spread. Default is \code{NULL}. The number
-of columns for temporal capacity should coincide with the number of
-simulation time steps, or a cyclic pattern (e.g. 12 columns for seasonal
-variation with monthly time steps).}
+of columns for temporal capacity should either coincide with the number of
+simulation time steps, or be a cyclic pattern (e.g. 12 columns for
+seasonal variation with monthly time steps).}
 
 \item{spread_delay}{Number of simulation time steps before an incursion at
 a newly established location can spread to other locations. This provides

@@ -80,6 +80,6 @@ test_that("disperses via gravity function", {
   new_locs <- stats::rbinom(13, size = 1,
                             prob = 0.8*attractor_vect[idx]/(distances/1000)^2)
   set.seed(1259)
-  expect_silent(new_n <- gravity$unpack(gravity$disperse(n)))
+  expect_silent(new_n <- gravity$unpack(gravity$disperse(n, tm = 1)))
   expect_equal(+(new_n), c(1, new_locs))
 })

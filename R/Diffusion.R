@@ -45,9 +45,15 @@
 #' @param proportion The proportion of the (unstructured or staged) population
 #'   that disperses from each occupied location at each time step, or the
 #'   proportion of local presence-only destinations selected for diffusive
-#'   dispersal. It may be a vector with a value at each location specified by
-#'   the \code{region} or a single numeric value for all locations. Default is
-#'   \code{NULL} (producing no diffusive dispersal).
+#'   dispersal. It may be specified as a single numeric value or, when
+#'   applicable, with spatial and/or temporal variation via a matrix of spatial
+#'   (rows) and/or temporal (columns). Spatial values should be specified via a
+#'   row for each location, else a single row may specify temporal variation
+#'   only. Likewise, a single column may specify spatial variation only. The
+#'   number of columns for temporal variation should either coincide with the
+#'   number of simulation time steps, or be a cyclic pattern (e.g. 12 columns
+#'   for seasonal variation with monthly time steps).. Default is \code{NULL}
+#'   (producing no diffusive dispersal).
 #' @param density_dependent Logical to indicate that dispersal is density
 #'   dependent, whereby the proportion dispersing is scaled by the
 #'   (unstructured or staged) population density (number/capacity) at each

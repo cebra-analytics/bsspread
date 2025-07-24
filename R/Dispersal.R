@@ -42,21 +42,33 @@
 #' @param dispersal_stages Numeric vector of population stages (indices) that
 #'   disperse. Default is all stages (when set to \code{NULL}).
 #' @param proportion The proportion of the (unstructured or staged) population
-#'   that disperses from each occupied location at each time step. It may be a
-#'   vector with a value at each location specified by the \code{region} or a
-#'   single numeric value for all locations. This parameter may also be used to
-#'   scale the the number of dispersal destinations selected when the
-#'   population is presence-only and the number of dispersal \code{events} is
-#'   not defined. Default is \code{NULL} (producing no dispersal unless the
-#'   population is presence-only and \code{events} is defined).
+#'   that disperses from each occupied location at each time step. It may be
+#'   specified as a single numeric value or, when applicable, with spatial
+#'   and/or temporal variation via a matrix of spatial (rows) and/or temporal
+#'   (columns). Spatial values should be specified via a row for each location,
+#'   else a single row may specify temporal variation only. Likewise, a single
+#'   column may specify spatial variation only. The number of columns for
+#'   temporal variation should either coincide with the number of simulation
+#'   time steps, or be a cyclic pattern (e.g. 12 columns for seasonal variation
+#'   with monthly time steps). This parameter may also be used to scale the
+#'   number of dispersal destinations selected when the population is
+#'   presence-only and the number of dispersal \code{events} is not defined.
+#'   Default is \code{NULL} (producing no dispersal unless the population is
+#'   presence-only and \code{events} is defined).
 #' @param events The mean number of dispersal events generated via a Poisson
-#'   distribution for each location at each time step. It may be a vector with
-#'   a value at each location specified by the \code{region} or a single
-#'   numeric value for all locations. A dispersal destination (location) is
-#'   selected for each dispersal event. Default is \code{NULL} (resulting in
-#'   destinations being selected for each individual within unstructured or
-#'   staged populations, or stochastic sampling of destinations for
-#'   presence-only populations).
+#'   distribution for each location at each time step. It may be specified as
+#'   a single numeric value or, when applicable, with spatial and/or temporal
+#'   variation via a matrix of spatial (rows) and/or temporal (columns).
+#'   Spatial values should be specified via a row for each location, else a
+#'   single row may specify temporal variation only. Likewise, a single column
+#'   may specify spatial variation only. The number of columns for temporal
+#'   variation should either coincide with the number of simulation time steps,
+#'   or be a cyclic pattern (e.g. 12 columns for seasonal variation with
+#'   monthly time steps). A dispersal destination (location) is selected for
+#'   each dispersal event. Default is \code{NULL} (resulting in destinations
+#'   being selected for each individual within unstructured or staged
+#'   populations, or stochastic sampling of destinations for presence-only
+#'   populations).
 #' @param density_dependent Logical to indicate that dispersal is density
 #'   dependent, whereby the proportion dispersing and/or the number of
 #'   dispersal events generated is scaled by the (unstructured or staged)
@@ -202,17 +214,31 @@ Dispersal.Region <- function(region, population_model,
 
   # Check proportion, events, density_dependent, distance function, and
   # direction function
-  if (!is.null(proportion) &&
-      (!is.numeric(proportion) ||  any(proportion < 0) ||
-       !length(proportion) %in% c(1, region$get_locations()))) {
-    stop("The proportion parameter must be numeric >= 0 and consistent with ",
-         "the number of region locations.", call. = FALSE)
+  if (!is.null(proportion)) {
+    if ((!is.matrix(proportion) &&
+         !(length(proportion) %in% c(1, region$get_locations()))) ||
+        (is.matrix(proportion) &&
+         !(nrow(proportion) %in% c(1, region$get_locations())))) {
+      stop(paste("The proportion parameter should be a single value or",
+                 "a matrix with a single row or a row for each region",
+                 "location."), call. = FALSE)
+    } else if (!is.numeric(proportion) ||  any(proportion < 0)) {
+      stop("The proportion parameter must be numeric >= 0.", call. = FALSE)
+    }
+    proportion <- as.matrix(proportion)
   }
-  if (!is.null(events) &&
-      (!is.numeric(events) ||  any(events < 0) ||
-       !length(events) %in% c(1, region$get_locations()))) {
-    stop("The events parameter must be numeric >= 0 and consistent with the ",
-         "number of region locations.", call. = FALSE)
+  if (!is.null(events)) {
+    if ((!is.matrix(events) &&
+         !(length(events) %in% c(1, region$get_locations()))) ||
+        (is.matrix(events) &&
+         !(nrow(events) %in% c(1, region$get_locations())))) {
+      stop(paste("The events parameter should be a single value or",
+                 "a matrix with a single row or a row for each region",
+                 "location."), call. = FALSE)
+    } else if (!is.numeric(events) ||  any(events < 0)) {
+      stop("The events parameter must be numeric >= 0.", call. = FALSE)
+    }
+    events <- as.matrix(events)
   }
   if (!is.null(density_dependent) && !is.logical(density_dependent)) {
     stop("The density dependent parameter must be logical.", call. = FALSE)
@@ -478,14 +504,32 @@ Dispersal.Region <- function(region, population_model,
         }
       }
 
-      ## Extract proportion and/or events for location
-      if (length(proportion) == region$get_locations()) {
-        proportion_i <- proportion[loc_i]
+      ## Extract proportion and/or events for location / time step
+      if (is.numeric(proportion)) {
+        if (!is.numeric(tm) || (is.numeric(tm) && tm == 0)) {
+          tm_i = 1
+        } else { # wrap
+          tm_i <- ((tm + (ncol(proportion) - 1)) %% ncol(proportion)) + 1
+        }
+        if (nrow(proportion) == region$get_locations()) {
+          proportion_i <- proportion[loc_i, tm_i]
+        } else {
+          proportion_i <- proportion[, tm_i]
+        }
       } else {
         proportion_i <- proportion
       }
-      if (length(events) == region$get_locations()) {
-        events_i <- events[loc_i]
+      if (is.numeric(events)) {
+        if (!is.numeric(tm) || (is.numeric(tm) && tm == 0)) {
+          tm_i = 1
+        } else { # wrap
+          tm_i <- ((tm + (ncol(events) - 1)) %% ncol(events)) + 1
+        }
+        if (nrow(events) == region$get_locations()) {
+          events_i <- events[loc_i, tm_i]
+        } else {
+          events_i <- events[, tm_i]
+        }
       } else {
         events_i <- events
       }
