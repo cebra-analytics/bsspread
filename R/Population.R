@@ -18,8 +18,8 @@
 #'   \code{capacity_area} when the \code{region} is spatially implicit. Default
 #'   is \code{NULL} for when \code{type = "presence_only"} or growth is not
 #'   capacity-limited. The number of columns for temporal capacity should
-#'   coincide with the number of simulation time steps, or a cyclic pattern
-#'   (e.g. 12 columns for seasonal variation with monthly time steps).
+#'   either coincide with the number of simulation time steps, or be a cyclic
+#'   pattern (e.g. 12 columns for seasonal variation with monthly time steps).
 #' @param capacity_area Carrying capacity area (in m^2) specified for
 #'   capacity-limited growth in a spatially implicit (single patch)
 #'   \code{region}. For example, use a value of \code{1e+06} when
@@ -32,8 +32,8 @@
 #'   This may be used to avoid transient/unsuccessful incursion or migration
 #'   arrivals from being presented in the simulation results, and/or from
 #'   subsequently contributing to spread in presence-only models. Default is
-#'   \code{NULL}. The number of columns for temporal capacity should
-#'   coincide with the number of simulation time steps, or a cyclic pattern
+#'   \code{NULL}. The number of columns for temporal capacity should either
+#'   coincide with the number of simulation time steps, or be a cyclic pattern
 #'   (e.g. 12 columns for seasonal variation with monthly time steps).
 #' @param incursion_mean Numeric mean population size for unstructured and
 #'   stage structured populations applied at incursion locations. The
