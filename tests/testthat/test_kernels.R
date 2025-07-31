@@ -8,6 +8,7 @@ test_that("initializes with kernel generators", {
   expect_silent(kernel_gen <- Kernels(multiplier = 0.3))
   expect_equal(get("multiplier",
                    envir = environment(kernel_gen$get_beta_function)), 0.3)
+  expect_is(kernel_gen$get_uniform_function, "function")
   expect_is(kernel_gen$get_beta_function, "function")
   expect_is(kernel_gen$get_cauchy_function, "function")
   expect_is(kernel_gen$get_exp_function, "function")
@@ -19,6 +20,14 @@ test_that("initializes with kernel generators", {
 
 test_that("generates various kernel functions", {
   kernel_gen <- Kernels(multiplier = 0.3)
+  expect_error(kernel_gen$get_uniform_function(lower = 2, upper = 2),
+               paste("The uniform kernel upper parameter must be > the lower",
+                     "parameter."))
+  expect_silent(uniform_function <-
+                  kernel_gen$get_uniform_function(lower = 2, upper = 4))
+  expect_is(uniform_function, "function")
+  expect_equal(uniform_function(1:5),
+               0.3*((2 + 4)/2)*stats::dunif((1:5), min = 2, max = 4))
   expect_silent(beta_function <-
                   kernel_gen$get_beta_function(alpha = 2, beta = 4, upper = 5))
   expect_is(beta_function, "function")

@@ -92,6 +92,8 @@ test_that("collates and finalises multiple replicate results", {
                                    replicates = 5,
                                    combine_stages = NULL))
   expect_silent(result_list <- results$get_list())
+  expect_named(result_list,
+               c("collated", "total", "area", "occupancy", "total_occup"))
   expect_equal(unname(unlist(lapply(result_list$collated, names))),
                rep(c("mean", "sd"), 6))
   expect_equal(unname(unlist(lapply(result_list$total, names))),
@@ -99,7 +101,7 @@ test_that("collates and finalises multiple replicate results", {
   expect_equal(unname(unlist(lapply(result_list$area, names))),
                rep(c("mean", "sd"), 11))
   expect_equal(unname(unlist(lapply(result_list$occupancy, names))),
-               rep(c("mean", "sd"), 6))
+               rep("mean", 6))
   expect_equal(unname(unlist(lapply(result_list$total_occup, names))),
                rep(c("mean", "sd"), 11))
   expect_true(all(unlist(lapply(
@@ -151,11 +153,8 @@ test_that("collates and finalises multiple replicate results", {
                  expected[1:a,,drop = FALSE] > 0)))*1000^2, 5))
   expect_equal(attr(result_list$area, "units"), "square metres")
   expected_mean <- rowMeans(expected > 0)
-  expected_sd <- apply(expected > 0, 1, stats::sd)
   expect_equal(lapply(result_list$occupancy, function(rl) rl$mean[1:12]),
                lapply(expected_mask, function(e) e*expected_mean))
-  expect_equal(lapply(result_list$occupancy, function(rl) rl$sd[1:12]),
-               lapply(expected_mask, function(e) e*expected_sd))
   expect_equal(unname(unlist(lapply(result_list$total_occup,
                                     function(rl) rl$mean))),
                sapply(1:11, function(a)

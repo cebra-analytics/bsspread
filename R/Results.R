@@ -122,7 +122,7 @@ Results.Region <- function(region, population_model,
   if (is.numeric(stages) && is.null(combine_stages)) {
     zeros <- list(collated = population_model$make(initial = 0L))
     zeros$total <- zeros$collated[1,, drop = FALSE]
-  } else if (is.numeric(combine_stages)) {
+  } else if (is.numeric(stages) && is.numeric(combine_stages)) {
     zeros <- list(collated = array(0L, c(region$get_locations(), 1)))
     colnames(zeros$collated) <- stage_labels
     zeros$total <- zeros$collated[1,, drop = FALSE]
@@ -137,11 +137,14 @@ Results.Region <- function(region, population_model,
     zeros$total_occup <- 0L
   }
   if (replicates > 1) { # summaries
-    zeros$collated <- list(mean = zeros$collated, sd = zeros$collated)
+    zeros$collated <- list(mean = zeros$collated)
+    if (include_occupancy) {
+      zeros$collated$sd = zeros$collated$mean
+    }
     zeros$total <- list(mean = zeros$total, sd = zeros$total)
     zeros$area <- list(mean = zeros$area, sd = zeros$area)
     if (include_occupancy) {
-      zeros$occupancy <- list(mean = zeros$occupancy, sd = zeros$occupancy)
+      zeros$occupancy <- list(mean = zeros$occupancy)
       zeros$total_occup <- list(mean = zeros$total_occup,
                                 sd = zeros$total_occup)
     }
@@ -220,10 +223,12 @@ Results.Region <- function(region, population_model,
       if (tm %% collation_steps == 0) {
         previous_mean <- results$collated[[tmc]]$mean
         results$collated[[tmc]]$mean <<- previous_mean + (n - previous_mean)/r
-        previous_sd <- results$collated[[tmc]]$sd
-        results$collated[[tmc]]$sd <<-
-          (previous_sd + ((n - previous_mean)*
-                            (n - results$collated[[tmc]]$mean)))
+        if (include_occupancy) {
+          previous_sd <- results$collated[[tmc]]$sd
+          results$collated[[tmc]]$sd <<-
+            (previous_sd + ((n - previous_mean)*
+                              (n - results$collated[[tmc]]$mean)))
+        }
       }
 
       # Total population size summaries
@@ -248,10 +253,6 @@ Results.Region <- function(region, population_model,
         previous_mean <- results$occupancy[[tmc]]$mean
         results$occupancy[[tmc]]$mean <<-
           previous_mean + (occupancy - previous_mean)/r
-        previous_sd <- results$occupancy[[tmc]]$sd
-        results$occupancy[[tmc]]$sd <<-
-          (previous_sd + ((occupancy - previous_mean)*
-                            (occupancy - results$occupancy[[tmc]]$mean)))
       }
 
       # Total occupancy summaries
@@ -296,9 +297,11 @@ Results.Region <- function(region, population_model,
     if (replicates > 1) { # summaries
 
       # Transform collated population standard deviations
-      for (tmc in names(results$collated)) {
-        results$collated[[tmc]]$sd <<-
-          sqrt(results$collated[[tmc]]$sd/(replicates - 1))
+      if (include_occupancy) {
+        for (tmc in names(results$collated)) {
+          results$collated[[tmc]]$sd <<-
+            sqrt(results$collated[[tmc]]$sd/(replicates - 1))
+        }
       }
 
       # Transform total population standard deviations
@@ -313,14 +316,6 @@ Results.Region <- function(region, population_model,
           sqrt(results$area[[tmc]]$sd/(replicates - 1))
       }
 
-      # Transform collated occupancy standard deviations
-      if (include_occupancy) {
-        for (tmc in names(results$occupancy)) {
-          results$occupancy[[tmc]]$sd <<-
-            sqrt(results$occupancy[[tmc]]$sd/(replicates - 1))
-        }
-      }
-
       # Transform collated total occupancy standard deviations
       if (include_occupancy) {
         for (tmc in names(results$total_occup)) {
@@ -332,20 +327,17 @@ Results.Region <- function(region, population_model,
 
     # Add labels to staged populations (again)
     if (population_model$get_type() == "stage_structured") {
-      if (replicates > 1) {
-        summaries <- c("mean", "sd")
-      } else {
-        summaries <- ""
-      }
       for (tmc in names(results$collated)) {
-        for (s in summaries) {
-          if (replicates > 1) {
+        if (replicates > 1) {
+          for (s in names(results$collated[[tmc]])) {
             colnames(results$collated[[tmc]][[s]]) <<- stage_labels
-            colnames(results$total[[tmc]][[s]]) <<- stage_labels
-          } else {
-            colnames(results$collated[[tmc]]) <<- stage_labels
-            colnames(results$total[[tmc]]) <<- stage_labels
           }
+          for (s in names(results$total[[tmc]])) {
+            colnames(results$total[[tmc]][[s]]) <<- stage_labels
+          }
+        } else {
+          colnames(results$collated[[tmc]]) <<- stage_labels
+          colnames(results$total[[tmc]]) <<- stage_labels
         }
       }
     }
@@ -380,7 +372,11 @@ Results.Region <- function(region, population_model,
 
       # Replicate summaries or single replicate
       if (replicates > 1) {
-        summaries <- c("mean", "sd")
+        if (include_occupancy) {
+          summaries <- c("mean", "sd")
+        } else {
+          summaries <- "mean"
+        }
       } else {
         summaries <- ""
       }
@@ -470,49 +466,48 @@ Results.Region <- function(region, population_model,
 
       # Save occupancy rasters for each summary/time step
       if (include_occupancy) {
-        for (s in summaries) {
 
-          # Summary post-fix
-          if (replicates > 1) {
-            sc <- paste0("_", s)
-          } else {
-            sc <- s
-          }
-
-          # Add nested list to output list
-          output_key <- paste0("occupancy", sc)
-          output_list[[output_key]] <- list()
-
-          # Initialise non-zero indicator
-          nonzero_list[[output_key]] <- FALSE
-
-          for (tmc in names(results$occupancy)) {
-
-            # Copy results into a raster & update non-zero indicator
-            if (replicates > 1) {
-              output_rast <- region$get_rast(results$occupancy[[tmc]][[s]])
-              nonzero_list[[output_key]] <-
-                (nonzero_list[[output_key]] |
-                   sum(results$occupancy[[tmc]][[s]]) > 0)
-            } else {
-              output_rast <- region$get_rast(results$occupancy[[tmc]])
-              nonzero_list[[output_key]] <-
-                (nonzero_list[[output_key]] |
-                   sum(results$occupancy[[tmc]]) > 0)
-            }
-
-            # Write raster to file and add to output list
-            filename <- sprintf(paste0("occupancy_t%0",
-                                       nchar(as.character(time_steps)),
-                                       "d%s.tif"), as.integer(tmc), sc)
-            output_list[[output_key]][[tmc]] <-
-              terra::writeRaster(output_rast, filename, ...)
-          }
-
-          # Add non-zero indicator as an attribute
-          attr(output_list[[output_key]], "nonzero") <-
-            nonzero_list[[output_key]]
+        # Postfix
+        if (replicates > 1) {
+          sc <- "_mean"
+        } else {
+          sc <- ""
         }
+
+        # Add nested list to output list
+        output_key <- paste0("occupancy", sc)
+        output_list[[output_key]] <- list()
+
+        # Initialise non-zero indicator
+        nonzero_list[[output_key]] <- FALSE
+
+        for (tmc in names(results$occupancy)) {
+
+          # Copy results into a raster & update non-zero indicator
+          if (replicates > 1) {
+            output_rast <- region$get_rast(results$occupancy[[tmc]][["mean"]])
+            nonzero_list[[output_key]] <-
+              (nonzero_list[[output_key]] |
+                 sum(results$occupancy[[tmc]][["mean"]]) > 0)
+          } else {
+            output_rast <- region$get_rast(results$occupancy[[tmc]])
+            nonzero_list[[output_key]] <-
+              (nonzero_list[[output_key]] |
+                 sum(results$occupancy[[tmc]]) > 0)
+          }
+
+          # Write raster to file and add to output list
+          filename <- sprintf(paste0("occupancy_t%0",
+                                     nchar(as.character(time_steps)),
+                                     "d%s.tif"), as.integer(tmc), sc)
+          output_list[[output_key]][[tmc]] <-
+            terra::writeRaster(output_rast, filename, ...)
+        }
+
+        # Add non-zero indicator as an attribute
+        attr(output_list[[output_key]], "nonzero") <-
+          nonzero_list[[output_key]]
+
       }
 
       # Return output list as multi-layer rasters
@@ -529,7 +524,11 @@ Results.Region <- function(region, population_model,
 
     # Replicate summaries or single replicate
     if (replicates > 1) {
-      summaries <- c("mean", "sd")
+      if (include_occupancy) {
+        summaries <- c("mean", "sd")
+      } else {
+        summaries <- "mean"
+      }
     } else {
       summaries <- 1
     }
@@ -605,23 +604,24 @@ Results.Region <- function(region, population_model,
       if (include_occupancy) {
 
         # Combine coordinates and occupancy values
-        output_df <- list()
-        for (s in summaries) {
-          if (replicates > 1) {
-            output_df[[s]] <- lapply(results$occupancy,
-                                     function(o_tm) o_tm[[s]])
-          } else {
-            output_df[[s]] <- results$occupancy
-          }
-          names(output_df[[s]]) <- collated_labels
-          output_df[[s]] <- cbind(coords, as.data.frame(output_df[[s]]))
+        if (replicates > 1) {
+          s <- "mean"
+        } else {
+          s <- 1
         }
+        output_df <- list()
+        if (replicates > 1) {
+          output_df[[s]] <- lapply(results$occupancy,
+                                   function(o_tm) o_tm[[s]])
+        } else {
+          output_df[[s]] <- results$occupancy
+        }
+        names(output_df[[s]]) <- collated_labels
+        output_df[[s]] <- cbind(coords, as.data.frame(output_df[[s]]))
 
         # Write to CSV files
-        for (s in summaries) {
-          filename <- sprintf("occupancy%s.csv", s_fname[[s]])
-          utils::write.csv(output_df[[s]], filename, row.names = FALSE)
-        }
+        filename <- sprintf("occupancy%s.csv", s_fname[[s]])
+        utils::write.csv(output_df[[s]], filename, row.names = FALSE)
       }
     }
 
@@ -723,7 +723,7 @@ Results.Region <- function(region, population_model,
       if (is.numeric(stages) && is.null(combine_stages)) {
         stage_label <- paste0(stage_labels, " ")
         stage_file <- paste0("_stage_", 1:result_stages)
-      } else if (is.numeric(combine_stages)) {
+      } else if (is.numeric(stages) && is.numeric(combine_stages)) {
         if (length(combine_stages) == 1) {
           stage_label <- paste0(
             attr(population_model$get_growth(), "labels")[combine_stages], " ")

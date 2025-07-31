@@ -3,9 +3,9 @@
 #' Builds a class for generating distance or direction functions (or kernels)
 #' for calculating the (relative) probability of dispersal, used by
 #' \code{Dispersal} models and inherited class objects. The kernel functions
-#' include Beta, Cauchy, (negative) Exponential, Gaussian (normal), Lognormal,
-#' and Weibull distributions. Also included is a function for defining the
-#' probability of distances or directions from a table of values.
+#' include uniform, Beta, Cauchy, (negative) Exponential, Gaussian (normal),
+#' Lognormal, and Weibull distributions. Also included is a function for
+#' defining the probability of distances or directions from a table of values.
 #'
 #' @param multiplier Optional numeric multiplier for scaling the (relative)
 #'   probabilities returned by the kernel functions.
@@ -19,6 +19,10 @@
 #'   or directions (0-360 degrees), which return the (relative) probability for
 #'   each value in \code{x}:
 #'   \describe{
+#'     \item{\code{get_uniform_function(lower = 0, upper = 1)}}{Get a uniform
+#'       kernel function specified with parameters for the \code{lower}
+#'       (default is 0) and \code{upper} (default is 1) limits of the
+#'       distribution.}
 #'     \item{\code{get_beta_function(alpha, beta, upper = 1, shift = 0)}}{Get a
 #'       Beta kernel function specified with distribution parameters
 #'       \code{alpha} and \code{beta}, as well as optional parameters for the
@@ -77,6 +81,20 @@ Kernels <- function(multiplier = NULL,
 
   # Create a class structure
   self <- structure(list(), class = c(class, "Kernels"))
+
+  # Get a uniform kernel function
+  self$get_uniform_function <- function(lower = 0, upper = 1) {
+    if (lower >= upper) {
+      stop("The uniform kernel upper parameter must be > the lower parameter.",
+           call. = FALSE)
+    }
+    return(
+      function(x) {
+        return(multiplier*(lower + upper)/2*
+                 stats::dunif(x, min = lower, max = upper))
+      }
+    )
+  }
 
   # Get a Beta kernel function
   self$get_beta_function <- function(alpha, beta, upper = 1, shift = 0) {

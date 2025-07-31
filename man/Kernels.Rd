@@ -23,6 +23,10 @@ of form \code{function(x)}, where \code{x} is a vector of distances (in m)
 or directions (0-360 degrees), which return the (relative) probability for
 each value in \code{x}:
 \describe{
+\item{\code{get_uniform_function(lower = 0, upper = 1)}}{Get a uniform
+kernel function specified with parameters for the \code{lower}
+(default is 0) and \code{upper} (default is 1) limits of the
+distribution.}
 \item{\code{get_beta_function(alpha, beta, upper = 1, shift = 0)}}{Get a
 Beta kernel function specified with distribution parameters
 \code{alpha} and \code{beta}, as well as optional parameters for the
@@ -55,9 +59,9 @@ performs linear interpolation between discrete values.}
 Builds a class for generating distance or direction functions (or kernels)
 for calculating the (relative) probability of dispersal, used by
 \code{Dispersal} models and inherited class objects. The kernel functions
-include Beta, Cauchy, (negative) Exponential, Gaussian (normal), Lognormal,
-and Weibull distributions. Also included is a function for defining the
-probability of distances or directions from a table of values.
+include uniform, Beta, Cauchy, (negative) Exponential, Gaussian (normal),
+Lognormal, and Weibull distributions. Also included is a function for
+defining the probability of distances or directions from a table of values.
 }
 \references{
 Carrasco, L. R., Harwood, T. D., Toepfer, S., MacLeod, A., Levay, N.,
