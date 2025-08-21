@@ -143,6 +143,18 @@ test_that("makes populations with variable growth", {
   growth_mult_s <- as.matrix(template[region$get_indices()][,1])
   growth_mult_st <- cbind(growth_mult_s, growth_mult_s*0.8, growth_mult_s*0.6)
   growth_mult_t <- growth_mult_st[1,,drop = F]
+  attr(growth_mult_s, "apply_to") <- "dummy"
+  expect_error(StagedPopulation(region, growth = stage_matrix,
+                                growth_mult = growth_mult_s),
+               paste("Growth multiplier 'apply to' attribute should be",
+                     "'reproductions' or 'survivals'."))
+  attr(growth_mult_s, "apply_to") <- "reproductions"
+  attr(growth_mult_s, "stages") <- 2:4
+  expect_error(StagedPopulation(region, growth = stage_matrix,
+                                growth_mult = growth_mult_s),
+               paste("Growth multiplier stages should specify index values",
+                     "between 1 and 3."))
+  attr(growth_mult_s, "stages") <- 2:3
   expect_silent(population <- StagedPopulation(region, growth = stage_matrix,
                                          growth_mult = growth_mult_s))
   expect_equal(population$get_growth_mult(cells = 1:10), growth_mult_s[1:10,])
@@ -183,6 +195,7 @@ test_that("grows populations without capacity", {
   idx <- which(template[region$get_indices()] > 0)
   initial <- rep(0, region$get_locations())
   initial[idx] <- stats::rpois(length(idx), 20)
+  set.seed(1243)
   expect_silent(n <- population$make(initial = initial))
   idx <- which(rowSums(n) > 0)
   expected_r <- Re((eigen(stage_matrix,)$values)[1])
@@ -191,7 +204,8 @@ test_that("grows populations without capacity", {
   expect_true(abs(mean(rowSums(n1[idx,]))/20 - expected_r) < 0.05)
   # growth variation
   growth_mult <- rep(1, region$get_locations())
-  growth_mult <- cbind(growth_mult, growth_mult*0.8, growth_mult*0.6)
+  growth_mult <- cbind(growth_mult, growth_mult*0.8, growth_mult*0.6,
+                       growth_mult*0)
   expect_silent(population <- StagedPopulation(region, growth = stage_matrix,
                                                growth_mult = growth_mult))
   set.seed(1243)
@@ -201,8 +215,53 @@ test_that("grows populations without capacity", {
                     expected_r*0.8) <= 0.02)
   expect_true(abs(round(mean(rowSums(population$grow(n, 3)[idx,]))/20, 2) -
                     expected_r*0.6) <= 0.02)
-  expect_true(abs(round(mean(rowSums(population$grow(n, 5)[idx,]))/20, 2) -
+  expect_true(all(rowSums(population$grow(n, 4)[idx,]) == 0))
+  expect_true(abs(round(mean(rowSums(population$grow(n, 6)[idx,]))/20, 2) -
                     expected_r*0.8) <= 0.02)
+
+  attr(growth_mult, "apply_to") <- "reproductions"
+  growth_mult[1:10,2] <- 0
+  idx1 <- idx[idx <= 10]
+  idx2 <- idx[idx > 10]
+  expect_silent(population <- StagedPopulation(region, growth = stage_matrix,
+                                               growth_mult = growth_mult))
+  set.seed(1243)
+  expect_equal(mean(rowSums(population$grow(n, 1)[idx,]))/20,
+               mean(rowSums(n1[idx,]))/20)
+  expect_silent(n2 <- population$grow(n, 2))
+  expect_equal(sum(n2[idx1,1]), 0)
+  expect_equal(round(sum(n2[,2])/sum(n[idx2, 1]), 2), stage_matrix[2,1])
+  expect_true(
+    abs((sum(n[idx2, 2])*stage_matrix[3,2] +
+           sum(n[idx2, 3])*stage_matrix[3,3])/sum(n2[,3]) - 1) < 0.01)
+  expect_true(
+    abs((sum(n[idx2, 2])*stage_matrix[1,2]*0.8 +
+           sum(n[idx2, 3])*stage_matrix[1,3]*0.8)/sum(n2[,1]) - 1) < 0.01)
+  expect_silent(n3 <- population$grow(n, 3))
+  expect_equal(round(sum(n3[,2])/sum(n[idx2, 1]), 2), stage_matrix[2,1])
+  expect_true(
+    abs((sum(n[,2])*stage_matrix[3,2] +
+           sum(n[,3])*stage_matrix[3,3])/sum(n3[,3]) - 1) < 0.01)
+  expect_true(
+    abs((sum(n[,2])*stage_matrix[1,2]*0.6 +
+           sum(n[,3])*stage_matrix[1,3]*0.6)/sum(n3[,1]) - 1) < 0.01)
+  attr(growth_mult, "apply_to") <- "survivals"
+  attr(growth_mult, "stages") <- 2:3
+  expect_silent(population <- StagedPopulation(region, growth = stage_matrix,
+                                               growth_mult = growth_mult))
+  set.seed(1243)
+  expect_equal(mean(rowSums(population$grow(n, 1)[idx,]))/20,
+               mean(rowSums(n1[idx,]))/20)
+  expect_silent(n2 <- population$grow(n, 2))
+  expect_equal(round(sum(n2[,2])/sum(n[,1]), 2), stage_matrix[2,1])
+  expect_equal(sum(n2[idx1, 3]), 0)
+  expect_equal(round(sum(n2[,2])/sum(n[,1]), 2), stage_matrix[2,1])
+  expect_true(
+    abs((sum(n[idx2, 2])*stage_matrix[3,2]*0.8 +
+           sum(n[idx2, 3])*stage_matrix[3,3]*0.8)/sum(n2[idx2, 3]) - 1) < 0.01)
+  expect_true(
+    abs((sum(n[idx2, 2])*stage_matrix[1,2] +
+           sum(n[idx2, 3])*stage_matrix[1,3])/sum(n2[idx2, 1]) - 1) < 0.01)
 })
 
 test_that("grows populations with capacity", {
@@ -231,6 +290,7 @@ test_that("grows populations with capacity", {
   idx <- which(template[region$get_indices()] > 0)
   initial <- rep(0, region$get_locations())
   initial[idx] <- stats::rpois(length(idx), capacity[idx, 1]*3)
+  set.seed(1243)
   n <- population$make(initial = initial) # silent
   idx <- which(rowSums(n) > 0)
   set.seed(1243)
@@ -247,7 +307,8 @@ test_that("grows populations with capacity", {
   # growth variation
   expected_r <- Re((eigen(stage_matrix,)$values)[1])
   growth_mult <- rep(1, region$get_locations())
-  growth_mult <- cbind(growth_mult, growth_mult*0.8, growth_mult*0.6)
+  growth_mult <- cbind(growth_mult, growth_mult*0.8, growth_mult*0.9,
+                       growth_mult*0)
   capacity <- template[region$get_indices()][,1]*10
   expect_silent(population <- StagedPopulation(region, growth = stage_matrix,
                                                growth_mult = growth_mult,
@@ -261,10 +322,61 @@ test_that("grows populations with capacity", {
                                         rowSums(n[idx,])))
   expect_true(mean_growth_2 < expected_r*0.8)
   expect_true(mean(rowSums(population$grow(n, 3)[idx,])/rowSums(n[idx,])) <
-                expected_r*0.6)
+                expected_r*0.9)
+  expect_true(all(rowSums(population$grow(n, 4)[idx,]) == 0))
   set.seed(1243)
-  expect_equal(mean(rowSums(population$grow(n, 5)[idx,])/rowSums(n[idx,])),
+  expect_equal(mean(rowSums(population$grow(n, 6)[idx,])/rowSums(n[idx,])),
                mean_growth_2)
+  attr(growth_mult, "apply_to") <- "reproductions"
+  growth_mult[1:10,2] <- 0
+  idx1 <- idx[idx <= 10]
+  idx2 <- idx[idx > 10]
+  expect_silent(population <- StagedPopulation(region, growth = stage_matrix,
+                                               growth_mult = growth_mult,
+                                               capacity = capacity,
+                                               capacity_stages = 2:3))
+  set.seed(1243)
+  expect_equal(mean(rowSums(population$grow(n, 1)[idx,])),
+               mean(rowSums(n1[idx,])))
+  set.seed(1243)
+  expect_silent(n2 <- population$grow(n, 2))
+  mod_matrix <- stage_matrix
+  mod_matrix[1,2:3] <- mod_matrix[1,2:3]*0.8
+  mod_r <- Re((eigen(mod_matrix,)$values)[1])
+  mult <- exp(log(mod_r)*(1 - sum(n[idx2, 2:3])/sum(capacity[idx2])))/mod_r
+  expect_equal(sum(n2[idx1,1]), 0)
+  expect_true(abs(sum(n2[idx2,1])/
+                    (sum(n[idx2, 2])*stage_matrix[1,2]*mult*0.8 +
+                       sum(n[idx2, 3])*stage_matrix[1,3]*mult*0.8) - 1) < 0.1)
+  expect_true(abs(sum(n2[idx2,2])/
+                    (sum(n[idx2, 1])*stage_matrix[2,1]*mult) - 1) < 0.1)
+  expect_true(abs(sum(n2[idx2,3])/
+                    (sum(n[idx2, 2])*stage_matrix[3,2]*mult +
+                       sum(n[idx2, 3])*stage_matrix[3,3]*mult) - 1) < 0.1)
+  attr(growth_mult, "apply_to") <- "survivals"
+  attr(growth_mult, "stages") <- 2:3
+  expect_silent(population <- StagedPopulation(region, growth = stage_matrix,
+                                               growth_mult = growth_mult,
+                                               capacity = capacity,
+                                               capacity_stages = 2:3))
+  set.seed(1243)
+  expect_equal(mean(rowSums(population$grow(n, 1)[idx,]))/20,
+               mean(rowSums(n1[idx,]))/20)
+  set.seed(1243)
+  expect_silent(n2 <- population$grow(n, 2))
+  mod_matrix <- stage_matrix
+  mod_matrix[3,2:3] <- mod_matrix[3,2:3]*0.8
+  mod_r <- Re((eigen(mod_matrix,)$values)[1])
+  mult <- exp(log(mod_r)*(1 - sum(n[idx2, 2:3])/sum(capacity[idx2])))/mod_r
+  expect_equal(sum(n2[idx1, 3]), 0)
+  expect_true(abs(sum(n2[idx2,1])/
+                    (sum(n[idx2, 2])*stage_matrix[1,2]*mult +
+                       sum(n[idx2, 3])*stage_matrix[1,3]*mult) - 1) < 0.1)
+  expect_true(abs(sum(n2[idx2,2])/
+                    (sum(n[idx2,1])*stage_matrix[2,1]*mult) - 1) < 0.1)
+  expect_true(abs(sum(n2[idx2,3])/
+                    (sum(n[idx2, 2])*stage_matrix[3,2]*mult*0.8 +
+                       sum(n[idx2, 3])*stage_matrix[3,3]*mult*0.8) - 1) < 0.1)
   region <- Region()
   population <- StagedPopulation(region, growth = stage_matrix, capacity = 300,
                                  capacity_area = 1e+06, capacity_stages = 2:3)
@@ -284,9 +396,8 @@ test_that("grows populations with capacity", {
   set.seed(1243)
   expect_equal(population$grow(n, 1), new_n)
   region$set_max_implicit_area(1e+06)
-  r_mult <- get("r_mult", envir = environment(population$grow))
   r <- exp(log(population$get_growth_r())*(1 - sum(n[2:3])/300))
-  mult <- r_mult$mult[which.min(abs(r_mult$r - r))]
+  mult <- r/population$get_growth_r()
   set.seed(1243)
   new_n <- array(0L, c(1, 3))
   for (stage in 1:3) {
@@ -303,7 +414,7 @@ test_that("grows populations with capacity", {
   attr(n, "diffusion_radius") <- 1000
   r <- exp(log(population$get_growth_r())*
              (1 - sum(n[2:3])/(300*pi*3000^2/1e+06)))
-  mult <- r_mult$mult[which.min(abs(r_mult$r - r))]
+  mult <- r/population$get_growth_r()
   set.seed(1243)
   new_n <- array(0L, c(1, 3))
   for (stage in 1:3) {

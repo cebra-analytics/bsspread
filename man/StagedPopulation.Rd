@@ -29,14 +29,25 @@ matrix, including those on the diagonal. The stages/ages may also be
 labelled via an optional attribute \code{labels}.}
 
 \item{growth_mult}{Optional matrix of spatial (rows) and/or temporal
-(columns) growth rate multipliers (0-1), which are applied to the
-\code{growth} stage age matrix. Spatial multipliers should be specified
-via a row for each location, else a single row may specify temporal
-variation only. Likewise, a single column may specify spatial variation
-only. The number of columns for temporal variation should either coincide
-with the number of simulation time steps, or be a cyclic pattern (e.g. 12
-columns for seasonal variation with monthly time steps). Default is
-\code{NULL} for when no spatio-temporal variation in growth is applicable.}
+(columns) growth rate multipliers (0-1) applied to the \code{growth}
+stage/age matrix. Spatial multipliers should be specified via a row for
+each location, else a single row may specify temporal variation only.
+Likewise, a single column may specify spatial variation only. The number
+of columns for temporal variation should either coincide with the number
+of simulation time steps, or be a cyclic pattern (e.g. 12 columns for
+seasonal variation with monthly time steps). Default is \code{NULL} for
+when no spatio-temporal variation in growth is applicable. An optional
+attribute \code{apply_to} may be set to either \code{"reproductions"} or
+\code{"survivals"} to indicate that multipliers should be only be applied
+to reproduction or survival rates. If no \code{apply_to} attribute is
+specified, multipliers are applied to the entire \code{growth} matrix
+(i.e. both reproductions and survivals). An additional optional attribute
+\code{stages} may be set to vector of stage or age indices (as per the
+rows/columns of \code{growth} matrix) to indicate to which stages/ages the
+multipliers should be applied. If no \code{stages} attribute is specified,
+multipliers are applied to all applicable stages/ages. The \code{apply_to}
+and \code{stages} attributes may be utilised together, for example, to
+modify the seasonal survival rates of specified life stages.}
 
 \item{capacity}{A (static) vector or matrix (containing temporal columns) of
 carrying capacity values of the invasive species at each location (row)

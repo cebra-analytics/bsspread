@@ -12,14 +12,25 @@
 #'   matrix, including those on the diagonal. The stages/ages may also be
 #'   labelled via an optional attribute \code{labels}.
 #' @param growth_mult Optional matrix of spatial (rows) and/or temporal
-#'   (columns) growth rate multipliers (0-1), which are applied to the
-#'   \code{growth} stage age matrix. Spatial multipliers should be specified
-#'   via a row for each location, else a single row may specify temporal
-#'   variation only. Likewise, a single column may specify spatial variation
-#'   only. The number of columns for temporal variation should either coincide
-#'   with the number of simulation time steps, or be a cyclic pattern (e.g. 12
-#'   columns for seasonal variation with monthly time steps). Default is
-#'   \code{NULL} for when no spatio-temporal variation in growth is applicable.
+#'   (columns) growth rate multipliers (0-1) applied to the \code{growth}
+#'   stage/age matrix. Spatial multipliers should be specified via a row for
+#'   each location, else a single row may specify temporal variation only.
+#'   Likewise, a single column may specify spatial variation only. The number
+#'   of columns for temporal variation should either coincide with the number
+#'   of simulation time steps, or be a cyclic pattern (e.g. 12 columns for
+#'   seasonal variation with monthly time steps). Default is \code{NULL} for
+#'   when no spatio-temporal variation in growth is applicable. An optional
+#'   attribute \code{apply_to} may be set to either \code{"reproductions"} or
+#'   \code{"survivals"} to indicate that multipliers should be only be applied
+#'   to reproduction or survival rates. If no \code{apply_to} attribute is
+#'   specified, multipliers are applied to the entire \code{growth} matrix
+#'   (i.e. both reproductions and survivals). An additional optional attribute
+#'   \code{stages} may be set to vector of stage or age indices (as per the
+#'   rows/columns of \code{growth} matrix) to indicate to which stages/ages the
+#'   multipliers should be applied. If no \code{stages} attribute is specified,
+#'   multipliers are applied to all applicable stages/ages. The \code{apply_to}
+#'   and \code{stages} attributes may be utilised together, for example, to
+#'   modify the seasonal survival rates of specified life stages.
 #' @param capacity A (static) vector or matrix (containing temporal columns) of
 #'   carrying capacity values of the invasive species at each location (row)
 #'   specified by the \code{region}, or per unit area defined by
@@ -187,6 +198,25 @@ StagedPopulation <- function(region, growth,
     } else if (any(growth_mult < 0) || any(growth_mult > 1)) {
       stop("Growth multiplier values should be >= 0 and <= 1.", call. = FALSE)
     }
+    if (!is.null(attr(growth_mult, "apply_to"))) {
+      if (!attr(growth_mult, "apply_to") %in%
+          c("reproductions", "survivals")) {
+        stop(paste("Growth multiplier 'apply to' attribute should be",
+                   "'reproductions' or 'survivals'."), call. = FALSE)
+      }
+    } else {
+      attr(growth_mult, "apply_to") <- "both"
+    }
+    if (!is.null(attr(growth_mult, "stages"))) {
+      attr(growth_mult, "stages") <- unique(attr(growth_mult, "stages"))
+      if (!is.numeric(attr(growth_mult, "stages")) ||
+          !all(attr(growth_mult, "stages") %in% 1:stages)) {
+        stop(paste0("Growth multiplier stages should specify index values ",
+                   "between 1 and ", stages, "."), call. = FALSE)
+      }
+    } else {
+      attr(growth_mult, "stages") <- 1:stages
+    }
   }
 
   # Get growth rate multipliers for specified region (non-NA) cell indices
@@ -307,18 +337,33 @@ StagedPopulation <- function(region, growth,
     return(values)
   }
 
-  # Look-up table of matrix multipliers for equivalent growth rates
-  if (is.matrix(growth_mult) || is.numeric(capacity)) {
+  # Maximum multiplier when 100% survival
+  max_mult <- max(1/max(colSums(survivals), 0.001), 1)
 
-    # Maximum multiplier when 100% survival
-    max_mult <- max(1/max(colSums(survivals), 0.001), 1)
-
-    # Construct look-up table
-    r_mult <- data.frame(r = NA, mult = (1:trunc(max_mult*1000))/1000)
-    r_mult$r <- sapply(r_mult$mult, function(m) {
-      Re((sort(eigen(growth*m, only.values = TRUE)$values,
-               decreasing = TRUE))[1])
-    })
+  # Construct look-up table for multipliers
+  if (is.matrix(growth_mult)) {
+    r_mult <- data.frame(r = NA, mult = (0:1000)/1000)
+    stages_m <- survivals*0
+    stages_m[,attr(growth_mult, "stages")] <- 1
+    if (attr(growth_mult, "apply_to") == "reproductions") {
+      r_mult$r <- sapply(r_mult$mult, function(m) {
+        Re((sort(eigen(
+          reproductions*stages_m*m + reproductions*(1 - stages_m) + survivals,
+          only.values = TRUE)$values, decreasing = TRUE))[1])
+      })
+    } else if (attr(growth_mult, "apply_to") == "survivals") {
+      r_mult$r <- sapply(r_mult$mult, function(m) {
+        Re((sort(eigen(
+          reproductions + survivals*stages_m*m + survivals*(1 - stages_m),
+          only.values = TRUE)$values, decreasing = TRUE))[1])
+      })
+    } else { # both
+      r_mult$r <- sapply(r_mult$mult, function(m) {
+        Re((sort(eigen(
+          growth*stages_m*m + growth*(1 - stages_m),
+          only.values = TRUE)$values, decreasing = TRUE))[1])
+      })
+    }
   }
 
   # Grow method - override for logistic (capacity-limited) growth
@@ -344,7 +389,9 @@ StagedPopulation <- function(region, growth,
 
       # Get equivalent growth rate at time step for indices
       if (is.matrix(growth_mult)) {
-        growth_r_tm <- growth_r*self$get_growth_mult(cells = indices, tm = tm)
+        growth_r_tm <- sapply(
+          self$get_growth_mult(cells = indices, tm = tm),
+          function(m) r_mult$r[which.min(abs(r_mult$mult - m))])
       } else {
         growth_r_tm <- growth_r
       }
@@ -364,11 +411,11 @@ StagedPopulation <- function(region, growth,
               attr(x, "diffusion_radius") + attr(x, "diffusion_rate")
             area_capacity <- capacity_tm*pi*capacity_radius^2/capacity_area
 
-            # Calculate capacity-limited growth rate
-            r <- min(exp(log(growth_r_tm)*
-                           (-1*(growth_r_tm < 1) + (growth_r_tm >= 1))*
-                           (1 - sum(x[capacity_stages])/area_capacity)),
-                     growth_r_tm)
+            # Calculate capacity-limited growth rate multiplier
+            mult <- min(exp(log(growth_r_tm)*
+                              (-1*(growth_r_tm < 1) + (growth_r_tm >= 1))*
+                              (1 - sum(x[capacity_stages])/area_capacity)),
+                        growth_r_tm)/growth_r_tm
 
           } else if (is.numeric(capacity_area) &&
                      is.numeric(region$get_max_implicit_area())) {
@@ -377,60 +424,72 @@ StagedPopulation <- function(region, growth,
             area_capacity <- (capacity_tm*region$get_max_implicit_area()/
                                 capacity_area)
 
-            # Calculate capacity-limited growth rate
-            r <- min(exp(log(growth_r_tm)*
-                           (-1*(growth_r_tm < 1) + (growth_r_tm >= 1))*
-                           (1 - sum(x[capacity_stages])/area_capacity)),
-                     growth_r_tm)
+            # Calculate capacity-limited growth rate multiplier
+            mult <- min(exp(log(growth_r_tm)*
+                              (-1*(growth_r_tm < 1) + (growth_r_tm >= 1))*
+                              (1 - sum(x[capacity_stages])/area_capacity)),
+                        growth_r_tm)/growth_r_tm
 
           } else {
-            r <- growth_r_tm # unlimited
+            mult <- 1 # unlimited
           }
-
         } else {
 
           # Calculate capacity-limited growth rates for each occupied location
-          r <- pmin(exp(log(growth_r_tm)*
-                          (-1*(growth_r_tm < 1) + (growth_r_tm >= 1))*
-                          (1 - (rowSums(x[indices, capacity_stages,
-                                          drop = FALSE])/
-                                  capacity_tm[indices]))), growth_r_tm)
+          mult <- (pmin(exp(log(growth_r_tm)*
+                              (-1*(growth_r_tm < 1) + (growth_r_tm >= 1))*
+                              (1 - (rowSums(x[indices, capacity_stages,
+                                              drop = FALSE])/
+                                      capacity_tm[indices]))), growth_r_tm)/
+                     growth_r_tm)
         }
       } else {
-        r <- growth_r_tm # unlimited
+        mult <- 1 # unlimited
       }
-
-      # Look-up stage/age matrix multiplier for each occupied location
-      if (is.matrix(growth_mult) || is.numeric(capacity)) {
-        mult <- sapply(r, function(r) {
-          r_mult$mult[which.min(abs(r_mult$r - r))]})
-        if (length(mult) == 1) {
-          mult <- rep(mult, length(indices))
-        }
-      } else {
-        mult <- rep(1, length(indices))
+      if (any(growth_r_tm == 0)) {
+        mult[which(growth_r_tm == 0)] <- 1
+      }
+      if (length(mult) == 1) {
+        mult <- rep(mult, length(indices))
       }
 
       # Sample the new population values (reproduction and survival)
       new_x <- array(0L, c(length(indices), stages))
       for (stage in 1:stages) {
 
+        # Resolve stage multiplier for reproduction
+        if (attr(growth_mult, "apply_to") %in% c("reproductions", "both") &&
+            stage %in% attr(growth_mult, "stages")) {
+          mult_s <- mult*self$get_growth_mult(cells = indices, tm = tm)
+        } else {
+          mult_s <- mult
+        }
+
         # Sample stage reproduction via a Poisson distribution
         new_x <- new_x + stats::rpois(
           length(indices)*stages,
           (x[indices, stage]*
-             t(reproductions[, rep(stage, length(indices))])*mult))
+             t(reproductions[, rep(stage, length(indices))])*mult_s))
+
+        # Resolve stage multiplier for survival
+        if (attr(growth_mult, "apply_to") %in% c("survivals", "both") &&
+            stage %in% attr(growth_mult, "stages")) {
+          mult_s <- pmin(mult*self$get_growth_mult(cells = indices, tm = tm),
+                         max_mult)
+        } else {
+          mult_s <- pmin(mult, max_mult)
+        }
 
         # Sample stage survival via a binomial distribution
         stage_surv <- stats::rbinom(length(indices), x[indices, stage],
                                     rep(sum(survivals[, stage]),
-                                        length(indices))*mult)
+                                        length(indices))*mult_s)
 
         # Distribute survivals across stages via multinomial sampling
         new_x <- new_x + t(sapply(1:length(indices), function(i) {
-          if (any(survivals[, stage]*mult[i] > 0)) {
+          if (any(survivals[, stage]*mult_s[i] > 0)) {
             stats::rmultinom(1, size = stage_surv[i],
-                             prob = survivals[, stage]*mult[i])
+                             prob = survivals[, stage]*mult_s[i])
           } else {
             matrix(0, nrow = nrow(survivals), ncol = 1)
           }
