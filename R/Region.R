@@ -71,6 +71,9 @@
 #'     \item{\code{get_coords(extra_cols = FALSE)}}{Get a data frame of patch
 #'       location coordinates when \code{type} is "patch", as well as optional
 #'       extra named columns from the original location data.}
+#'     \item{\code{get_nearby(cells|patches, radius)}}{Get a vector of
+#'       indices for region locations within a specified \code{radius} (in m)
+#'       of the specified \code{cells} or \code{patches} (indices).}
 #'     \item{\code{set_cores(cores)}}{Set the number of cores available for
 #'       parallel processing and thus enable parallel processing for
 #'       calculating path distances and directions.}
@@ -249,6 +252,14 @@ Region.SpatRaster <- function(x, ...) {
     }
     aggr$pts <<- terra::as.points(aggr$rast, values = FALSE)
     rm(idx_rast); rm(aggr_rast); rm(aggr_idx_rast)
+  }
+
+  # Get nearby locations for specified cells within radius
+  self$get_nearby <- function(cells, radius) {
+    mask <- rep(NA, self$get_locations())
+    mask[cells] <- 1
+    return(which(terra::buffer(self$get_rast(mask),
+                               width = radius)[self$get_indices()][,1]))
   }
 
   # Set the number of cores available for parallel processing
@@ -1004,6 +1015,12 @@ Region.data.frame <- function(x, ...) {
     } else {
       return(x[, c("lon", "lat")])
     }
+  }
+
+  # Get nearby locations for specified patches within radius
+  self$get_nearby <- function(patches, radius) {
+    return(unique(sort(
+      terra::nearby(region_pts, region_pts[patches,], distance = radius)[,1])))
   }
 
   # Set the number of cores available for parallel processing

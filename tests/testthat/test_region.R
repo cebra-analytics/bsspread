@@ -49,6 +49,11 @@ test_that("gets a raster with specified values", {
   expect_equal(terra::cats(value_rast)[[1]],
                data.frame(ID = 1:4, category = c("a", "b", "c", "d")))
   expect_equal(value_rast[region$get_indices()][,1], cat_values)
+  locs <- rep(NA, region$get_locations())
+  locs[5900:5922] <- 1
+  expected_rast <- terra::buffer(region$get_rast(locs), width = 5000)
+  expect_silent(idx <- region$get_nearby(5900:5922, 5000))
+  expect_equal(idx, which(expected_rast[region$get_indices()][,1] == 1))
 })
 
 test_that("initializes with CSV data", {
@@ -63,6 +68,10 @@ test_that("initializes with CSV data", {
   expect_equal(region$get_coords(), locations[, c("lon", "lat")])
   expect_equal(region$get_coords(extra_cols = TRUE),
                locations[, c("lon", "lat", "name")])
+  expect_silent(idx <- region$get_nearby(1:3, 180000))
+  expect_equal(idx, which(rowSums(
+    terra::distance(locations[,2:1], locations[1:3,2:1],
+                    lonlat = TRUE) <= 180000) > 0))
 })
 
 test_that("empty initialize for single aspatial patch", {

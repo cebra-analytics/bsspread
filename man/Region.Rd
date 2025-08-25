@@ -80,6 +80,9 @@ resolution.}
 \item{\code{get_coords(extra_cols = FALSE)}}{Get a data frame of patch
 location coordinates when \code{type} is "patch", as well as optional
 extra named columns from the original location data.}
+\item{\code{get_nearby(cells|patches, radius)}}{Get a vector of
+indices for region locations within a specified \code{radius} (in m)
+of the specified \code{cells} or \code{patches} (indices).}
 \item{\code{set_cores(cores)}}{Set the number of cores available for
 parallel processing and thus enable parallel processing for
 calculating path distances and directions.}
