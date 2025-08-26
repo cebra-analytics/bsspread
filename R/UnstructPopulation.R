@@ -190,7 +190,11 @@ UnstructPopulation <- function(region,
 
       # Process growth control/suppression
       if (!is.null(attr(x, "control_growth"))) {
+        if (length(attr(x, "control_growth")) == 1) {
+          r <- r*attr(x, "control_growth")
+        } else {
           r <- r*attr(x, "control_growth")[indices]
+        }
       }
 
       # Sample the new population values via the Poisson distribution

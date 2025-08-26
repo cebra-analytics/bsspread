@@ -539,16 +539,15 @@ Dispersal.Region <- function(region, population_model,
       ## Process spread control/suppression
       if (!is.null(attr(n$relocated, "control_spread"))) {
         if (length(attr(n$relocated, "control_spread")) == 1) {
-          control_i <- 1
+          control_i <- attr(n$relocated, "control_spread")
         } else {
-          control_i <- loc_i
+          control_i <- attr(n$relocated, "control_spread")[loc_i]
         }
         if (is.numeric(proportion_i) && proportion_i  > 0) {
-          proportion_i <-
-            proportion_i*attr(n$relocated, "control_spread")[control_i]
+          proportion_i <- proportion_i*control_i
         }
         if (is.numeric(events_i) && events_i > 0) {
-          events_i <- events_i*attr(n$relocated, "control_spread")[control_i]
+          events_i <- events_i*control_i
         }
       }
 
@@ -764,13 +763,13 @@ Dispersal.Region <- function(region, population_model,
         if (!is.null(attr(n$relocated, "control_establishment")) &&
             is.numeric(establish_p)) {
           if (length(attr(n$relocated, "control_establishment")) == 1) {
-            control_idx <- 1
+            establish_p <-
+              establish_p*attr(n$relocated, "control_establishment")
           } else {
-            control_idx <- destinations
+            establish_p <-
+              establish_p*attr(n$relocated,
+                               "control_establishment")[destinations]
           }
-          establish_p <-
-            establish_p*attr(n$relocated,
-                             "control_establishment")[control_idx]
         }
 
         # Apply establishment survival to dispersers (some deaths)

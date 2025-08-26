@@ -471,7 +471,11 @@ StagedPopulation <- function(region, growth,
           if ((attr(attr(x, "control_growth"), "apply_to") %in%
                c("reproductions", "both")) &&
               stage %in% attr(attr(x, "control_growth"), "stages")) {
-            mult_s <- mult_s*attr(x, "control_growth")[indices]
+            if (length(attr(x, "control_growth")) == 1) {
+              mult_s <- mult_s*attr(x, "control_growth")
+            } else {
+              mult_s <- mult_s*attr(x, "control_growth")[indices]
+            }
           }
         }
 
@@ -495,7 +499,11 @@ StagedPopulation <- function(region, growth,
           if ((attr(attr(x, "control_growth"), "apply_to") %in%
                c("survivals", "both")) &&
               stage %in% attr(attr(x, "control_growth"), "stages")) {
-            mult_s <- mult_s*attr(x, "control_growth")[indices]
+            if (length(attr(x, "control_growth")) == 1) {
+              mult_s <- mult_s*attr(x, "control_growth")
+            } else {
+              mult_s <- mult_s*attr(x, "control_growth")[indices]
+            }
           }
         }
 
