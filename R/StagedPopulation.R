@@ -465,6 +465,15 @@ StagedPopulation <- function(region, growth,
           mult_s <- mult
         }
 
+        # Process additional reproduction control
+        if (!is.null(attr(x, "control_growth"))) {
+          if ((attr(attr(x, "control_growth"), "apply_to") %in%
+               c("reproductions", "both")) &&
+              stage %in% attr(attr(x, "control_growth"), "stages")) {
+            mult_s <- mult_s*attr(x, "control_growth")[indices]
+          }
+        }
+
         # Sample stage reproduction via a Poisson distribution
         new_x <- new_x + stats::rpois(
           length(indices)*stages,
@@ -478,6 +487,15 @@ StagedPopulation <- function(region, growth,
                          max_mult)
         } else {
           mult_s <- pmin(mult, max_mult)
+        }
+
+        # Process additional survival control
+        if (!is.null(attr(x, "control_growth"))) {
+          if ((attr(attr(x, "control_growth"), "apply_to") %in%
+               c("survivals", "both")) &&
+              stage %in% attr(attr(x, "control_growth"), "stages")) {
+            mult_s <- mult_s*attr(x, "control_growth")[indices]
+          }
         }
 
         # Sample stage survival via a binomial distribution

@@ -194,6 +194,7 @@ test_that("grows populations without capacity", {
   population <- StagedPopulation(region, growth = stage_matrix)
   idx <- which(template[region$get_indices()] > 0)
   initial <- rep(0, region$get_locations())
+  set.seed(1243)
   initial[idx] <- stats::rpois(length(idx), 20)
   set.seed(1243)
   expect_silent(n <- population$make(initial = initial))
@@ -212,13 +213,12 @@ test_that("grows populations without capacity", {
   expect_equal(mean(rowSums(population$grow(n, 1)[idx,]))/20,
                mean(rowSums(n1[idx,]))/20)
   expect_true(abs(round(mean(rowSums(population$grow(n, 2)[idx,]))/20, 2) -
-                    expected_r*0.8) <= 0.02)
+                    expected_r*0.8) < 0.01)
   expect_true(abs(round(mean(rowSums(population$grow(n, 3)[idx,]))/20, 2) -
-                    expected_r*0.6) <= 0.02)
+                    expected_r*0.6) < 0.01)
   expect_true(all(rowSums(population$grow(n, 4)[idx,]) == 0))
   expect_true(abs(round(mean(rowSums(population$grow(n, 6)[idx,]))/20, 2) -
-                    expected_r*0.8) <= 0.02)
-
+                    expected_r*0.8) < 0.01)
   attr(growth_mult, "apply_to") <- "reproductions"
   growth_mult[1:10,2] <- 0
   idx1 <- idx[idx <= 10]
@@ -262,6 +262,38 @@ test_that("grows populations without capacity", {
   expect_true(
     abs((sum(n[idx2, 2])*stage_matrix[1,2] +
            sum(n[idx2, 3])*stage_matrix[1,3])/sum(n2[idx2, 1]) - 1) < 0.01)
+
+  # growth control
+  population <- StagedPopulation(region, growth = stage_matrix)
+  set.seed(1243)
+  expect_silent(n2_no_control <- population$grow(n, 2))
+  attr(n, "control_growth") <- c(rep(0, 4000), rep(0.5, 4000), rep(1, region$get_locations() - 8000))
+  attr(attr(n, "control_growth"), "apply_to") <- "reproductions"
+  attr(attr(n, "control_growth"), "stages") <- 1:3
+  set.seed(1243)
+  expect_silent(n2_control_repr <- population$grow(n, 2))
+  expect_equal(n2_control_repr[1:4000,1], rep(0, 4000))
+  expect_true(
+    abs(sum(n2_control_repr[4001:8000,1])/
+          (sum(n2_no_control[4001:8000, 1])*0.5) - 1) < 0.01)
+  expect_true(
+    abs(sum(n2_control_repr[8001:region$get_locations(),1])/
+          sum(n2_no_control[8001:region$get_locations(), 1]) - 1) < 0.01)
+  expect_equal(n2_control_repr[,2], n2_no_control[,2])
+  expect_true(abs(sum(n2_control_repr[,3])/sum(n2_no_control[,3]) - 1) < 0.01)
+  attr(attr(n, "control_growth"), "apply_to") <- "survivals"
+  attr(attr(n, "control_growth"), "stages") <- 2:3
+  set.seed(1243)
+  expect_silent(n2_control_surv <- population$grow(n, 2))
+  expect_true(abs(sum(n2_control_surv[,1])/sum(n2_no_control[,1]) - 1) < 0.01)
+  expect_equal(n2_control_surv[,2], n2_no_control[,2])
+  expect_equal(n2_control_surv[1:4000,3], rep(0, 4000))
+  expect_true(
+    abs(sum(n2_control_surv[4001:8000,3])/
+          (sum(n2_no_control[4001:8000, 3])*0.5) - 1) < 0.02)
+  expect_true(
+    abs(sum(n2_control_surv[8001:region$get_locations(),3])/
+          sum(n2_no_control[8001:region$get_locations(), 3]) - 1) < 0.01)
 })
 
 test_that("grows populations with capacity", {
@@ -289,6 +321,7 @@ test_that("grows populations with capacity", {
 
   idx <- which(template[region$get_indices()] > 0)
   initial <- rep(0, region$get_locations())
+  set.seed(1243)
   initial[idx] <- stats::rpois(length(idx), capacity[idx, 1]*3)
   set.seed(1243)
   n <- population$make(initial = initial) # silent
@@ -349,7 +382,7 @@ test_that("grows populations with capacity", {
                     (sum(n[idx2, 2])*stage_matrix[1,2]*mult*0.8 +
                        sum(n[idx2, 3])*stage_matrix[1,3]*mult*0.8) - 1) < 0.1)
   expect_true(abs(sum(n2[idx2,2])/
-                    (sum(n[idx2, 1])*stage_matrix[2,1]*mult) - 1) < 0.1)
+                    (sum(n[idx2, 1])*stage_matrix[2,1]*mult) - 1) < 0.02)
   expect_true(abs(sum(n2[idx2,3])/
                     (sum(n[idx2, 2])*stage_matrix[3,2]*mult +
                        sum(n[idx2, 3])*stage_matrix[3,3]*mult) - 1) < 0.1)
@@ -373,10 +406,45 @@ test_that("grows populations with capacity", {
                     (sum(n[idx2, 2])*stage_matrix[1,2]*mult +
                        sum(n[idx2, 3])*stage_matrix[1,3]*mult) - 1) < 0.1)
   expect_true(abs(sum(n2[idx2,2])/
-                    (sum(n[idx2,1])*stage_matrix[2,1]*mult) - 1) < 0.1)
+                    (sum(n[idx2,1])*stage_matrix[2,1]*mult) - 1) < 0.02)
   expect_true(abs(sum(n2[idx2,3])/
                     (sum(n[idx2, 2])*stage_matrix[3,2]*mult*0.8 +
                        sum(n[idx2, 3])*stage_matrix[3,3]*mult*0.8) - 1) < 0.1)
+
+  # growth control
+  population <- StagedPopulation(region, growth = stage_matrix,
+                                 growth_mult = growth_mult,
+                                 capacity = capacity, capacity_stages = 2:3)
+  set.seed(1243)
+  expect_silent(n2_no_control <- population$grow(n, 2))
+  attr(n, "control_growth") <- c(rep(0, 4000), rep(0.5, 4000), rep(1, region$get_locations() - 8000))
+  attr(attr(n, "control_growth"), "apply_to") <- "reproductions"
+  attr(attr(n, "control_growth"), "stages") <- 1:3
+  set.seed(1243)
+  expect_silent(n2_control_repr <- population$grow(n, 2))
+  expect_equal(n2_control_repr[1:4000,1], rep(0, 4000))
+  expect_true(
+    abs(sum(n2_control_repr[4001:8000,1])/
+          (sum(n2_no_control[4001:8000, 1])*0.5) - 1) < 0.01)
+  expect_true(
+    abs(sum(n2_control_repr[8001:region$get_locations(),1])/
+          sum(n2_no_control[8001:region$get_locations(), 1]) - 1) < 0.01)
+  expect_equal(n2_control_repr[,2], n2_no_control[,2])
+  expect_true(abs(sum(n2_control_repr[,3])/sum(n2_no_control[,3]) - 1) < 0.02)
+  attr(attr(n, "control_growth"), "apply_to") <- "survivals"
+  attr(attr(n, "control_growth"), "stages") <- 2:3
+  set.seed(1243)
+  expect_silent(n2_control_surv <- population$grow(n, 2))
+  expect_true(abs(sum(n2_control_surv[,1])/sum(n2_no_control[,1]) - 1) < 0.01)
+  expect_equal(n2_control_surv[,2], n2_no_control[,2])
+  expect_equal(n2_control_surv[1:4000,3], rep(0, 4000))
+  expect_true(
+    abs(sum(n2_control_surv[4001:8000,3])/
+          (sum(n2_no_control[4001:8000, 3])*0.5) - 1) < 0.04)
+  expect_true(
+    abs(sum(n2_control_surv[8001:region$get_locations(),3])/
+          sum(n2_no_control[8001:region$get_locations(), 3]) - 1) < 0.01)
+
   region <- Region()
   population <- StagedPopulation(region, growth = stage_matrix, capacity = 300,
                                  capacity_area = 1e+06, capacity_stages = 2:3)
