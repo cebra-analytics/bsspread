@@ -281,6 +281,8 @@ test_that("grows populations without capacity", {
           sum(n2_no_control[8001:region$get_locations(), 1]) - 1) < 0.01)
   expect_equal(n2_control_repr[,2], n2_no_control[,2])
   expect_true(abs(sum(n2_control_repr[,3])/sum(n2_no_control[,3]) - 1) < 0.01)
+  expect_equal(attr(n2_control_repr, "control_growth"),
+               attr(n, "control_growth"))
   attr(attr(n, "control_growth"), "apply_to") <- "survivals"
   attr(attr(n, "control_growth"), "stages") <- 2:3
   set.seed(1243)

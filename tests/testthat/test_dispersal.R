@@ -136,8 +136,9 @@ test_that("disperses population in a raster grid region", {
   no_estab_control <- sum(dispersal$unpack(dispersal$disperse(n, tm = 1)))
   attr(n$relocated, "control_establishment") <- 0.5
   set.seed(1234)
-  expect_equal(round(sum(dispersal$unpack(dispersal$disperse(n, tm = 1)))/
-                       no_estab_control, 1), 0.5)
+  expect_silent(n2 <- dispersal$unpack(dispersal$disperse(n, tm = 2)))
+  expect_equal(round(sum(n2)/no_estab_control, 1), 0.5)
+  expect_equal(attr(n2, "control_establishment"), 0.5)
   attr(n$relocated, "control_establishment") <- NULL
   population <- Population(region)
   # spatio-temporal
