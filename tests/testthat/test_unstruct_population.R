@@ -43,6 +43,7 @@ test_that("grows populations without capacity", {
   idx <- which(template[region$get_indices()] > 0)
   incursion <- rep(FALSE, region$get_locations())
   incursion[idx] <- TRUE
+  set.seed(1243)
   expect_silent(n <- population$make(incursion = incursion))
   idx <- which(n > 0)
   set.seed(1243)
@@ -54,13 +55,31 @@ test_that("grows populations without capacity", {
   expect_silent(population <- UnstructPopulation(region, growth = growth,
                                                  incursion_mean = 10))
   set.seed(1243)
-  expect_equal(round(mean(population$grow(n, 1)[idx]/n[idx]), 1), 1.2)
-  expect_true(abs(round(mean(population$grow(n, 2)[idx]/n[idx]), 2) -
-                    0.96) <= 0.02)
-  expect_true(abs(round(mean(population$grow(n, 3)[idx]/n[idx]), 2) -
-                    0.72) <= 0.02)
-  expect_true(abs(round(mean(population$grow(n, 5)[idx]/n[idx]), 2) -
-                    0.96) <= 0.02)
+  expect_silent(n1 <- population$grow(n, 1))
+  expect_equal(round(sum(n1[idx])/sum(n[idx]), 3), 1.2)
+  set.seed(1243)
+  expect_silent(n2 <- population$grow(n, 2))
+  expect_equal(round(sum(n2[idx])/sum(n[idx]), 2), 1.2*0.8)
+  set.seed(1243)
+  expect_silent(n3 <- population$grow(n, 3))
+  expect_equal(round(sum(n3[idx])/sum(n[idx]), 2), 1.2*0.6)
+  set.seed(1243)
+  expect_equal(population$grow(n, 5), n2)
+  # growth control
+  expect_silent(population <- UnstructPopulation(region, growth = 1.2,
+                                                 incursion_mean = 10))
+  set.seed(1243)
+  expect_silent(n2_no_control <- population$grow(n, 2))
+  attr(n, "control_growth") <- c(rep(0, 4000), rep(0.5, 4000), rep(1, region$get_locations() - 8000))
+  set.seed(1243)
+  expect_silent(n2_control_growth <- population$grow(n, 2))
+  expect_equal(n2_control_growth[1:4000], rep(0, 4000))
+  expect_true(
+    abs(sum(n2_control_growth[4001:8000])/
+          (sum(n2_no_control[4001:8000])*0.5) - 1) < 0.01)
+  expect_true(
+    abs(sum(n2_control_growth[8001:region$get_locations()])/
+          sum(n2_no_control[8001:region$get_locations()]) - 1) < 0.01)
 })
 
 test_that("grows populations with capacity", {

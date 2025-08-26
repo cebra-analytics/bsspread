@@ -83,7 +83,9 @@ vector via using vectors of the \code{initial} or \code{current} and
 step \code{tm}.}
 \item{\code{grow(x, tm)}}{Performs logistic (capacity-limited) growth on
 the population \code{x} vector at simulation time step \code{tm}, and
-returns the transformed vector.}
+returns the transformed vector. Growth control (suppression) may also
+processed when passed via attributes (see
+\code{bsmanage::ManageControls}).}
 }
 }
 \description{

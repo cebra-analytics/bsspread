@@ -63,7 +63,9 @@
 #'       step \code{tm}.}
 #'     \item{\code{grow(x, tm)}}{Performs logistic (capacity-limited) growth on
 #'       the population \code{x} vector at simulation time step \code{tm}, and
-#'       returns the transformed vector.}
+#'       returns the transformed vector. Growth control (suppression) may also
+#'       processed when passed via attributes (see
+#'       \code{bsmanage::ManageControls}).}
 #'   }
 #' @references
 #'   Beverton, R. J. H., & Holt, S. J. (1957). On the dynamics of exploited
@@ -184,6 +186,11 @@ UnstructPopulation <- function(region,
 
       } else {
         r <- growth_tm
+      }
+
+      # Process growth control/suppression
+      if (!is.null(attr(x, "control_growth"))) {
+          r <- r*attr(x, "control_growth")[indices]
       }
 
       # Sample the new population values via the Poisson distribution
