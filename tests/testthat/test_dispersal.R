@@ -114,6 +114,32 @@ test_that("disperses population in a raster grid region", {
   set.seed(1234); new_locs <- stats::rpois(1, 100); set.seed(1234)
   expect_true(sum(
     dispersal$unpack(dispersal$disperse(n, tm = 1))) <= new_locs + 1)
+  # spread and establishment control
+  n <- dispersal$unpack(n)
+  attr(n, "control_spread") <- 0.5
+  n <- dispersal$pack(n)
+  dispersal <- Dispersal(region, population_model = population,
+                         proportion = 0.5)
+  expect_equal(round(sum(dispersal$unpack(dispersal$disperse(n, tm = 1)))/
+                       region$get_locations(), 2), 0.25)
+  dispersal <- Dispersal(region, population_model = population,
+                         events = 100)
+  set.seed(1234); new_locs <- stats::rpois(1, 50); set.seed(1234)
+  expect_true(sum(
+    dispersal$unpack(dispersal$disperse(n, tm = 1))) <= new_locs + 1)
+  attr(n$relocated, "control_spread") <- NULL
+  establish_pr <- template[region$get_indices()][,1]
+  population <- Population(region, establish_pr = establish_pr)
+  dispersal <- Dispersal(region, population_model = population,
+                         events = 1000)
+  set.seed(1234)
+  no_estab_control <- sum(dispersal$unpack(dispersal$disperse(n, tm = 1)))
+  attr(n$relocated, "control_establishment") <- 0.5
+  set.seed(1234)
+  expect_equal(round(sum(dispersal$unpack(dispersal$disperse(n, tm = 1)))/
+                       no_estab_control, 1), 0.5)
+  attr(n$relocated, "control_establishment") <- NULL
+  population <- Population(region)
   # spatio-temporal
   prop_matrix <- matrix(rep(0, region$get_locations()),
                         nrow = region$get_locations(), ncol = 3)

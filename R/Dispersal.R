@@ -128,7 +128,9 @@
 #'       region locations), and return the transformed list of vectors or
 #'       matrices. The separation of original, remaining and relocated
 #'       populations enables multiple models for different dispersal vectors
-#'       to run in sequence.}
+#'       to run in sequence. Spread and establishment control (suppression) may
+#'       also be processed when passed via attributes (see
+#'       \code{bsmanage::ManageControls}).}
 #'   }
 #' @references
 #'   Bradhurst, R., Spring, D., Stanaway, M., Milner, J., & Kompas, T. (2021).
@@ -534,6 +536,22 @@ Dispersal.Region <- function(region, population_model,
         events_i <- events
       }
 
+      ## Process spread control/suppression
+      if (!is.null(attr(n$relocated, "control_spread"))) {
+        if (length(attr(n$relocated, "control_spread")) == 1) {
+          control_i <- 1
+        } else {
+          control_i <- loc_i
+        }
+        if (is.numeric(proportion_i) && proportion_i  > 0) {
+          proportion_i <-
+            proportion_i*attr(n$relocated, "control_spread")[control_i]
+        }
+        if (is.numeric(events_i) && events_i > 0) {
+          events_i <- events_i*attr(n$relocated, "control_spread")[control_i]
+        }
+      }
+
       ## Calculate dispersers from (original) cell population
       dispersers <- FALSE
       if (population_type == "presence_only") {
@@ -738,9 +756,24 @@ Dispersal.Region <- function(region, population_model,
           remaining <- n$remaining[i, dispersal_stages]
         }
 
-        # Apply establishment survival to dispersers (some deaths)
+        # Get establishment probability for destination cells at time step
         establish_p <- population_model$get_establish_pr(cells = destinations,
                                                          tm = tm)
+
+        # Process establishment control/suppression
+        if (!is.null(attr(n$relocated, "control_establishment")) &&
+            is.numeric(establish_p)) {
+          if (length(attr(n$relocated, "control_establishment")) == 1) {
+            control_idx <- 1
+          } else {
+            control_idx <- destinations
+          }
+          establish_p <-
+            establish_p*attr(n$relocated,
+                             "control_establishment")[control_idx]
+        }
+
+        # Apply establishment survival to dispersers (some deaths)
         if (is.numeric(establish_p)) {
           if (population_type == "presence_only" && is.null(events)) {
             destinations <- destinations[which(as.logical(

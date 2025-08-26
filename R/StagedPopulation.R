@@ -100,7 +100,7 @@
 #'     \item{\code{grow(x, tm)}}{Performs logistic (capacity-limited) growth on
 #'       the population \code{x} matrix (having a row per location and a column
 #'       per stage/age) at simulation time step \code{tm}, and returns the
-#'       transformed matrix. Growth control (suppression) may also processed
+#'       transformed matrix. Growth control (suppression) may also be processed
 #'       when passed via attributes (see \code{bsmanage::ManageControls}).}
 #'   }
 #' @references
