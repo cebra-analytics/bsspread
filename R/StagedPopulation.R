@@ -20,8 +20,8 @@
 #'   of simulation time steps, or be a cyclic pattern (e.g. 12 columns for
 #'   seasonal variation with monthly time steps). Default is \code{NULL} for
 #'   when no spatio-temporal variation in growth is applicable. An optional
-#'   attribute \code{apply_to} may be set to either \code{"reproductions"} or
-#'   \code{"survivals"} to indicate that multipliers should be only be applied
+#'   attribute \code{apply_to} may be set to either \code{"reproduction"} or
+#'   \code{"survival"} to indicate that multipliers should be only be applied
 #'   to reproduction or survival rates. If no \code{apply_to} attribute is
 #'   specified, multipliers are applied to the entire \code{growth} matrix
 #'   (i.e. both reproductions and survivals). An additional optional attribute
@@ -201,9 +201,9 @@ StagedPopulation <- function(region, growth,
     }
     if (!is.null(attr(growth_mult, "apply_to"))) {
       if (!attr(growth_mult, "apply_to") %in%
-          c("reproductions", "survivals")) {
+          c("reproduction", "survival")) {
         stop(paste("Growth multiplier 'apply to' attribute should be",
-                   "'reproductions' or 'survivals'."), call. = FALSE)
+                   "'reproduction' or 'survival'."), call. = FALSE)
       }
     } else {
       attr(growth_mult, "apply_to") <- "both"
@@ -346,13 +346,13 @@ StagedPopulation <- function(region, growth,
     r_mult <- data.frame(r = NA, mult = (0:1000)/1000)
     stages_m <- survivals*0
     stages_m[,attr(growth_mult, "stages")] <- 1
-    if (attr(growth_mult, "apply_to") == "reproductions") {
+    if (attr(growth_mult, "apply_to") == "reproduction") {
       r_mult$r <- sapply(r_mult$mult, function(m) {
         Re((sort(eigen(
           reproductions*stages_m*m + reproductions*(1 - stages_m) + survivals,
           only.values = TRUE)$values, decreasing = TRUE))[1])
       })
-    } else if (attr(growth_mult, "apply_to") == "survivals") {
+    } else if (attr(growth_mult, "apply_to") == "survival") {
       r_mult$r <- sapply(r_mult$mult, function(m) {
         Re((sort(eigen(
           reproductions + survivals*stages_m*m + survivals*(1 - stages_m),
@@ -459,7 +459,7 @@ StagedPopulation <- function(region, growth,
       for (stage in 1:stages) {
 
         # Resolve stage multiplier for reproduction
-        if (attr(growth_mult, "apply_to") %in% c("reproductions", "both") &&
+        if (attr(growth_mult, "apply_to") %in% c("reproduction", "both") &&
             stage %in% attr(growth_mult, "stages")) {
           mult_s <- mult*self$get_growth_mult(cells = indices, tm = tm)
         } else {
@@ -469,7 +469,7 @@ StagedPopulation <- function(region, growth,
         # Process additional reproduction control
         if (!is.null(attr(x, "control_growth"))) {
           if ((attr(attr(x, "control_growth"), "apply_to") %in%
-               c("reproductions", "both")) &&
+               c("reproduction", "both")) &&
               stage %in% attr(attr(x, "control_growth"), "stages")) {
             if (length(attr(x, "control_growth")) == 1) {
               mult_s <- mult_s*attr(x, "control_growth")
@@ -486,7 +486,7 @@ StagedPopulation <- function(region, growth,
              t(reproductions[, rep(stage, length(indices))])*mult_s))
 
         # Resolve stage multiplier for survival
-        if (attr(growth_mult, "apply_to") %in% c("survivals", "both") &&
+        if (attr(growth_mult, "apply_to") %in% c("survival", "both") &&
             stage %in% attr(growth_mult, "stages")) {
           mult_s <- pmin(mult*self$get_growth_mult(cells = indices, tm = tm),
                          max_mult)
@@ -497,7 +497,7 @@ StagedPopulation <- function(region, growth,
         # Process additional survival control
         if (!is.null(attr(x, "control_growth"))) {
           if ((attr(attr(x, "control_growth"), "apply_to") %in%
-               c("survivals", "both")) &&
+               c("survival", "both")) &&
               stage %in% attr(attr(x, "control_growth"), "stages")) {
             if (length(attr(x, "control_growth")) == 1) {
               mult_s <- mult_s*attr(x, "control_growth")

@@ -37,8 +37,8 @@ of columns for temporal variation should either coincide with the number
 of simulation time steps, or be a cyclic pattern (e.g. 12 columns for
 seasonal variation with monthly time steps). Default is \code{NULL} for
 when no spatio-temporal variation in growth is applicable. An optional
-attribute \code{apply_to} may be set to either \code{"reproductions"} or
-\code{"survivals"} to indicate that multipliers should be only be applied
+attribute \code{apply_to} may be set to either \code{"reproduction"} or
+\code{"survival"} to indicate that multipliers should be only be applied
 to reproduction or survival rates. If no \code{apply_to} attribute is
 specified, multipliers are applied to the entire \code{growth} matrix
 (i.e. both reproductions and survivals). An additional optional attribute

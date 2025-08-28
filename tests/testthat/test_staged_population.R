@@ -147,8 +147,8 @@ test_that("makes populations with variable growth", {
   expect_error(StagedPopulation(region, growth = stage_matrix,
                                 growth_mult = growth_mult_s),
                paste("Growth multiplier 'apply to' attribute should be",
-                     "'reproductions' or 'survivals'."))
-  attr(growth_mult_s, "apply_to") <- "reproductions"
+                     "'reproduction' or 'survival'."))
+  attr(growth_mult_s, "apply_to") <- "reproduction"
   attr(growth_mult_s, "stages") <- 2:4
   expect_error(StagedPopulation(region, growth = stage_matrix,
                                 growth_mult = growth_mult_s),
@@ -219,7 +219,7 @@ test_that("grows populations without capacity", {
   expect_true(all(rowSums(population$grow(n, 4)[idx,]) == 0))
   expect_true(abs(round(mean(rowSums(population$grow(n, 6)[idx,]))/20, 2) -
                     expected_r*0.8) < 0.01)
-  attr(growth_mult, "apply_to") <- "reproductions"
+  attr(growth_mult, "apply_to") <- "reproduction"
   growth_mult[1:10,2] <- 0
   idx1 <- idx[idx <= 10]
   idx2 <- idx[idx > 10]
@@ -245,7 +245,7 @@ test_that("grows populations without capacity", {
   expect_true(
     abs((sum(n[,2])*stage_matrix[1,2]*0.6 +
            sum(n[,3])*stage_matrix[1,3]*0.6)/sum(n3[,1]) - 1) < 0.01)
-  attr(growth_mult, "apply_to") <- "survivals"
+  attr(growth_mult, "apply_to") <- "survival"
   attr(growth_mult, "stages") <- 2:3
   expect_silent(population <- StagedPopulation(region, growth = stage_matrix,
                                                growth_mult = growth_mult))
@@ -268,7 +268,7 @@ test_that("grows populations without capacity", {
   set.seed(1243)
   expect_silent(n2_no_control <- population$grow(n, 2))
   attr(n, "control_growth") <- c(rep(0, 4000), rep(0.5, 4000), rep(1, region$get_locations() - 8000))
-  attr(attr(n, "control_growth"), "apply_to") <- "reproductions"
+  attr(attr(n, "control_growth"), "apply_to") <- "reproduction"
   attr(attr(n, "control_growth"), "stages") <- 1:3
   set.seed(1243)
   expect_silent(n2_control_repr <- population$grow(n, 2))
@@ -283,7 +283,7 @@ test_that("grows populations without capacity", {
   expect_true(abs(sum(n2_control_repr[,3])/sum(n2_no_control[,3]) - 1) < 0.01)
   expect_equal(attr(n2_control_repr, "control_growth"),
                attr(n, "control_growth"))
-  attr(attr(n, "control_growth"), "apply_to") <- "survivals"
+  attr(attr(n, "control_growth"), "apply_to") <- "survival"
   attr(attr(n, "control_growth"), "stages") <- 2:3
   set.seed(1243)
   expect_silent(n2_control_surv <- population$grow(n, 2))
@@ -362,7 +362,7 @@ test_that("grows populations with capacity", {
   set.seed(1243)
   expect_equal(mean(rowSums(population$grow(n, 6)[idx,])/rowSums(n[idx,])),
                mean_growth_2)
-  attr(growth_mult, "apply_to") <- "reproductions"
+  attr(growth_mult, "apply_to") <- "reproduction"
   growth_mult[1:10,2] <- 0
   idx1 <- idx[idx <= 10]
   idx2 <- idx[idx > 10]
@@ -388,7 +388,7 @@ test_that("grows populations with capacity", {
   expect_true(abs(sum(n2[idx2,3])/
                     (sum(n[idx2, 2])*stage_matrix[3,2]*mult +
                        sum(n[idx2, 3])*stage_matrix[3,3]*mult) - 1) < 0.1)
-  attr(growth_mult, "apply_to") <- "survivals"
+  attr(growth_mult, "apply_to") <- "survival"
   attr(growth_mult, "stages") <- 2:3
   expect_silent(population <- StagedPopulation(region, growth = stage_matrix,
                                                growth_mult = growth_mult,
@@ -420,7 +420,7 @@ test_that("grows populations with capacity", {
   set.seed(1243)
   expect_silent(n2_no_control <- population$grow(n, 2))
   attr(n, "control_growth") <- c(rep(0, 4000), rep(0.5, 4000), rep(1, region$get_locations() - 8000))
-  attr(attr(n, "control_growth"), "apply_to") <- "reproductions"
+  attr(attr(n, "control_growth"), "apply_to") <- "reproduction"
   attr(attr(n, "control_growth"), "stages") <- 1:3
   set.seed(1243)
   expect_silent(n2_control_repr <- population$grow(n, 2))
@@ -433,7 +433,7 @@ test_that("grows populations with capacity", {
           sum(n2_no_control[8001:region$get_locations(), 1]) - 1) < 0.01)
   expect_equal(n2_control_repr[,2], n2_no_control[,2])
   expect_true(abs(sum(n2_control_repr[,3])/sum(n2_no_control[,3]) - 1) < 0.02)
-  attr(attr(n, "control_growth"), "apply_to") <- "survivals"
+  attr(attr(n, "control_growth"), "apply_to") <- "survival"
   attr(attr(n, "control_growth"), "stages") <- 2:3
   set.seed(1243)
   expect_silent(n2_control_surv <- population$grow(n, 2))
