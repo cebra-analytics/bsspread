@@ -29,14 +29,14 @@ test_that("collates single replicate results", {
                                    replicates = 1,
                                    combine_stages = NULL))
   expect_silent(result_list <- results$get_list())
-  expect_equal(names(result_list), c("collated", "total", "area"))
-  expect_named(result_list$collated, as.character(seq(0, 10, 2)))
+  expect_equal(names(result_list), c("occupancy", "total_occup", "area"))
+  expect_named(result_list$occupancy, as.character(seq(0, 10, 2)))
   expect_true(all(
-    unlist(lapply(result_list$collated, length)) == region$get_locations()))
-  expect_true(all(unlist(result_list$collated) == 0))
-  expect_named(result_list$total, as.character(0:10))
-  expect_true(all(unlist(lapply(result_list$total, length)) == 1))
-  expect_true(all(unlist(result_list$total) == 0))
+    unlist(lapply(result_list$occupancy, length)) == region$get_locations()))
+  expect_true(all(unlist(result_list$occupancy) == 0))
+  expect_named(result_list$total_occup, as.character(0:10))
+  expect_true(all(unlist(lapply(result_list$total_occup, length)) == 1))
+  expect_true(all(unlist(result_list$total_occup) == 0))
   expect_named(result_list$area, as.character(0:10))
   expect_true(all(unlist(lapply(result_list$area, length)) == 1))
   expect_true(all(unlist(result_list$area) == 0))
@@ -49,8 +49,8 @@ test_that("collates single replicate results", {
   expected <- lapply(seq(0, 10, 2),
                      function(tm) c(rep(1, tm + 1), rep(0, 11 - tm)))
   names(expected) <- as.character(seq(0, 10, 2))
-  expect_equal(lapply(result_list$collated, function(rl) rl[1:12]), expected)
-  expect_equal(unname(unlist(result_list$total)), 1:11)
+  expect_equal(lapply(result_list$occupancy, function(rl) rl[1:12]), expected)
+  expect_equal(unname(unlist(result_list$total_occup)), 1:11)
   expect_equal(signif(unname(unlist(result_list$area)), 5), (1:11)*1000^2)
   expect_equal(attr(result_list$area, "units"), "square metres")
   # unstructured population
@@ -69,14 +69,93 @@ test_that("collates single replicate results", {
   }
   expect_silent(result_list <- results$get_list())
   expect_named(result_list,
-               c("collated", "total", "area", "occupancy", "total_occup"))
+               c("population", "total_pop", "occupancy", "total_occup",
+                 "area"))
+  expect_named(result_list$population, as.character(seq(0, 10, 2)))
+  expect_true(all(unlist(lapply(result_list$population, length)) ==
+                    region$get_locations()))
+  expect_named(result_list$total_pop, as.character(0:10))
+  expect_true(all(unlist(lapply(result_list$total_pop, length)) == 1))
   expect_named(result_list$occupancy, as.character(seq(0, 10, 2)))
   expect_true(all(unlist(lapply(result_list$occupancy, length)) ==
                     region$get_locations()))
   expect_named(result_list$total_occup, as.character(0:10))
   expect_true(all(unlist(lapply(result_list$total_occup, length)) == 1))
+  expect_equal(lapply(result_list$population, function(rl) rl[1:12]), expected)
+  expect_equal(unname(unlist(result_list$total_pop)), 1:11)
   expect_equal(lapply(result_list$occupancy, function(rl) rl[1:12]), expected)
   expect_equal(unname(unlist(result_list$total_occup)), 1:11)
+  # staged population
+  stage_matrix <- matrix(c(0.0, 2.0, 5.0,
+                           0.3, 0.0, 0.0,
+                           0.0, 0.6, 0.8),
+                         nrow = 3, ncol = 3, byrow = TRUE)
+  population <- StagedPopulation(region, growth = stage_matrix)
+  expect_silent(results <- Results(region, population_model = population,
+                                   time_steps = 10,
+                                   step_duration = 1,
+                                   step_units = "years",
+                                   collation_steps = 2,
+                                   replicates = 1,
+                                   combine_stages = NULL))
+  n <- rep(0, region$get_locations())
+  n[5922] <- 20
+  set.seed(1234)
+  n <- population$make(initial = n)
+  n_t0 <- n
+  for (tm in 0:10) {
+    n[5922 + tm, ] <- n[5922,]*(tm == 0) + tm
+    results$collate(r = 1, tm, n)
+  }
+  expect_silent(result_list <- results$get_list())
+  expect_named(result_list, c("population", "total_pop", "occupancy",
+                              "total_occup", "area"))
+  expect_named(result_list$population, as.character(seq(0, 10, 2)))
+  expect_true(all(sapply(result_list$population, dim) ==
+                    matrix(c(region$get_locations(), 3), nrow = 2, ncol = 6)))
+  expect_named(result_list$total_pop, as.character(0:10))
+  expect_true(all(sapply(result_list$total_pop, dim) ==
+                    matrix(c(1, 3), nrow = 2, ncol = 11)))
+  expect_named(result_list$occupancy, as.character(seq(0, 10, 2)))
+  expect_true(all(unlist(lapply(result_list$occupancy, length)) ==
+                    region$get_locations()))
+  expect_named(result_list$total_occup, as.character(0:10))
+  expect_true(all(unlist(lapply(result_list$total_occup, length)) == 1))
+  n_total <- list('0' = n_t0[5922,, drop = FALSE])
+  for (i in 1:10) {
+    n_total[[as.character(i)]] <-  n_total[[as.character(i - 1)]] + i
+  }
+  expect_equal(result_list$total_pop, n_total)
+  expect_equal(lapply(result_list$occupancy, function(rl) rl[5922:5933]),
+               expected)
+  unname(unlist(result_list$total_occup)) ; 1:11
+  expect_silent(results <- Results(region, population_model = population,
+                                   time_steps = 10,
+                                   step_duration = 1,
+                                   step_units = "years",
+                                   collation_steps = 2,
+                                   replicates = 1,
+                                   combine_stages = 2:3))
+  n <- n_t0
+  for (tm in 0:10) {
+    n[5922 + tm, ] <- n[5922,]*(tm == 0) + tm
+    results$collate(r = 1, tm, n)
+  }
+  expect_silent(result_list <- results$get_list())
+  expect_named(result_list, c("population", "total_pop", "occupancy",
+                              "total_occup", "area"))
+  expect_named(result_list$population, as.character(seq(0, 10, 2)))
+  expect_true(all(sapply(result_list$population, dim) ==
+                    matrix(c(region$get_locations(), 1), nrow = 2, ncol = 6)))
+  expect_named(result_list$total_pop, as.character(0:10))
+  expect_true(all(sapply(result_list$total_pop, dim) ==
+                    matrix(c(1, 1), nrow = 2, ncol = 11)))
+  n_total <- list('0' = as.matrix(sum(n_t0[5922, 2:3])))
+  colnames(n_total[[1]]) <- "combined"
+  for (i in 1:10) {
+    n_total[[as.character(i)]] <-  n_total[[as.character(i - 1)]] + 2*i
+  }
+  expect_equal(result_list$total_pop, n_total)
 })
 
 test_that("collates and finalises multiple replicate results", {
@@ -93,10 +172,11 @@ test_that("collates and finalises multiple replicate results", {
                                    combine_stages = NULL))
   expect_silent(result_list <- results$get_list())
   expect_named(result_list,
-               c("collated", "total", "area", "occupancy", "total_occup"))
-  expect_equal(unname(unlist(lapply(result_list$collated, names))),
+               c("population", "total_pop", "occupancy", "total_occup",
+                 "area"))
+  expect_equal(unname(unlist(lapply(result_list$population, names))),
                rep(c("mean", "sd"), 6))
-  expect_equal(unname(unlist(lapply(result_list$total, names))),
+  expect_equal(unname(unlist(lapply(result_list$total_pop, names))),
                rep(c("mean", "sd"), 11))
   expect_equal(unname(unlist(lapply(result_list$area, names))),
                rep(c("mean", "sd"), 11))
@@ -105,11 +185,11 @@ test_that("collates and finalises multiple replicate results", {
   expect_equal(unname(unlist(lapply(result_list$total_occup, names))),
                rep(c("mean", "sd"), 11))
   expect_true(all(unlist(lapply(
-    result_list$collated,
+    result_list$population,
     function(rl) lapply(rl, length))) == region$get_locations()))
-  expect_true(all(unlist(result_list$collated) == 0))
-  expect_length(unlist(result_list$total), 11*2)
-  expect_true(all(unlist(result_list$total) == 0))
+  expect_true(all(unlist(result_list$population) == 0))
+  expect_length(unlist(result_list$total_pop), 11*2)
+  expect_true(all(unlist(result_list$total_pop) == 0))
   expect_length(unlist(result_list$area), 11*2)
   expect_true(all(unlist(result_list$area) == 0))
   expect_true(all(unlist(lapply(
@@ -132,14 +212,16 @@ test_that("collates and finalises multiple replicate results", {
   expected_mask <-
     lapply(seq(0, 10, 2), function(tm) c(rep(1, tm + 1), rep(0, 11 - tm)))
   names(expected_mask) <- as.character(seq(0, 10, 2))
-  expect_equal(lapply(result_list$collated, function(rl) rl$mean[1:12]),
+  expect_equal(lapply(result_list$population, function(rl) rl$mean[1:12]),
                lapply(expected_mask, function(e) e*expected_mean))
-  expect_equal(lapply(result_list$collated, function(rl) rl$sd[1:12]),
+  expect_equal(lapply(result_list$population, function(rl) rl$sd[1:12]),
                lapply(expected_mask, function(e) e*expected_sd))
-  expect_equal(unname(unlist(lapply(result_list$total, function(rl) rl$mean))),
+  expect_equal(unname(unlist(lapply(result_list$total_pop,
+                                    function(rl) rl$mean))),
                sapply(1:11, function(a)
                  mean(colSums(expected[1:a,,drop = FALSE]))))
-  expect_equal(unname(unlist(lapply(result_list$total, function(rl) rl$sd))),
+  expect_equal(unname(unlist(lapply(result_list$total_pop,
+                                    function(rl) rl$sd))),
                sapply(1:11, function(a)
                  stats::sd(colSums(expected[1:a,,drop = FALSE]))))
 
@@ -163,6 +245,89 @@ test_that("collates and finalises multiple replicate results", {
                                     function(rl) rl$sd))),
                sapply(1:11, function(a)
                  stats::sd(colSums((expected > 0)[1:a,,drop = FALSE]))))
+  # staged population
+  stage_matrix <- matrix(c(0.0, 2.0, 5.0,
+                           0.3, 0.0, 0.0,
+                           0.0, 0.6, 0.8),
+                         nrow = 3, ncol = 3, byrow = TRUE)
+  population <- StagedPopulation(region, growth = stage_matrix)
+  expect_silent(results <- Results(region, population_model = population,
+                                   time_steps = 10,
+                                   step_duration = 1,
+                                   step_units = "years",
+                                   collation_steps = 2,
+                                   replicates = 5,
+                                   combine_stages = NULL))
+  for (r in 1:5) {
+    n <- rep(0, region$get_locations())
+    n[5922] <- 20
+    set.seed(1234)
+    n <- population$make(initial = n)
+    for (tm in 0:10) {
+      n[5922 + tm, ] <- n[5922,]*(tm == 0) + tm %% r + (r %% 2)
+      results$collate(r, tm, n)
+    }
+  }
+  expect_silent(results$finalize())
+  expect_silent(result_list <- results$get_list())
+  expect_named(result_list, c("population", "total_pop", "occupancy",
+                              "total_occup", "area"))
+  expect_named(result_list$population, as.character(seq(0, 10, 2)))
+  expect_true(all(sapply(result_list$population, function(x) dim(x$mean)) ==
+                    matrix(c(region$get_locations(), 3), nrow = 2, ncol = 6)))
+  expect_true(all(sapply(result_list$population, function(x) dim(x$sd)) ==
+                    matrix(c(region$get_locations(), 3), nrow = 2, ncol = 6)))
+  expect_named(result_list$total_pop, as.character(0:10))
+  expect_true(all(sapply(result_list$total_pop, function(x) dim(x$mean)) ==
+                    matrix(c(1, 3), nrow = 2, ncol = 11)))
+  expect_true(all(sapply(result_list$total_pop, function(x) dim(x$sd)) ==
+                    matrix(c(1, 3), nrow = 2, ncol = 11)))
+  expect_named(result_list$occupancy, as.character(seq(0, 10, 2)))
+  expect_true(all(unlist(lapply(result_list$occupancy,
+                                function(x) names(x))) == "mean"))
+  expect_true(all(unlist(lapply(result_list$occupancy,
+                                function(x) length(x$mean))) ==
+                    region$get_locations()))
+  expect_named(result_list$total_occup, as.character(0:10))
+  expect_true(all(unlist(lapply(result_list$total_occup,
+                                function(x) length(x$mean))) == 1))
+  expect_true(all(unlist(lapply(result_list$total_occup,
+                                function(x) length(x$sd))) == 1))
+  expect_silent(results <- Results(region, population_model = population,
+                                   time_steps = 10,
+                                   step_duration = 1,
+                                   step_units = "years",
+                                   collation_steps = 2,
+                                   replicates = 5,
+                                   combine_stages = 2:3))
+  for (r in 1:5) {
+    n <- rep(0, region$get_locations())
+    n[5922] <- 20
+    set.seed(1234)
+    n <- population$make(initial = n)
+    for (tm in 0:10) {
+      n[5922 + tm, ] <- n[5922,]*(tm == 0) + tm %% r + (r %% 2)
+      results$collate(r, tm, n)
+    }
+  }
+  expect_silent(results$finalize())
+  expect_silent(result_list <- results$get_list())
+  expect_named(result_list, c("population", "total_pop", "occupancy",
+                              "total_occup", "area"))
+  expect_named(result_list$population, as.character(seq(0, 10, 2)))
+  expect_true(all(sapply(result_list$population,
+                         function(x) colnames(x$mean)) == "combined"))
+  expect_true(all(sapply(result_list$population, function(x) dim(x$mean)) ==
+                    matrix(c(region$get_locations(), 1), nrow = 2, ncol = 6)))
+  expect_true(all(sapply(result_list$population, function(x) dim(x$sd)) ==
+                    matrix(c(region$get_locations(), 1), nrow = 2, ncol = 6)))
+  expect_named(result_list$total_pop, as.character(0:10))
+  expect_true(all(sapply(result_list$total_pop,
+                         function(x) colnames(x$mean)) == "combined"))
+  expect_true(all(sapply(result_list$total_pop, function(x) dim(x$mean)) ==
+                    matrix(c(1, 1), nrow = 2, ncol = 11)))
+  expect_true(all(sapply(result_list$total_pop, function(x) dim(x$sd)) ==
+                    matrix(c(1, 1), nrow = 2, ncol = 11)))
 })
 
 test_that("collates spatially implicit area results", {
@@ -186,8 +351,7 @@ test_that("collates spatially implicit area results", {
     results$collate(r = 1, tm, n)
   }
   result_list <- results$get_list()
-  expect_named(result_list, c("collated", "total", "area", "occupancy",
-                              "total_occup"))
+  expect_named(result_list, c("population", "occupancy", "area"))
   expect_equal(unname(unlist(result_list$area)), pi*((0:10)*2000)^2)
   expect_equal(attr(result_list$area, "units"), "square metres")
   expect_silent(results <- Results(region,
@@ -206,6 +370,6 @@ test_that("collates spatially implicit area results", {
   }
   result_list <- results$get_list()
   expect_equal(unname(unlist(result_list$area)),
-               as.numeric(result_list$total)*1e6/100)
+               as.numeric(result_list$population)*1e6/100)
   expect_equal(attr(result_list$area, "units"), "square metres")
 })
