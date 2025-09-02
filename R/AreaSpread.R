@@ -14,6 +14,11 @@
 #' @param population_model A \code{UnstructPopulation}, \code{StagePopulation},
 #'   or inherited class object defining the population representation for the
 #'   spread simulations.
+#' @param allow_contraction Optional logical indicator to allow the contraction
+#'   of the occupied area when spatially implicit area growth models undergo
+#'   population decline. Default is \code{TRUE} to allow area contraction. Set
+#'   to \code{FALSE} when declining threats are likely to retain an occupied
+#'   area, albeit sparsely.
 #' @param ... Additional parameters.
 #' @return A \code{AreaSpread} class object (list), containing inherited and
 #'   extended functions from the generic \code{Dispersal} class for accessing
@@ -63,7 +68,8 @@
 #' @include Region.R
 #' @include Dispersal.R
 #' @export
-AreaSpread <- function(region, population_model, ...) {
+AreaSpread <- function(region, population_model,
+                       allow_contraction = TRUE, ...) {
 
   # Check that region is spatially implicit
   if (!region$spatially_implicit()) {
@@ -81,6 +87,12 @@ AreaSpread <- function(region, population_model, ...) {
   # Check that the population capacity is specified
   if (!is.numeric(population_model$get_capacity())) {
     stop("The population capacity must be specified for area spread.",
+         call. = FALSE)
+  }
+
+  # Check allow contraction indicator
+  if (!is.logical(allow_contraction)) {
+    stop("The allow contraction indicator must be logical TRUE or FALSE.",
          call. = FALSE)
   }
 
@@ -116,8 +128,12 @@ AreaSpread <- function(region, population_model, ...) {
       spread_area <- min(spread_area, region$get_max_implicit_area())
     }
 
-    # Attach attribute for spread area
-    attr(n$relocated, "spread_area") <- spread_area
+    # Attach attribute for spread area when grown
+    if (is.null(attr(n$relocated, "spread_area")) || allow_contraction ||
+        (is.numeric(attr(n$relocated, "spread_area")) &&
+         spread_area > attr(n$relocated, "spread_area"))) {
+      attr(n$relocated, "spread_area") <- spread_area
+    }
 
     return(n)
   }

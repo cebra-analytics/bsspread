@@ -4,7 +4,7 @@
 \alias{AreaSpread}
 \title{Area spread dispersal model class builder}
 \usage{
-AreaSpread(region, population_model, ...)
+AreaSpread(region, population_model, allow_contraction = TRUE, ...)
 }
 \arguments{
 \item{region}{A \code{Region} or inherited class object representing the
@@ -15,6 +15,12 @@ maximum total area occupied.}
 \item{population_model}{A \code{UnstructPopulation}, \code{StagePopulation},
 or inherited class object defining the population representation for the
 spread simulations.}
+
+\item{allow_contraction}{Optional logical indicator to allow the contraction
+of the occupied area when spatially implicit area growth models undergo
+population decline. Default is \code{TRUE} to allow area contraction. Set
+to \code{FALSE} when declining threats are likely to retain an occupied
+area, albeit sparsely.}
 
 \item{...}{Additional parameters.}
 }

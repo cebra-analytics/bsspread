@@ -14,9 +14,14 @@ test_that("initializes with region, population model, and other parameters", {
   expect_error(diffusion <- Diffusion(region, population_model = population,
                                       diffusion_coeff = 0),
                "The diffusion coefficient must be numeric and > 0.")
+  expect_error(diffusion <- Diffusion(region, population_model = population,
+                                      allow_contraction = 0),
+               paste("The allow contraction indicator must be logical TRUE or",
+                     "FALSE."))
   expect_silent(diffusion <- Diffusion(region, population_model = population,
                                        diffusion_rate = 2000,
                                        diffusion_coeff = 1000000,
+                                       allow_contraction = TRUE,
                                        proportion = 1,
                                        density_dependent = TRUE,
                                        direction_function = function(x) x/360,
@@ -131,6 +136,12 @@ test_that("spatially implicit radial diffusion with presence-only", {
   expect_silent(n <- diffusion$disperse(n, tm = 3))
   expect_silent(n <- diffusion$unpack(n))
   expect_equal(attr(n, "diffusion_radius"), sqrt(1e8/pi))
+  n_removed <- FALSE
+  attr(n_removed, "diffusion_radius") <- 2000
+  expect_silent(n_removed <- diffusion$pack(n_removed))
+  expect_silent(n_removed <- diffusion$disperse(n_removed, tm = 2))
+  expect_silent(n_removed <- diffusion$unpack(n_removed))
+  expect_equal(attr(n_removed, "diffusion_radius"), 2000)
 })
 
 test_that("spatially implicit reaction diffusion unstructured", {
@@ -171,4 +182,58 @@ test_that("spatially implicit reaction diffusion unstructured", {
   expect_silent(n <- diffusion$disperse(n, tm = 3))
   expect_silent(n <- diffusion$unpack(n))
   expect_equal(attr(n, "diffusion_radius"), sqrt(1e8/pi))
+  n <- n - 50
+  n_prev <- n
+  expect_silent(n <- diffusion$pack(n))
+  expect_silent(n <- diffusion$disperse(n, tm = 4))
+  expect_silent(n <- diffusion$unpack(n))
+  expect_equal(attr(n, "diffusion_radius"),
+               sqrt(4*diffusion_coeff*4*log(120/100)))
+  expect_silent(diffusion <- Diffusion(region, population_model = population,
+                                       diffusion_coeff = diffusion_coeff,
+                                       allow_contraction = FALSE,
+                                       proportion = 1))
+  expect_silent(n <- diffusion$pack(n_prev))
+  expect_silent(n <- diffusion$disperse(n, tm = 4))
+  expect_silent(n <- diffusion$unpack(n))
+  expect_equal(attr(n, "diffusion_radius"), attr(n_prev, "diffusion_radius"))
+})
+
+test_that("spatially implicit reaction diffusion with staged population", {
+  TEST_DIRECTORY <- test_path("test_inputs")
+  region <- Region()
+  stage_matrix <- matrix(c(0.0, 4.0, 10.0,
+                           0.4, 0.0, 0.0,
+                           0.0, 0.6, 0.8),
+                         nrow = 3, ncol = 3, byrow = TRUE)
+  population_model <- StagedPopulation(region,
+                                       growth = stage_matrix)
+  expect_silent(diffusion <- Diffusion(region,
+                                       population_model = population_model,
+                                       diffusion_rate = 2000, proportion = 1))
+  set.seed(1234)
+  n <- population_model$make(initial = 500)
+  attr(n, "initial_n") <- round(n*0.8)
+  expect_silent(n <- diffusion$pack(n))
+  expect_silent(n <- diffusion$disperse(n, tm = 1))
+  expect_silent(n <- diffusion$unpack(n))
+  diffusion_coeff <- 2000^2/(4*log(population_model$get_growth_r()))
+  expect_equal(attr(n, "diffusion_radius"),
+               sqrt(4*diffusion_coeff*1*log(500/400)))
+  n <- round(n*0.85)
+  n_prev <- n
+  expect_silent(n <- diffusion$pack(n))
+  expect_silent(n <- diffusion$disperse(n, tm = 2))
+  expect_silent(n <- diffusion$unpack(n))
+  expect_equal(attr(n, "diffusion_radius"),
+               sqrt(4*diffusion_coeff*2*log(425/400)))
+  expect_silent(diffusion <- Diffusion(region,
+                                       population_model = population_model,
+                                       diffusion_rate = 2000,
+                                       allow_contraction = FALSE,
+                                       proportion = 1))
+  expect_silent(n <- diffusion$pack(n_prev))
+  expect_silent(n <- diffusion$disperse(n, tm = 2))
+  expect_silent(n <- diffusion$unpack(n))
+  expect_equal(attr(n, "diffusion_radius"), attr(n_prev, "diffusion_radius"))
 })

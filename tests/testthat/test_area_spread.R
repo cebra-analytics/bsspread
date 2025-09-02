@@ -16,7 +16,11 @@ test_that("initializes with region and population model", {
                                          growth = 2,
                                          capacity = 100,
                                          capacity_area = 1e6)
-  expect_silent(area_spread <- AreaSpread(region, population_model))
+  expect_error(AreaSpread(region, population_model, allow_contraction = 0),
+               paste("The allow contraction indicator must be logical TRUE or",
+                     "FALSE."))
+  expect_silent(area_spread <- AreaSpread(region, population_model,
+                                          allow_contraction = TRUE))
   expect_is(area_spread, "AreaSpread")
   expect_s3_class(area_spread, "Dispersal")
 })
@@ -48,6 +52,17 @@ test_that("performs implicit area spread for an unstructured population", {
   expect_true(all(delta_pop[8:12] < delta_pop[7:11]))
   expect_equal(sapply(n_t, function(n) attr(n, "spread_area")),
                pmin(pop*1e6/100, 1e8))
+  n_decline <- n_t[[10]] - 1000
+  expect_silent(n <- area_spread$pack(n_decline))
+  expect_silent(n <- area_spread$disperse(n, tm = 11))
+  expect_silent(n <- area_spread$unpack(n))
+  expect_equal(attr(n, "spread_area"), as.numeric(n)*1e6/100)
+  expect_silent(area_spread <- AreaSpread(region, population_model,
+                                          allow_contraction = FALSE))
+  expect_silent(n <- area_spread$pack(n_decline))
+  expect_silent(n <- area_spread$disperse(n, tm = 11))
+  expect_silent(n <- area_spread$unpack(n))
+  expect_equal(attr(n, "spread_area"), attr(n_decline, "spread_area"))
 })
 
 test_that("performs implicit area spread for a staged population", {

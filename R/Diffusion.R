@@ -42,6 +42,11 @@
 #'   unstructured or stage-structured populations are defined within a single
 #'   patch region, and the asymptotic \code{diffusion_rate} is unknown (thus
 #'   not defined). Default is \code{NULL}.
+#' @param allow_contraction Optional logical indicator to allow the contraction
+#'   of the occupied area when spatially implicit reaction-diffusion models
+#'   undergo population decline. Default is \code{TRUE} to allow area
+#'   contraction. Set to \code{FALSE} when declining threats are likely to
+#'   retain an occupied area, albeit sparsely.
 #' @param proportion The proportion of the (unstructured or staged) population
 #'   that disperses from each occupied location at each time step, or the
 #'   proportion of local presence-only destinations selected for diffusive
@@ -136,6 +141,7 @@ Diffusion <- function(region, population_model,
                       dispersal_stages = NULL,
                       diffusion_rate = NULL,
                       diffusion_coeff = NULL,
+                      allow_contraction = TRUE,
                       proportion = NULL,
                       density_dependent = FALSE,
                       direction_function = NULL,
@@ -155,6 +161,12 @@ Diffusion <- function(region, population_model,
   if (!is.null(diffusion_coeff) &&
       (!is.numeric(diffusion_coeff) || diffusion_coeff <= 0)) {
     stop("The diffusion coefficient must be numeric and > 0.", call. = FALSE)
+  }
+
+  # Check allow contraction indicator
+  if (!is.logical(allow_contraction)) {
+    stop("The allow contraction indicator must be logical TRUE or FALSE.",
+         call. = FALSE)
   }
 
   # Configure maximum distance and define combined function for diffusion
@@ -220,6 +232,14 @@ Diffusion <- function(region, population_model,
                     max_distance = max_distance,
                     class = "Diffusion", ...)
 
+  # Resolve dispersal stages
+  if (population_model$get_type() %in% c("presence_only", "unstructured")) {
+    dispersal_stages <- 1
+  } else if (population_model$get_type() == "stage_structured" &&
+             is.null(dispersal_stages)) {
+    dispersal_stages <- 1:population_model$get_stages()
+  }
+
   # Spatially implicit (single patch)
   if (region$spatially_implicit()) {
 
@@ -230,11 +250,16 @@ Diffusion <- function(region, population_model,
       self$disperse <- function(n, tm) {
 
         # Calculate diffusion radius
+        if (length(n$original) > 0 && n$original) {
+          radius_increase <- diffusion_rate
+        } else {
+          radius_increase <- 0
+        }
         if (is.numeric(attr(n$relocated, "diffusion_radius"))) {
           diffusion_radius <-
-            attr(n$relocated, "diffusion_radius") + diffusion_rate
+            attr(n$relocated, "diffusion_radius") + radius_increase
         } else {
-          diffusion_radius <- diffusion_rate
+          diffusion_radius <- radius_increase
         }
 
         # Limit via maximum area when applicable
@@ -275,7 +300,7 @@ Diffusion <- function(region, population_model,
 
         # Extract initial population size
         if (is.numeric(attr(n$relocated, "initial_n"))) {
-          initial_n <- sum(attr(n$relocated, "initial_n"))
+          initial_n <- attr(n$relocated, "initial_n")
         } else {
           stop(paste("The initial population needs to be set as an attribute",
                      "for reaction-diffusion calculations."), call. = FALSE)
@@ -284,9 +309,9 @@ Diffusion <- function(region, population_model,
         # Calculate radius via reaction-diffusion (Okubo & Kareiva, 2001)
         # m' = initial_n*exp(intrinsic_r*tm - Radius^2/(4*diffusion_coeff*tm))
         # where n_t = initial_n*exp(intrinsic_r*tm) for exponential growth
-        m_dash <- initial_n # since initial radius is zero
+        m_dash <- sum(initial_n) # since initial radius is zero
         diffusion_radius <-
-          sqrt(4*diffusion_coeff*tm*log(max(n$original/m_dash, 1)))
+          sqrt(4*diffusion_coeff*tm*log(max(sum(n$original)/m_dash, 1)))
 
         # Limit via maximum area when applicable
         if (is.numeric(region$get_max_implicit_area())) {
@@ -294,8 +319,13 @@ Diffusion <- function(region, population_model,
           diffusion_radius <- min(diffusion_radius, max_radius)
         }
 
-        # Attach attribute for diffusion radius
-        attr(n$relocated, "diffusion_radius") <- diffusion_radius
+        # Attach attribute for diffusion radius when grown
+        if (is.null(attr(n$relocated, "diffusion_radius")) ||
+            allow_contraction ||
+            (is.numeric(attr(n$relocated, "diffusion_radius")) &&
+             diffusion_radius > attr(n$relocated, "diffusion_radius"))) {
+          attr(n$relocated, "diffusion_radius") <- diffusion_radius
+        }
 
         return(n)
       }

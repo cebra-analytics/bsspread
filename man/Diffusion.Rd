@@ -10,6 +10,7 @@ Diffusion(
   dispersal_stages = NULL,
   diffusion_rate = NULL,
   diffusion_coeff = NULL,
+  allow_contraction = TRUE,
   proportion = NULL,
   density_dependent = FALSE,
   direction_function = NULL,
@@ -38,6 +39,12 @@ step) for spatially implicit reaction-diffusion. Only used when
 unstructured or stage-structured populations are defined within a single
 patch region, and the asymptotic \code{diffusion_rate} is unknown (thus
 not defined). Default is \code{NULL}.}
+
+\item{allow_contraction}{Optional logical indicator to allow the contraction
+of the occupied area when spatially implicit reaction-diffusion models
+undergo population decline. Default is \code{TRUE} to allow area
+contraction. Set to \code{FALSE} when declining threats are likely to
+retain an occupied area, albeit sparsely.}
 
 \item{proportion}{The proportion of the (unstructured or staged) population
 that disperses from each occupied location at each time step, or the
