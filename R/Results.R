@@ -162,9 +162,8 @@ Results.Region <- function(region, population_model,
   zeros$area <- 0L
   if (replicates > 1) { # summaries
     if (include_population) {
-      zeros$population <- list(mean = zeros$population)
+      zeros$population <- list(mean = zeros$population, sd = zeros$population)
       if (include_collated) {
-        zeros$population$sd = zeros$population$mean
         zeros$total_pop <- list(mean = zeros$total_pop, sd = zeros$total_pop)
       }
     }
@@ -585,7 +584,7 @@ Results.Region <- function(region, population_model,
       i_fname <- paste0("_stage_", 1:result_stages)
     }
 
-    # Results for multi-patch only
+    # Results for single or multi-patch only
     if (region$get_type() == "patch") {
 
       # Location coordinates and labels
@@ -597,70 +596,105 @@ Results.Region <- function(region, population_model,
 
       # Save population CSV file(s)
       if (include_population) {
-        if (replicates > 1) {
-          if (include_collated) {
+        if (include_collated) {
+          if (replicates > 1) {
             summaries <- c("mean", "sd")
           } else {
-            summaries <- "mean"
+            summaries <- 1
           }
-        } else {
-          summaries <- 1
-        }
-        for (i in 1:result_stages) {
-          output_df <- list()
-          for (s in summaries) {
-            if (population_model$get_type() == "stage_structured") {
-              if (replicates > 1) {
-                output_df[[s]] <- lapply(results$population,
-                                         function(c_tm) c_tm[[s]][,i])
+          for (i in 1:result_stages) {
+            output_df <- list()
+            for (s in summaries) {
+              if (population_model$get_type() == "stage_structured") {
+                if (replicates > 1) {
+                  output_df[[s]] <- lapply(results$population,
+                                           function(c_tm) c_tm[[s]][,i])
+                } else {
+                  output_df[[s]] <- lapply(results$population,
+                                           function(c_tm) c_tm[,i])
+                }
               } else {
-                output_df[[s]] <- lapply(results$population,
-                                         function(c_tm) c_tm[,i])
+                if (replicates > 1) {
+                  output_df[[s]] <- lapply(results$population,
+                                           function(c_tm) c_tm[[s]])
+                } else {
+                  output_df[[s]] <- results$population
+                }
               }
-            } else {
-              if (replicates > 1) {
-                output_df[[s]] <- lapply(results$population,
-                                         function(c_tm) c_tm[[s]])
-              } else {
-                output_df[[s]] <- results$population
-              }
-            }
-            if (include_collated) {
               names(output_df[[s]]) <- collated_labels
               output_df[[s]] <- cbind(coords, as.data.frame(output_df[[s]]))
-            } else {
-              names(output_df[[s]]) <- time_steps_labels
-              output_df[[s]] <- as.data.frame(output_df[[s]])
+              filename <- sprintf(paste0("population%s%s.csv"), i_fname[i],
+                                  s_fname[[s]])
+              utils::write.csv(output_df[[s]], filename, row.names = FALSE)
             }
-            filename <- sprintf(paste0("population%s%s.csv"), i_fname[i],
-                                s_fname[[s]])
-            utils::write.csv(output_df[[s]], filename, row.names = FALSE)
+          }
+        } else {
+          if (population_model$get_type() == "stage_structured") {
+            if (replicates > 1) {
+              for (i in 1:result_stages) {
+                output_df <- sapply(results$population,
+                                    function(pop) as.data.frame(
+                                      lapply(pop, function(m) m[,i])))
+                colnames(output_df) <- time_steps_labels
+                filename <- sprintf(paste0("population%s.csv"), i_fname[i])
+                utils::write.csv(output_df, filename, row.names = TRUE)
+              }
+            } else {
+              if (is.numeric(combine_stages)) {
+                output_df <- as.data.frame(results$population)
+                if (length(combine_stages) == 1) {
+                  rownames(output_df) <- attr(population_model$get_growth(),
+                                              "labels")[combine_stages]
+                } else {
+                  rownames(output_df) <- sprintf(
+                    "stages %s-%s", min(combine_stages), max(combine_stages))
+                }
+              } else {
+                output_df <- sapply(results$population,
+                                    function(pop) as.data.frame(pop))
+              }
+              colnames(output_df) <- time_steps_labels
+              utils::write.csv(output_df, "population.csv", row.names = TRUE)
+            }
+          } else {
+            if (replicates > 1) {
+              output_df <- sapply(results$population,
+                                  function(pop) as.data.frame(pop))
+            } else {
+              output_df <- as.data.frame(results$population)
+              rownames(output_df) <- "population"
+            }
+            colnames(output_df) <- time_steps_labels
+            utils::write.csv(output_df, "population.csv", row.names = TRUE)
           }
         }
       }
 
       # Save occupancy CSV file(s)
-      if (replicates > 1) {
-        s <- "mean"
-      } else {
-        s <- 1
-      }
-      output_df <- list()
-      if (replicates > 1) {
-        output_df[[s]] <- lapply(results$occupancy,
-                                 function(o_tm) o_tm[[s]])
-      } else {
-        output_df[[s]] <- results$occupancy
-      }
       if (include_collated) {
-        names(output_df[[s]]) <- collated_labels
-        output_df[[s]] <- cbind(coords, as.data.frame(output_df[[s]]))
+        if (replicates > 1) {
+          output_df <- lapply(results$occupancy,
+                                   function(o_tm) o_tm[["mean"]])
+          filename <- "occupancy_mean.csv"
+        } else {
+          output_df <- results$occupancy
+          filename <- "occupancy.csv"
+        }
+        names(output_df) <- collated_labels
+        output_df <- cbind(coords, as.data.frame(output_df))
+        utils::write.csv(output_df, filename, row.names = FALSE)
       } else {
-        names(output_df[[s]]) <- time_steps_labels
-        output_df[[s]] <- as.data.frame(output_df[[s]])
+        if (replicates > 1) {
+          output_df <- as.data.frame(lapply(results$occupancy,
+                                            function(occ) occ[["mean"]]))
+          rownames(output_df) <- "mean"
+        } else {
+          output_df <- as.data.frame(results$occupancy)
+          rownames(output_df) <- "occupancy"
+        }
+        colnames(output_df) <- time_steps_labels
+        utils::write.csv(output_df, "occupancy.csv", row.names = TRUE)
       }
-      filename <- sprintf("occupancy%s.csv", s_fname[[s]])
-      utils::write.csv(output_df[[s]], filename, row.names = FALSE)
     }
 
     # Save total population CSV file(s)
@@ -729,12 +763,11 @@ Results.Region <- function(region, population_model,
       rownames(area) <- "area"
     }
     colnames(area) <- time_steps_labels
-    if (region$spatially_implicit()) {
-      area_filename <- "area_occupied.csv"
+    if (include_collated) {
+      utils::write.csv(area, "total_area_occupied.csv", row.names = TRUE)
     } else {
-      area_filename <- "total_area_occupied.csv"
+      utils::write.csv(area, "area_occupied.csv", row.names = TRUE)
     }
-    utils::write.csv(area, area_filename, row.names = TRUE)
   }
 
   # Plot total population (per stage) and area occupied as PNG files

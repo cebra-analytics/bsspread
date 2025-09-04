@@ -162,6 +162,64 @@ test_that("collates and finalises multiple replicate results", {
   TEST_DIRECTORY <- test_path("test_inputs")
   template <- terra::rast(file.path(TEST_DIRECTORY, "greater_melb.tif"))
   region <- Region(template)
+  population <- PresencePopulation(region)
+  expect_silent(results <- Results(region, population_model = population,
+                                   time_steps = 10,
+                                   step_duration = 1,
+                                   step_units = "years",
+                                   collation_steps = 2,
+                                   replicates = 5,
+                                   combine_stages = NULL))
+  expect_silent(result_list <- results$get_list())
+  expect_named(result_list, c("occupancy", "total_occup", "area"))
+  expect_equal(unname(unlist(lapply(result_list$area, names))),
+               rep(c("mean", "sd"), 11))
+  expect_equal(unname(unlist(lapply(result_list$occupancy, names))),
+               rep("mean", 6))
+  expect_equal(unname(unlist(lapply(result_list$total_occup, names))),
+               rep(c("mean", "sd"), 11))
+  expect_equal(length(unlist(result_list$area)), 11*2)
+  expect_true(all(unlist(result_list$area) == 0))
+  expect_true(all(unlist(lapply(result_list$occupancy,
+                                function(rl) lapply(rl, length))) ==
+                    region$get_locations()))
+  expect_equal(length(unlist(result_list$total_occup)), 11*2)
+  expected <- array(FALSE, c(12, 5))
+  for (r in 1:5) {
+    n <- rep(FALSE, region$get_locations())
+    for (tm in 0:10) {
+      n[tm + 1] <- ((tm %% r) > 0) | ((r %% 2) > 0)
+      results$collate(r, tm, n)
+    }
+    expected[, r] <- n[1:12]
+  }
+  expect_silent(results$finalize())
+  expect_silent(result_list <- results$get_list())
+  expected_mean <- rowMeans(expected)
+  expected_sd <- apply(expected, 1, stats::sd)
+  expected_mask <- lapply(seq(0, 10, 2),
+                          function(tm) c(rep(1, tm + 1), rep(0, 11 - tm)))
+  names(expected_mask) <- as.character(seq(0, 10, 2))
+  expect_equal(unname(signif(unlist(lapply(result_list$area,
+                                           function(rl) rl$mean)), 5)),
+               sapply(1:11, function(a) mean(
+                 colSums(expected[1:a,,drop = FALSE] > 0)))*1000^2)
+  expect_equal(unname(signif(unlist(lapply(result_list$area,
+                                           function(rl) rl$sd)), 5)),
+               signif(sapply(1:11, function(a) stats::sd(
+                 colSums(expected[1:a,,drop = FALSE] > 0)))*1000^2, 5))
+  expect_equal(attr(result_list$area, "units"), "square metres")
+  expected_mean <- rowMeans(expected > 0)
+  expect_equal(lapply(result_list$occupancy, function(rl) rl$mean[1:12]),
+               lapply(expected_mask, function(e) e*expected_mean))
+  expect_equal(unname(unlist(lapply(result_list$total_occup,
+                                    function(rl) rl$mean))),
+               sapply(1:11, function(a) mean(
+                 colSums((expected > 0)[1:a,,drop = FALSE]))))
+  expect_equal(unname(unlist(lapply(result_list$total_occup,
+                                    function(rl) rl$sd))),
+               sapply(1:11, function(a) stats::sd(
+                 colSums((expected > 0)[1:a,,drop = FALSE]))))
   population <- UnstructPopulation(region)
   expect_silent(results <- Results(region, population_model = population,
                                    time_steps = 10,
@@ -333,29 +391,54 @@ test_that("collates and finalises multiple replicate results", {
 test_that("collates spatially implicit area results", {
   region <- Region()
   region$set_max_implicit_area(1e8)
-  population_model <- UnstructPopulation(region,
-                                         growth = 2,
-                                         capacity = 100,
-                                         capacity_area = 1e6)
-  expect_silent(results <- Results(region,
-                                   population_model = population_model,
+  population_model <- PresencePopulation(region)
+  expect_silent(results <- Results(region, population_model = population_model,
                                    time_steps = 10,
                                    step_duration = 1,
                                    step_units = "years",
                                    collation_steps = 2,
                                    replicates = 1,
                                    combine_stages = NULL))
-  n <- 10
+  n <- TRUE
   for (tm in 0:10) {
     attr(n, "diffusion_radius") <- 2000*tm
     results$collate(r = 1, tm, n)
   }
-  result_list <- results$get_list()
-  expect_named(result_list, c("population", "occupancy", "area"))
+  expect_silent(result_list <- results$get_list())
+  expect_named(result_list, c("occupancy", "area"))
+  expect_named(result_list$occupancy, as.character(seq(0, 10, 1)))
+  expect_equal(unname(unlist(result_list$occupancy)), rep(1, 11))
+  expect_named(result_list$area, as.character(seq(0, 10, 1)))
   expect_equal(unname(unlist(result_list$area)), pi*((0:10)*2000)^2)
   expect_equal(attr(result_list$area, "units"), "square metres")
-  expect_silent(results <- Results(region,
-                                   population_model = population_model,
+  expect_silent(results <- Results(region, population_model = population_model,
+                                   time_steps = 10,
+                                   step_duration = 1,
+                                   step_units = "years",
+                                   collation_steps = 2,
+                                   replicates = 5,
+                                   combine_stages = NULL))
+  for (r in 1:5) {
+    n <- (r < 5)
+    for (tm in 0:10) {
+      attr(n, "diffusion_radius") <- 2000*tm + 100*r
+      results$collate(r, tm, n)
+    }
+  }
+  expect_silent(results$finalize())
+  expect_silent(result_list <- results$get_list())
+  expect_named(result_list, c("occupancy", "area"))
+  expect_named(result_list$occupancy, as.character(seq(0, 10, 1)))
+  expect_named(unlist(unname(result_list$occupancy)), rep("mean", 11))
+  unname(unlist(unname(result_list$occupancy))) ; rep(0.8, 11)
+  expect_named(result_list$area, as.character(seq(0, 10, 1)))
+  expect_named(unlist(unname(result_list$area)), rep(c("mean", "sd"), 11))
+
+  population_model <- UnstructPopulation(region,
+                                         growth = 2,
+                                         capacity = 100,
+                                         capacity_area = 1e6)
+  expect_silent(results <- Results(region, population_model = population_model,
                                    time_steps = 10,
                                    step_duration = 1,
                                    step_units = "years",
@@ -368,8 +451,130 @@ test_that("collates spatially implicit area results", {
     results$collate(r = 1, tm, n)
     n <- n*population_model$get_growth()
   }
-  result_list <- results$get_list()
+  expect_silent(result_list <- results$get_list())
+  expect_named(result_list, c("population", "occupancy", "area"))
   expect_equal(unname(unlist(result_list$area)),
                as.numeric(result_list$population)*1e6/100)
   expect_equal(attr(result_list$area, "units"), "square metres")
+  expect_silent(results <- Results(region, population_model = population_model,
+                                   time_steps = 10,
+                                   step_duration = 1,
+                                   step_units = "years",
+                                   collation_steps = 2,
+                                   replicates = 5,
+                                   combine_stages = NULL))
+  for (r in 1:5) {
+    n <- 100 + r
+    for (tm in 0:10) {
+      attr(n, "spread_area") <- as.numeric(n)/100*1e6
+      results$collate(r, tm, n)
+      n <- n*population_model$get_growth()
+    }
+  }
+  expect_silent(results$finalize())
+  expect_silent(result_list <- results$get_list())
+  expect_named(result_list, c("population", "occupancy", "area"))
+  expect_named(unlist(unname(result_list$population)),
+               rep(c("mean", "sd"), 11))
+  expect_named(unlist(unname(result_list$occupancy)), rep("mean", 11))
+  expect_named(unlist(unname(result_list$area)), rep(c("mean", "sd"), 11))
+  # staged population
+  region <- Region()
+  stage_matrix <- matrix(c(0.0, 2.0, 5.0,
+                           0.3, 0.0, 0.0,
+                           0.0, 0.6, 0.8),
+                         nrow = 3, ncol = 3, byrow = TRUE)
+  population_model <- StagedPopulation(region, growth = stage_matrix)
+  expect_silent(results <- Results(region, population_model = population_model,
+                                   time_steps = 10,
+                                   step_duration = 1,
+                                   step_units = "years",
+                                   collation_steps = 2,
+                                   replicates = 1,
+                                   combine_stages = NULL))
+  n <- 20
+  set.seed(1234)
+  n <- population_model$make(initial = n)
+  for (tm in 0:10) {
+    n <- n + tm
+    results$collate(r = 1, tm, n)
+  }
+  expect_silent(result_list <- results$get_list())
+  expect_named(result_list, c("population", "occupancy", "area"))
+  expect_equal(unname(unlist(lapply(result_list$population, colnames))),
+               rep(c("stage 1", "stage 2", "stage 3"), 11))
+  expect_equal(unname(unlist(result_list$occupancy)), rep(1, 11))
+  expect_equal(unname(unlist(result_list$area)), rep(1, 11))
+  expect_silent(results <- Results(region, population_model = population_model,
+                                   time_steps = 10,
+                                   step_duration = 1,
+                                   step_units = "years",
+                                   collation_steps = 2,
+                                   replicates = 1,
+                                   combine_stages = 2:3))
+  n <- 20
+  set.seed(1234)
+  n <- population_model$make(initial = n)
+  for (tm in 0:10) {
+    n <- n + tm
+    results$collate(r = 1, tm, n)
+  }
+  expect_silent(result_list <- results$get_list())
+  expect_named(result_list, c("population", "occupancy", "area"))
+  expect_equal(unname(unlist(lapply(result_list$population, colnames))),
+               rep("combined", 11))
+  expect_equal(unname(unlist(result_list$occupancy)), rep(1, 11))
+  expect_equal(unname(unlist(result_list$area)), rep(1, 11))
+  expect_silent(results <- Results(region, population_model = population_model,
+                                   time_steps = 10,
+                                   step_duration = 1,
+                                   step_units = "years",
+                                   collation_steps = 2,
+                                   replicates = 5,
+                                   combine_stages = NULL))
+  for (r in 1:5) {
+    n <- 20
+    set.seed(1234)
+    n <- population_model$make(initial = n)
+    for (tm in 0:10) {
+      n <- n + r + tm
+      results$collate(r, tm, n)
+    }
+  }
+  expect_silent(results$finalize())
+  expect_silent(result_list <- results$get_list())
+  expect_named(result_list, c("population", "occupancy", "area"))
+  expect_equal(unname(unlist(lapply(result_list$population, names))),
+               rep(c("mean", "sd"), 11))
+  expect_equal(unname(unlist(lapply(result_list$population,
+                                    function(x) lapply(x, colnames)))),
+               rep(c("stage 1", "stage 2", "stage 3"), 22))
+  expect_named(unlist(unname(result_list$occupancy)), rep("mean", 11))
+  expect_named(unlist(unname(result_list$area)), rep(c("mean", "sd"), 11))
+  expect_silent(results <- Results(region, population_model = population_model,
+                                   time_steps = 10,
+                                   step_duration = 1,
+                                   step_units = "years",
+                                   collation_steps = 2,
+                                   replicates = 5,
+                                   combine_stages = 2:3))
+  for (r in 1:5) {
+    n <- 20
+    set.seed(1234)
+    n <- population_model$make(initial = n)
+    for (tm in 0:10) {
+      n <- n + r + tm
+      results$collate(r, tm, n)
+    }
+  }
+  expect_silent(results$finalize())
+  expect_silent(result_list <- results$get_list())
+  expect_named(result_list, c("population", "occupancy", "area"))
+  expect_equal(unname(unlist(lapply(result_list$population, names))),
+               rep(c("mean", "sd"), 11))
+  expect_equal(unname(unlist(lapply(result_list$population,
+                                    function(x) lapply(x, colnames)))),
+               rep("combined", 22))
+  expect_named(unlist(unname(result_list$occupancy)), rep("mean", 11))
+  expect_named(unlist(unname(result_list$area)), rep(c("mean", "sd"), 11))
 })

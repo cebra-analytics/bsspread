@@ -85,13 +85,13 @@ test_that("runs simulator with correct configuration", {
   expect_silent(results <- simulator$run())
   expect_is(results, "Results")
   results_list <- results$get_list()
-  expect_named(results_list$collated, as.character(0:1))
-  expect_equal(results_list$collated[["0"]][5922], 10)
-  expect_true(all(results_list$collated[["0"]][-5922] == 0))
-  expect_equal(results_list$collated[["1"]][5922], 0)
-  idx <- which(results_list$collated[["1"]] > 0)
+  expect_named(results_list$population, as.character(0:1))
+  expect_equal(results_list$population[["0"]][5922], 10)
+  expect_true(all(results_list$population[["0"]][-5922] == 0))
+  expect_equal(results_list$population[["1"]][5922], 0)
+  idx <- which(results_list$population[["1"]] > 0)
   expect_true(length(idx) <= 4)
-  expect_equal(sum(results_list$collated[["1"]][idx]), n_grown + length(idx))
+  expect_equal(sum(results_list$population[["1"]][idx]), n_grown + length(idx))
 })
 
 test_that("attaches attributes for spatially implicit diffusion", {
@@ -110,11 +110,11 @@ test_that("attaches attributes for spatially implicit diffusion", {
   expect_diff_radius_1 <- sqrt(4*2000^2/(4*log(2))*1*log(expect_n_1/10))
   expect_silent(results <- simulator$run())
   results_list <- results$get_list()
-  expect_named(results_list$collated, as.character(0:1))
-  expect_equal(attributes(results_list$collated[["0"]]),
+  expect_named(results_list$population, as.character(0:1))
+  expect_equal(attributes(results_list$population[["0"]]),
                list(initial_n = 10, diffusion_rate = 2000,
                     diffusion_radius = 0))
-  expect_equal(attributes(results_list$collated[["1"]]),
+  expect_equal(attributes(results_list$population[["1"]]),
                list(initial_n = 10, diffusion_rate = 2000,
                     diffusion_radius = expect_diff_radius_1))
   expect_equal(results_list$area[["0"]], 0)
@@ -143,10 +143,10 @@ test_that("attaches attributes for spatially implicit area spread", {
   set.seed(1248)
   expect_silent(results <- simulator$run())
   results_list <- results$get_list()
-  expect_named(results_list$collated, as.character(0:1))
-  expect_equal(attributes(results_list$collated[["0"]]),
+  expect_named(results_list$population, as.character(0:1))
+  expect_equal(attributes(results_list$population[["0"]]),
                list(spread_area = 1e6))
-  expect_equal(attributes(results_list$collated[["1"]]),
+  expect_equal(attributes(results_list$population[["1"]]),
                list(spread_area = expect_n_1*1e6/100))
   expect_equal(results_list$area[["0"]], 1e6)
   expect_equal(results_list$area[["1"]], expect_n_1*1e6/100)
@@ -169,12 +169,12 @@ test_that("attaches attributes for spatially implicit area spread", {
   set.seed(1248)
   expect_silent(results <- simulator$run())
   results_list <- results$get_list()
-  expect_equal(attr(results_list$collated[["0"]], "spread_area"),
-               sum(results_list$total[["0"]][,2:3])*1e6/100)
-  expect_equal(attr(results_list$collated[["1"]], "spread_area"),
-               sum(results_list$total[["1"]][,2:3])*1e6/100)
+  expect_equal(attr(results_list$population[["0"]], "spread_area"),
+               sum(results_list$population[["0"]][,2:3])*1e6/100)
+  expect_equal(attr(results_list$population[["1"]], "spread_area"),
+               sum(results_list$population[["1"]][,2:3])*1e6/100)
   expect_equal(results_list$area[["0"]],
-               sum(results_list$total[["0"]][,2:3])*1e6/100)
+               sum(results_list$population[["0"]][,2:3])*1e6/100)
   expect_equal(results_list$area[["1"]],
-               sum(results_list$total[["1"]][,2:3])*1e6/100)
+               sum(results_list$population[["1"]][,2:3])*1e6/100)
 })
