@@ -760,8 +760,10 @@ Dispersal.Region <- function(region, population_model,
                                                          tm = tm)
 
         # Process establishment control/suppression
-        if (!is.null(attr(n$relocated, "control_establishment")) &&
-            is.numeric(establish_p)) {
+        if (!is.null(attr(n$relocated, "control_establishment"))) {
+          if (is.null(establish_p)) {
+            establish_p <- rep(1, length(destinations))
+          }
           if (length(attr(n$relocated, "control_establishment")) == 1) {
             establish_p <-
               establish_p*attr(n$relocated, "control_establishment")
