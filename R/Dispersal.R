@@ -570,10 +570,12 @@ Dispersal.Region <- function(region, population_model,
       dispersals <- FALSE
       if (sum(dispersers) > 0) {
 
-        if (is.numeric(events_i) && events_i > 0) {
+        if (is.numeric(events_i)) {
 
           # Generate the number of events via Poisson distribution
-          dispersals <- stats::rpois(1, events_i*source_p)
+          if (events_i > 0) {
+            dispersals <- stats::rpois(1, events_i*source_p)
+          }
 
           # Distribute dispersers
           if (dispersals > 0) {
