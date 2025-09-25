@@ -266,6 +266,8 @@ Results.Region <- function(region, population_model,
         results$population[[tmc]]$sd <<-
           (previous_sd + ((n - previous_mean)*
                             (n - results$population[[tmc]]$mean)))
+        attr(results$population[[tmc]]$mean, "recovery_delay") <<- NULL
+        attr(results$population[[tmc]]$sd, "recovery_delay") <<- NULL
       }
 
       # Total population size summaries
@@ -312,6 +314,7 @@ Results.Region <- function(region, population_model,
       if (include_population &&
           (!include_collated || (tm %% collation_steps == 0))) {
         results$population[[tmc]] <<- n
+        attr(results$population[[tmc]], "recovery_delay") <<- NULL
       }
 
       # Total population size
