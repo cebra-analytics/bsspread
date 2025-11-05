@@ -230,13 +230,24 @@ test_that("disperses grid population with attractors", {
   n[5922] <- TRUE
   attractor_vect <- rep(0, region$get_locations())
   attractor_vect[1:5922] <- 1
-  attractor <- Attractor(attractor_vect, region)
+  attractor <- Attractor(attractor_vect, region, is_dynamic = TRUE)
   expect_silent(dispersal <- Dispersal(region, population_model = population,
                                        proportion = 1, max_distance = 10000,
                                        attractors = list(attractor)))
   n <- dispersal$pack(n)
   region$calculate_paths(5922)
   idx <- region$get_paths(5922, max_distance = 10000)$idx[["5922"]]$cell
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))
+  expect_equal(sum(new_n), length(which(idx < 5922)) + 1)
+  expect_true(all(new_n[idx[which(idx < 5922)]]))
+  # dynamically linked to impacts
+  mult <- rep(0, region$get_locations())
+  idx <- region$get_paths(5922, max_distance = 5000)$idx[["5922"]]$cell
+  mult[idx] <- 1
+  n <- dispersal$unpack(n)
+  attr(n, "dynamic_mult") <- list(NULL, list(mult))
+  attr(attr(n, "dynamic_mult")[[2]], "links") <- "attractors"
+  n <- dispersal$pack(n)
   expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))
   expect_equal(sum(new_n), length(which(idx < 5922)) + 1)
   expect_true(all(new_n[idx[which(idx < 5922)]]))
@@ -345,6 +356,21 @@ test_that("disperses unstructured population in a two-tier grid region", {
   expect_true(sum(new_n[-5922]) <= (2000 - new_n[5922]))
   expect_true(round(new_n[5922]/2000, 1) == 0.3)
   expect_true(all(which(new_n > 0) %in% c(5922, idx)))
+  # dynamically linked suitability to impacts
+  expect_silent(dispersal <- Dispersal(
+    region, population_model = population, proportion = 1,
+    density_dependent = TRUE, max_distance = 30000))
+  mult <- rep(0, region$get_locations())
+  mult[1:5922] <- 1
+  n <- dispersal$unpack(n)
+  attr(n, "dynamic_mult") <- list(NULL, list(mult))
+  attr(attr(n, "dynamic_mult")[[2]], "links") <- "suitability"
+  n <- dispersal$pack(n)
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))
+  expect_true(sum(new_n) < 2000)
+  expect_true(new_n[5922] == 0)
+  expect_true(length(which(new_n > 0)) <= sum(new_n))
+  expect_true(all(which(new_n > 0) %in% idx[which(idx <= 5922)]))
 })
 
 test_that("disperses staged population in a two-tier raster grid region", {
@@ -474,7 +500,7 @@ test_that("disperses in patch/network with attractors", {
   n[1] <- TRUE
   attractor_vect <- rep(0, region$get_locations())
   attractor_vect[1:8] <- 1
-  attractor <- Attractor(attractor_vect, region)
+  attractor <- Attractor(attractor_vect, region, is_dynamic = TRUE)
   expect_silent(dispersal <- Dispersal(region, population_model = population,
                                        proportion = 1, max_distance = 200000,
                                        attractors = list(attractor)))
@@ -484,6 +510,18 @@ test_that("disperses in patch/network with attractors", {
   expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))
   expect_equal(sum(new_n), length(which(idx <= 8)) + 1)
   expect_true(all(new_n[idx[which(idx <= 8)]]))
+  # dynamically linked to impacts
+  mult <- rep(1, region$get_locations())
+  mult[3:4] <- 0
+  n <- dispersal$unpack(n)
+  attr(n, "dynamic_mult") <- list(NULL, list(mult))
+  attr(attr(n, "dynamic_mult")[[2]], "links") <- "attractors"
+  expected_n <- rep(0, region$get_locations())
+  expected_n[c(1, idx)] <- 1
+  expected_n <- expected_n*attractor_vect*mult
+  n <- dispersal$pack(n)
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))
+  expect_equal(as.numeric(new_n), expected_n)
 })
 
 test_that("disperses in patch/network with permeability", {
@@ -548,6 +586,22 @@ test_that("disperses unstructured population in patch/network", {
   expect_true(sum(new_n[-1]) <= (2000 - new_n[1]))
   expect_true(round(new_n[1]/2000, 1) == 0.3)
   expect_true(all(which(new_n > 0) %in% c(1, idx)))
+  # dynamically linked suitability to impacts
+  expect_silent(dispersal <- Dispersal(region, population_model = population,
+                                       proportion = 1, max_distance = 200000))
+  mult <- rep(1, region$get_locations())
+  mult[3:4] <- 0
+  n <- dispersal$unpack(n)
+  attr(n, "dynamic_mult") <- list(NULL, list(mult))
+  attr(attr(n, "dynamic_mult")[[2]], "links") <- "suitability"
+  n <- dispersal$pack(n)
+  expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))
+  expected <- rep(0, region$get_locations())
+  expected[idx] <- 1
+  expected <- expected*mult
+  expect_true(sum(new_n) < 2000)
+  expect_true(new_n[1] == 0)
+  expect_true(all(which(new_n > 0) %in% which(expected > 0)))
 })
 
 test_that("disperses staged population in patch/network", {

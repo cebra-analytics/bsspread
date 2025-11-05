@@ -348,6 +348,27 @@ Dispersal.Region <- function(region, population_model,
       dispersal_ready <- n$indices
     }
 
+    # Process dynamic linkage from impacts to attractors
+    if (length(attractors) && is.list(attr(n$relocated, "dynamic_mult"))) {
+      dm_idx <- which(sapply(
+        attr(n$relocated, "dynamic_mult"),
+        function(dm) "attractors" %in% attr(dm, "links")))
+      if (length(dm_idx)) {
+        dynamic_mult <- rep(1, region$get_locations())
+        for (i in dm_idx) {
+          for (j in 1:length(attr(n$relocated, "dynamic_mult")[[i]])) {
+            dynamic_mult <-
+              dynamic_mult*attr(n$relocated, "dynamic_mult")[[i]][[j]]
+          }
+        }
+      }
+      for (attractor in attractors) {
+        if (inherits(attractor, "Attractor") && attractor$get_is_dynamic()) {
+          attractor$set_multiplier(dynamic_mult)
+        }
+      }
+    }
+
     # Function to calculate dispersals from a single occupied location (index)
     calculate_dispersals <- function(i) {
 
@@ -760,6 +781,25 @@ Dispersal.Region <- function(region, population_model,
         # Get establishment probability for destination cells at time step
         establish_p <- population_model$get_establish_pr(cells = destinations,
                                                          tm = tm)
+
+        # Process dynamic linkage from impacts to establishment
+        if (is.list(attr(n$relocated, "dynamic_mult"))) {
+          dm_idx <- which(sapply(
+            attr(n$relocated, "dynamic_mult"),
+            function(dm) "suitability" %in% attr(dm, "links")))
+          if (length(dm_idx)) {
+            if (is.null(establish_p)) {
+              establish_p <- rep(1, length(destinations))
+            }
+            for (j in dm_idx) {
+              for (k in 1:length(attr(n$relocated, "dynamic_mult")[[j]])) {
+                establish_p <-
+                  (establish_p*
+                     attr(n$relocated, "dynamic_mult")[[j]][[k]][destinations])
+              }
+            }
+          }
+        }
 
         # Process establishment control/suppression
         if (!is.null(attr(n$relocated, "control_establishment"))) {

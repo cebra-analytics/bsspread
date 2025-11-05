@@ -9,6 +9,12 @@
 #'   the simulation region.
 #' @param region A \code{Region} or inherited class object defining the spatial
 #'   locations included in the spread simulations.
+#' @param is_dynamic An optional logical to indicate that the attractor values
+#'   are dynamically adjusted by setting a multiplier (via
+#'   \code{set_multiplier(mult)}). This feature enables attraction to be
+#'   impacted (usually reduced) by threat presence, such as when a threat
+#'   utilises a resource or asset (e.g. as a food source). Default is
+#'   \code{FALSE}.
 #' @param ... Additional parameters.
 #' @return A \code{Attractor} class object (list) containing functions for
 #'   accessing attributes:
@@ -28,6 +34,9 @@
 #'       otherwise the index sequence should skip NA-value cells. Default is
 #'       all non-NA cell values. Only available for an attractor built with a
 #'       spatial raster layer, and functional when region is two-tiered.}
+#'     \item{\code{get_is_dynamic()}}{Get indicator for dynamic attractors.}
+#'     \item{\code{set_multiplier(mult)}}{Dynamically set a multiplier for the
+#'       attractor values.}
 #'   }
 #' @references
 #'   Bossenbroek, J. M., Kraft, C. E., & Nekola, J. C. (2001). Prediction of
@@ -54,7 +63,8 @@
 #'   71–79. \doi{10.1111/j.1366-9516.2006.00218.x}
 #' @include Region.R
 #' @export
-Attractor <- function(x, region, ...) {
+Attractor <- function(x, region,
+                      is_dynamic = FALSE, ...) {
   UseMethod("Attractor")
 }
 
@@ -67,7 +77,8 @@ Attractor.Raster <- function(x, ...) {
 
 #' @name Attractor
 #' @export
-Attractor.SpatRaster <- function(x, region, ...) {
+Attractor.SpatRaster <- function(x, region,
+                                 is_dynamic = FALSE, ...) {
 
   # Check region
   if (!inherits(region, "Region")) {
@@ -79,11 +90,33 @@ Attractor.SpatRaster <- function(x, region, ...) {
          "region.", call. = FALSE)
   }
 
-  # Aggregate
-  aggr_rast <- NULL
-
   # Create a class structure
   self <- structure(list(), class = "Attractor")
+
+  # Aggregate raster
+  aggr_rast <- NULL
+
+  # Check dynamic indicator
+  if (!is.logical(is_dynamic)) {
+    stop("The dynamic indicator must be logical TRUE or FALSE.",
+         call. = FALSE)
+  }
+
+  # Get dynamic indicator
+  self$get_is_dynamic <- function() {
+    return(is_dynamic)
+  }
+
+  # Set multiplier and adjust raster (copy original)
+  x_orig <- x
+  self$set_multiplier <- function(mult) {
+    x <<- x_orig*1
+    x[region$get_indices()] <<- mult*x[region$get_indices()][,1]
+    if (region$two_tier()) {
+      aggr_rast <<- terra::aggregate(x, fact = region$get_aggr()$factor,
+                                     fun = "mean", na.rm = TRUE)
+    }
+  }
 
   # Get the attractor raster
   self$get_rast <- function() {
@@ -136,7 +169,8 @@ Attractor.SpatRaster <- function(x, region, ...) {
 
 #' @name Attractor
 #' @export
-Attractor.numeric <- function(x, region, ...) {
+Attractor.numeric <- function(x, region,
+                              is_dynamic = FALSE, ...) {
 
   # Check region
   if (!inherits(region, "Region")) {
@@ -150,6 +184,23 @@ Attractor.numeric <- function(x, region, ...) {
 
   # Create a class structure
   self <- structure(list(), class = "Attractor")
+
+  # Check dynamic indicator
+  if (!is.logical(is_dynamic)) {
+    stop("The dynamic indicator must be logical TRUE or FALSE.",
+         call. = FALSE)
+  }
+
+  # Get dynamic indicator
+  self$get_is_dynamic <- function() {
+    return(is_dynamic)
+  }
+
+  # Set multiplier and adjust value (copy)
+  x_orig <- x
+  self$set_multiplier <- function(mult) {
+    x <<- x_orig*mult
+  }
 
   # Get the attractor raster
   self$get_rast <- function() {

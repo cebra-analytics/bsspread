@@ -56,6 +56,11 @@
 #'       capacity as a vector of values for each region location or optionally
 #'       specified region locations \code{cells} (indices) at (optional)
 #'       simulation time step \code{tm} (for temporally defined capacity).}
+#'     \item{\code{set_capacity_mult(m)}}{Dynamically set a multiplier for
+#'       the capacity values. Parameter \code{m} may either be the population
+#'       with a list of linked multipliers attached as an attribute
+#'       \code{"dynamic_mult"} (see \code{bsmanage::ManageImpacts}), or a
+#'       multiplier vector (assumed when linked attribute is absent).}
 #'     \item{\code{get_establish_pr(cells = NULL, tm = NULL)}}{Get the
 #'       establishment probability as a vector of values for each region
 #'       location or optionally specified region locations \code{cells}
@@ -237,6 +242,29 @@ Population.Region <- function(region,
       return(selected_capacity)
     } else {
       return(NULL)
+    }
+  }
+
+  # Set capacity multiplier (copy original)
+  capacity_orig <- capacity
+  self$set_capacity_mult <- function(m) {
+    if (is.numeric(capacity)) {
+      if (is.list(attr(m, "dynamic_mult"))) {
+        dm_idx <- which(sapply(
+          attr(m, "dynamic_mult"),
+          function(dm) "capacity" %in% attr(dm, "links")))
+        if (length(dm_idx)) {
+          dynamic_mult <- rep(1, region$get_locations())
+          for (i in dm_idx) {
+            for (j in 1:length(attr(m, "dynamic_mult")[[i]])) {
+              dynamic_mult <- dynamic_mult*attr(m, "dynamic_mult")[[i]][[j]]
+            }
+          }
+          capacity <<- capacity_orig*dynamic_mult
+        }
+      } else {
+        capacity <<- capacity_orig*m
+      }
     }
   }
 

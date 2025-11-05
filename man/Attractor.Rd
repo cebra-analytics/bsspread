@@ -7,13 +7,13 @@
 \alias{Attractor.numeric}
 \title{Attractor class builder}
 \usage{
-Attractor(x, region, ...)
+Attractor(x, region, is_dynamic = FALSE, ...)
 
 \method{Attractor}{Raster}(x, ...)
 
-\method{Attractor}{SpatRaster}(x, region, ...)
+\method{Attractor}{SpatRaster}(x, region, is_dynamic = FALSE, ...)
 
-\method{Attractor}{numeric}(x, region, ...)
+\method{Attractor}{numeric}(x, region, is_dynamic = FALSE, ...)
 }
 \arguments{
 \item{x}{A \code{raster::RasterLayer} or \code{terra::SpatRaster}
@@ -22,6 +22,13 @@ the simulation region.}
 
 \item{region}{A \code{Region} or inherited class object defining the spatial
 locations included in the spread simulations.}
+
+\item{is_dynamic}{An optional logical to indicate that the attractor values
+are dynamically adjusted by setting a multiplier (via
+\code{set_multiplier(mult)}). This feature enables attraction to be
+impacted (usually reduced) by threat presence, such as when a threat
+utilises a resource or asset (e.g. as a food source). Default is
+\code{FALSE}.}
 
 \item{...}{Additional parameters.}
 }
@@ -44,6 +51,9 @@ region cell indices, which should only refer to all raster indices
 otherwise the index sequence should skip NA-value cells. Default is
 all non-NA cell values. Only available for an attractor built with a
 spatial raster layer, and functional when region is two-tiered.}
+\item{\code{get_is_dynamic()}}{Get indicator for dynamic attractors.}
+\item{\code{set_multiplier(mult)}}{Dynamically set a multiplier for the
+attractor values.}
 }
 }
 \description{

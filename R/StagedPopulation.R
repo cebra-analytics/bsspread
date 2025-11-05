@@ -85,6 +85,11 @@
 #'       simulation time step \code{tm} (for temporally defined capacity).}
 #'     \item{\code{get_capacity_stages()}}{Get the stage/age (indices) that are
 #'       applicable for capacity-limited growth.}
+#'     \item{\code{set_capacity_mult(m)}}{Dynamically set a multiplier for
+#'       the capacity values. Parameter \code{m} may either be the population
+#'       with a list of linked multipliers attached as an attribute
+#'       \code{"dynamic_mult"} (see \code{bsmanage::ManageImpacts}), or a
+#'       multiplier vector (assumed when linked attribute is absent).}
 #'     \item{\code{get_establish_pr(cells = NULL, tm = NULL)}}{Get the
 #'       establishment probability as a vector of values for each region
 #'       location or optionally specified region locations \code{cells}

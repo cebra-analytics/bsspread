@@ -99,6 +99,16 @@ test_that("grows populations with capacity", {
   set.seed(1243)
   expect_silent(n1 <- population$grow(n, 1))
   expect_equal(round(mean(n1[idx]/n[idx]), 1), 1.0)
+  # dynamic capacity multiplier
+  mult <- (capacity > 10)*0.5
+  expect_silent(population$set_capacity_mult(mult))
+  expect_equal(population$get_capacity(), capacity*mult)
+  expect_silent(population$set_capacity_mult(2))
+  expect_equal(population$get_capacity(), capacity*2)
+  attr(n, "dynamic_mult") <- list(NULL, list(mult))
+  attr(attr(n, "dynamic_mult")[[2]], "links") <- c("capacity", "suitability")
+  expect_silent(population$set_capacity_mult(n))
+  expect_equal(population$get_capacity(), capacity*mult)
   # growth variation
   growth <- rep(1.2, region$get_locations())
   growth <- cbind(growth, growth*0.8, growth*0.6)
