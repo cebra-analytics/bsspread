@@ -413,7 +413,7 @@ Results.Region <- function(region, population_model,
   }
 
   # Convert first letter of each word of string to upper-case
-  title_case <- function(title_str, all = TRUE) {
+  title_case <- function(title_str, all = FALSE) {
     title_str <- as.character(title_str)
     if (all) {
       title_str <- unlist(strsplit(title_str, " ", fixed = TRUE))
