@@ -43,8 +43,10 @@
 #'     \item{\code{save_rasters(...)}}{Save the collated results as raster TIF
 #'       files when the region is grid-based. \code{Terra} raster write options
 #'       may be passed to the function. Returns a list of saved \code{Terra}
-#'       raster layers with attached attributes indicating if each layer
-#'       contains non-zero values.}
+#'       raster layers with attached \code{"metadata"} attribute list, which
+#'       includes plot category, population type & stage (when applicable), a
+#'       descriptive label, summary (when applicable), units, scale type, and
+#'       an indication of whether or not each layer contains non-zero values.}
 #'     \item{\code{save_csv()}}{Save the collated results as comma-separated
 #'       values (CSV) files when the region is patch-based. Also saves the
 #'       population totals and area occupied to CSV files for both grid and
@@ -409,6 +411,17 @@ Results.Region <- function(region, population_model,
                 combine_stages = combine_stages))
   }
 
+  # Convert first letter of each word of string to upper-case
+  title_case <- function(title_str, all = TRUE) {
+    title_str <- as.character(title_str)
+    if (all) {
+      title_str <- unlist(strsplit(title_str, " ", fixed = TRUE))
+    }
+    return(paste(paste0(toupper(substr(title_str, 1, 1)),
+                        substr(title_str, 2, nchar(title_str))),
+                 collapse = " "))
+  }
+
   # Save collated results as raster files
   if (include_collated && region$get_type() == "grid") {
     self$save_rasters  <- function(...) {
@@ -501,9 +514,34 @@ Results.Region <- function(region, population_model,
                 terra::writeRaster(output_rast, filename, ...)
             }
 
-            # Add non-zero indicator as an attribute
-            attr(output_list[[output_key]], "nonzero") <-
-              nonzero_list[[output_key]]
+            # Add list of population metadata as an attribute
+            label <- "population size"
+            if (population_model$get_type() == "unstructured") {
+              stage <- NULL
+            } else if (population_model$get_type() == "stage_structured") {
+              if (is.null(combine_stages)) {
+                stage <- stage_labels[i]
+                label <- paste("stage", as.character(stage), label)
+              } else if (is.numeric(combine_stages)) {
+                stage <- "combined"
+                label <- paste("combined stage", label)
+              }
+            }
+            if (s == "mean") {
+              label <- paste("mean", label)
+            } else if (s == "sd") {
+              label <- paste(label, "standard deviation")
+            }
+            attr(output_list[[output_key]], "metadata") <- list(
+              category = "population",
+              population_type = population_model$get_type(),
+              stage = stage,
+              summary = s,
+              label = title_case(label),
+              units = NULL,
+              scale_type = "continuous",
+              nonzero = nonzero_list[[output_key]]
+            )
           }
         }
       }
@@ -547,15 +585,29 @@ Results.Region <- function(region, population_model,
           terra::writeRaster(output_rast, filename, ...)
       }
 
-      # Add non-zero indicator as an attribute
-      attr(output_list[[output_key]], "nonzero") <-
-        nonzero_list[[output_key]]
-
+      # Add list of occupancy metadata as an attribute
+      label <- "occupancy"
+      if (s == "mean") {
+        label <- paste("mean", label)
+        scale_type <- "percent" # 0-1
+      } else {
+        scale_type <- "discrete" # 0|1
+      }
+      attr(output_list[[output_key]], "metadata") <- list(
+        category = "occupancy",
+        population_type = population_model$get_type(),
+        stage = NULL,
+        summary = s,
+        label = title_case(label),
+        units = NULL,
+        scale_type = scale_type,
+        nonzero = nonzero_list[[output_key]]
+      )
 
       # Return output list as multi-layer rasters
       return(lapply(output_list, function(rast_list) {
         raster_layers <- terra::rast(rast_list)
-        attr(raster_layers, "nonzero") <- attr(rast_list, "nonzero")
+        attr(raster_layers, "metadata") <- attr(rast_list, "metadata")
         raster_layers
       }))
     }
