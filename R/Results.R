@@ -44,9 +44,10 @@
 #'       files when the region is grid-based. \code{Terra} raster write options
 #'       may be passed to the function. Returns a list of saved \code{Terra}
 #'       raster layers with attached \code{"metadata"} attribute list, which
-#'       includes plot category, population type & stage (when applicable), a
-#'       descriptive label, summary (when applicable), units, scale type, and
-#'       an indication of whether or not each layer contains non-zero values.}
+#'       includes: plot category; population type & stage (when applicable);
+#'       multi-replicate summary (when applicable); a descriptive label; units;
+#'       scale type; and an indication of whether or not each layer contains
+#'       non-zero values.}
 #'     \item{\code{save_csv()}}{Save the collated results as comma-separated
 #'       values (CSV) files when the region is patch-based. Also saves the
 #'       population totals and area occupied to CSV files for both grid and
