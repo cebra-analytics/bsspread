@@ -851,7 +851,7 @@ Results.Region <- function(region, population_model,
     }
 
     # Label population and totals appropriately
-    pop_label <- "population"
+    pop_label <- "population size"
     if (region$spatially_implicit()) {
       tot_label <- list(text = "", file = "")
     } else {
@@ -899,16 +899,13 @@ Results.Region <- function(region, population_model,
       # Plot population (per result stage)
       if (include_population) {
         for (s in 1:result_stages) {
-          filename <- paste0(tot_label$file, pop_label, stage_file[s], ".png")
+          filename <- paste0(tot_label$file, "population", stage_file[s], ".png")
           main_title <- paste0(tot_label$text, stage_label[s], pop_label,
                                " (mean +/- 2 SD)")
-          main_title <- paste0(toupper(substr(main_title, 1, 1)),
-                               substr(main_title, 2, nchar(main_title)))
-          y_label <- paste0(toupper(substr(pop_label, 1, 1)),
-                            substr(pop_label, 2, nchar(pop_label)))
+          y_label <- title_case(pop_label)
           grDevices::png(filename = filename, width = width, height = height)
           graphics::plot(0:time_steps, population$mean[s,], type = "l",
-                         main = main_title,
+                         main = title_case(main_title),
                          xlab = plot_x_label, ylab = y_label,
                          ylim = c(0, 1.1*max(population$mean[s,] +
                                                2*population$sd[s,])))
@@ -925,10 +922,10 @@ Results.Region <- function(region, population_model,
       # Plot occupancy
       if (region$spatially_implicit()) {
         filename <- "occupancy.png"
-        main_title <- "Occupancy (mean)"
+        main_title <- "occupancy (mean)"
       } else {
         filename <- "total_occupancy.png"
-        main_title <- "Total occupancy (mean +/- 2 SD)"
+        main_title <- "total occupancy (mean +/- 2 SD)"
       }
       grDevices::png(filename = filename, width = width, height = height)
       if (include_collated) {
@@ -937,7 +934,7 @@ Results.Region <- function(region, population_model,
         ylim <- c(0, 1.1*max(occup$mean))
       }
       graphics::plot(0:time_steps, occup$mean, type = "l",
-                     main = main_title,
+                     main = title_case(main_title),
                      xlab = plot_x_label,
                      ylab = "Occupancy",
                      ylim = ylim)
@@ -951,14 +948,14 @@ Results.Region <- function(region, population_model,
       # Plot area
       if (region$spatially_implicit()) {
         filename <- "area_occupied.png"
-        main_title <- "Area occupied (mean +/- 2 SD)"
+        main_title <- "area occupied (mean +/- 2 SD)"
       } else {
         filename <- "total_area_occupied.png"
-        main_title <- "Total area occupied (mean +/- 2 SD)"
+        main_title <- "total area occupied (mean +/- 2 SD)"
       }
       grDevices::png(filename = filename, width = width, height = height)
       graphics::plot(0:time_steps, area$mean, type = "l",
-                     main = main_title,
+                     main = title_case(main_title),
                      xlab = plot_x_label,
                      ylab = paste0("Area (", attr(results$area, "units"),
                                    ")"),
@@ -994,15 +991,12 @@ Results.Region <- function(region, population_model,
       # Plot population (per result stage)
       if (include_population) {
         for (s in 1:result_stages) {
-          filename <- paste0(tot_label$file, pop_label, stage_file[s], ".png")
+          filename <- paste0(tot_label$file, "population", stage_file[s], ".png")
           main_title <- paste0(tot_label$text, stage_label[s], pop_label)
-          main_title <- paste0(toupper(substr(main_title, 1, 1)),
-                               substr(main_title, 2, nchar(main_title)))
-          y_label <- paste0(toupper(substr(pop_label, 1, 1)),
-                            substr(pop_label, 2, nchar(pop_label)))
+          y_label <- title_case(pop_label)
           grDevices::png(filename = filename, width = width, height = height)
           graphics::plot(0:time_steps, population[s,], type = "l",
-                         main = main_title,
+                         main = title_case(main_title),
                          xlab = plot_x_label, ylab = y_label,
                          ylim = c(0, 1.1*max(population[s,])))
           invisible(grDevices::dev.off())
@@ -1012,14 +1006,14 @@ Results.Region <- function(region, population_model,
       # Plot total occupancy
       if (region$spatially_implicit()) {
         filename <- "occupancy.png"
-        main_title <- "Occupancy"
+        main_title <- "occupancy"
       } else {
         filename <- "total_occupancy.png"
-        main_title <- "Total occupancy"
+        main_title <- "total occupancy"
       }
       grDevices::png(filename = filename, width = width, height = height)
       graphics::plot(0:time_steps, occup, type = "l",
-                     main = main_title,
+                     main = title_case(main_title),
                      xlab = plot_x_label,
                      ylab = "Occupancy",
                      ylim = c(0, 1.1*max(occup)))
@@ -1028,14 +1022,14 @@ Results.Region <- function(region, population_model,
       # Plot area
       if (region$spatially_implicit()) {
         filename <- "area_occupied.png"
-        main_title <- "Area occupied"
+        main_title <- "area occupied"
       } else {
         filename <- "total_area_occupied.png"
-        main_title <- "Total area occupied"
+        main_title <- "total area occupied"
       }
       grDevices::png(filename = filename, width = width, height = height)
       graphics::plot(0:time_steps, area, type = "l",
-                     main = main_title,
+                     main = title_case(main_title),
                      xlab = plot_x_label,
                      ylab = paste0("Area (", attr(results$area, "units"),
                                    ")"),
