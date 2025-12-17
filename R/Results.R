@@ -522,7 +522,7 @@ Results.Region <- function(region, population_model,
             } else if (population_model$get_type() == "stage_structured") {
               if (is.null(combine_stages)) {
                 stage <- stage_labels[i]
-                label <- paste("stage", as.character(stage), label)
+                label <- paste(stage_labels[i], label)
               } else if (is.numeric(combine_stages)) {
                 stage <- "combined"
                 label <- paste("combined stage", label)
