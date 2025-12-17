@@ -588,7 +588,7 @@ Results.Region <- function(region, population_model,
 
       # Add list of occupancy metadata as an attribute
       label <- "occupancy"
-      if (s == "mean") {
+      if (replicates > 1) {
         label <- paste("mean", label)
         scale_type <- "percent" # 0-1
       } else {
