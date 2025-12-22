@@ -571,9 +571,15 @@ Region.SpatRaster <- function(x, ...) {
         # Calculate region cell indices inside new polygon
         if (include_aggr) { # two-tier approach
           aggr_idx <- terra::cells(aggr$rast, new_poly, touches = FALSE)[,2]
-          cell_idx <- paths$graphs$get_cells(aggr_idx)
+          aggr_idx <- aggr_idx[which(is.finite(aggr_idx))]
+          if (length(aggr_idx)) {
+            cell_idx <- paths$graphs$get_cells(aggr_idx)
+          } else {
+            cell_idx <- NULL
+          }
         } else {
           cell_idx <- terra::cells(x, new_poly, touches = TRUE)[,2]
+          cell_idx <- cell_idx[which(is.finite(cell_idx))]
         }
 
         # Build graph via cell adjacency
