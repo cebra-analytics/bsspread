@@ -551,9 +551,10 @@ Results.Region <- function(region, population_model,
 
       # Postfix
       if (replicates > 1) {
+        s <- "mean"
         sc <- "_mean"
       } else {
-        sc <- ""
+        s <- sc <- ""
       }
 
       # Add nested list to output list
