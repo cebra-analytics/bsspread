@@ -531,7 +531,7 @@ Results.Region <- function(region, population_model,
             if (s == "mean") {
               label <- paste("mean", label)
             } else if (s == "sd") {
-              label <- paste(label, "standard deviation")
+              label <- paste(label, "std. dev.")
             }
             attr(output_list[[output_key]], "metadata") <- list(
               category = "population",
@@ -540,7 +540,7 @@ Results.Region <- function(region, population_model,
               summary = s,
               label = title_case(label),
               units = NULL,
-              scale_type = "continuous",
+              scale_type = "continuous_log10",
               nonzero = nonzero_list[[output_key]]
             )
           }
