@@ -297,11 +297,11 @@ Region.SpatRaster <- function(x, ...) {
           aggr_rast[] <- 1:terra::ncell(aggr_rast)
           aggr_idx_rast <- terra::crop(
             terra::disagg(aggr_rast, fact = aggr$factor), idx_rast)
-          paths$graphs$agg_idx <<- lapply(
-            1:terra::ncell(aggr_rast),
-            function(aggr_i) {
-              which(aggr_idx_rast[][,1] == aggr_i)
-            })
+          aggr_idx_rast_vals <- aggr_idx_rast[][, 1]
+          paths$graphs$agg_idx <<- split(
+            seq_along(aggr_idx_rast_vals),
+            factor(aggr_idx_rast_vals, levels = 1:terra::ncell(aggr_rast))
+          )
           paths$graphs$get_cells <<- function(indices) {
             return(unlist(paths$graphs$agg_idx[indices]))
           }
