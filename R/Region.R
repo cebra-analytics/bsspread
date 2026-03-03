@@ -244,9 +244,11 @@ Region.SpatRaster <- function(x, ...) {
     aggr_rast[aggr$indices] <- 1:length(aggr$indices)
     aggr_idx_rast <- terra::crop(terra::disagg(aggr_rast, fact = aggr_factor),
                                  idx_rast)
-    aggr$cells <<- lapply(1:length(aggr$indices), function(aggr_i) {
-      which(aggr_idx_rast[indices][,1] == aggr_i)
-    })
+    aggr_idx_rast_at_indices <- aggr_idx_rast[indices][, 1]
+    aggr$cells <<- split(
+      seq_along(aggr_idx_rast_at_indices), 
+      factor(aggr_idx_rast_at_indices, levels = seq_along(aggr$indices))
+    )
     aggr$get_cells <<- function(indices) {
       return(unlist(aggr$cells[indices]))
     }
