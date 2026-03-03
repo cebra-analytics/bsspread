@@ -245,10 +245,10 @@ Region.SpatRaster <- function(x, ...) {
     aggr_idx_rast <- terra::crop(terra::disagg(aggr_rast, fact = aggr_factor),
                                  idx_rast)
     aggr_idx_rast_at_indices <- aggr_idx_rast[indices][, 1]
-    aggr$cells <<- split(
+    aggr$cells <<- unname(split(
       seq_along(aggr_idx_rast_at_indices), 
       factor(aggr_idx_rast_at_indices, levels = seq_along(aggr$indices))
-    )
+    ))
     aggr$get_cells <<- function(indices) {
       return(unlist(aggr$cells[indices]))
     }
@@ -298,10 +298,10 @@ Region.SpatRaster <- function(x, ...) {
           aggr_idx_rast <- terra::crop(
             terra::disagg(aggr_rast, fact = aggr$factor), idx_rast)
           aggr_idx_rast_vals <- aggr_idx_rast[][, 1]
-          paths$graphs$agg_idx <<- split(
+          paths$graphs$agg_idx <<- unname(split(
             seq_along(aggr_idx_rast_vals),
             factor(aggr_idx_rast_vals, levels = 1:terra::ncell(aggr_rast))
-          )
+          ))
           paths$graphs$get_cells <<- function(indices) {
             return(unlist(paths$graphs$agg_idx[indices]))
           }
