@@ -101,11 +101,12 @@ test_that("grows populations with capacity", {
   expect_equal(round(mean(n1[idx]/n[idx]), 1), 1.0)
   # dynamic capacity multiplier
   mult <- (capacity > 10)*0.5
-  expect_silent(population$set_capacity_mult(mult))
-  expect_equal(population$get_capacity(), capacity*mult)
-  expect_silent(population$set_capacity_mult(2))
-  expect_equal(population$get_capacity(), capacity*2)
+  expect_silent(population$set_capacity_mult(n))
+  expect_equal(population$get_capacity(), capacity)
   attr(n, "dynamic_mult") <- list(NULL, list(mult))
+  attr(attr(n, "dynamic_mult")[[2]], "links") <- "suitability"
+  expect_silent(population$set_capacity_mult(n))
+  expect_equal(population$get_capacity(), capacity)
   attr(attr(n, "dynamic_mult")[[2]], "links") <- c("capacity", "suitability")
   expect_silent(population$set_capacity_mult(n))
   expect_equal(population$get_capacity(), capacity*mult)
