@@ -374,7 +374,10 @@ Region.SpatRaster <- function(x, ...) {
             outer_idx <- terra::cells(aggr$rast, outer_vect,
                                       touches = TRUE)[,2]
             outer_idx <- outer_idx[which(!outer_idx %in% aggr_idx)]
-            paths$idx[[cell_char]]$aggr <<- which(aggr$indices %in% outer_idx)
+            if (length(outer_idx) > 0) {
+              paths$idx[[cell_char]]$aggr <<-
+                which(aggr$indices %in% outer_idx)
+            }
           } else {
             paths$idx[[cell_char]]$aggr <<- which(!aggr$indices %in% aggr_idx)
           }
@@ -918,7 +921,7 @@ Region.SpatRaster <- function(x, ...) {
         if (directions) {
           selected$directions[[cell_char]]$cell <-
             selected$directions[[cell_char]]$cell[cell_ids]
-          if (include_aggr) {
+          if (include_aggr && length(paths$idx[[cell_char]]$aggr) > 0) {
             selected$directions[[cell_char]]$aggr <-
               selected$directions[[cell_char]]$aggr[aggr_ids]
           }
