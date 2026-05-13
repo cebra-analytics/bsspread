@@ -100,15 +100,18 @@ Assembling and configuring an appropriate dispersal model for a particular mode 
     - Gaussian (normal)
     - Lognormal
     - Weibull
-  Also included is a function for defining the probability of distances or directions from a table of values.
+    
+    Also included is a function for defining the probability of distances or directions from a table of values.
 
 3. *DirectionKernel*: A class extending the functionality of the *Kernels* class specifically for generating direction functions (or kernels), which enables:
     - Directions to be defined in degrees (0-360) using trigonometric angles or navigational directions
     - The Beta distribution to be shifted or rotated (e.g. for dominant winds)
 
 4. *Gravity*: A class *inherited* from the *Dispersal* class configured for network gravity models. Gravity models provide mechanisms for biased dispersal patterns based on a combination of distance between locations and 'attraction' between origins and destinations, such as population, environmental, and other conditions suitable for the threat organism or its hosts, or factors influenced by human behaviour. Gravity models are analogous to Newton’s gravitational law, whereby the attraction decreases with distance (Bossenbroek, Kraft, & Nekola, 2001; Carrasco et al., 2010-2; Crespo-Pérez et al., 2011; Muirhead et al., 2006). They are typically expressed as a function in the form:
-$$dispersal_{ij}=\frac{f(attractor1_{ij},attractor2_{ij},...)}{distance_{ij}^\beta}$$
-where a function $f$ of *attractor* variables $attractor1$, $attractor2$, ... (often a simple product), combined with the inverse distance to the power of a constant $\beta$ (often 1), is used to calculate the dispersal between origin and destination locations $i$ and $j$ respectively.
+
+    $dispersal_{ij}=\frac{f(attractor1_{ij},attractor2_{ij},...)}{distance_{ij}^\beta}$
+
+    where a function $f$ of *attractor* variables $attractor1$, $attractor2$, ... (often a simple product), combined with the inverse distance to the power of a constant $\beta$ (often 1), is used to calculate the dispersal between origin and destination locations $i$ and $j$ respectively.
 
 5. *Attractor*: A class for encapsulating attractor variables, which can be used in spatially explicit (grid and network-based) dispersal models. Examples of attractor variables include (Bossenbroek, Kraft, & Nekola, 2001; Carrasco et al., 2010-2; Crespo-Pérez et al., 2011; Muirhead et al., 2006):
     - Population size or density of threat organisms, host species, or human settlements
@@ -125,7 +128,7 @@ where a function $f$ of *attractor* variables $attractor1$, $attractor2$, ... (o
     - For spatially explicit (grid and network-based) models, diffusion simulates the local spread of populations into neighbouring locations at a speed specified by a *diffusion rate* (Bradhurst et al., 2021; Jongejans, Skarpaas, & Shea, 2008). The optional configuration of *direction function*, *attractors*, and/or *permeability* will thus potentially result in asymmetric diffusion
     - For spatially implicit models, diffusion is also defined by a speed specified by a *diffusion rate*. For presence-only populations a simple radial diffusion is applied, whereby the implicit area occupied expands via a circle with a linear increasing radius (up to a maximum area when specified by the *region*). For unstructured and stage-based population models, a *reaction-diffusion* model is applied, whereby capacity-limited growth interplays with radial expansion, which slows down if the population density approaches capacity (Andow et al., 1990; Fisher, 1937; Okubo & Kareiva, 2001; Robinet et al. 2012; Skellam, 1951).
 
-8. *AreaSpread* A class *inherited* from the *Dispersal* class configured for spatially implicit area spread, whereby the simulated occupied area grows in proportion to the size of an unstructured or stage-based population given its capacity per unit area. When a maximum total area occupied is specified (via the *region*), then both the population and its area of occupancy will follow a typical capacity-limited sigmoid growth curve (Andow et al., 1990; Bradhurst et al., 2021; Jongejans, Skarpaas, & Shea, 2008; Robinet et al. 2012).
+8. *AreaSpread*: A class *inherited* from the *Dispersal* class configured for spatially implicit area spread, whereby the simulated occupied area grows in proportion to the size of an unstructured or stage-based population given its capacity per unit area. When a maximum total area occupied is specified (via the *region*), then both the population and its area of occupancy will follow a typical capacity-limited sigmoid growth curve (Andow et al., 1990; Bradhurst et al., 2021; Jongejans, Skarpaas, & Shea, 2008; Robinet et al. 2012).
 
 ### Simulator
 

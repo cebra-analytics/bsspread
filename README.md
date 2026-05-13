@@ -189,8 +189,10 @@ classes:
     - Exponential (negative exponential)
     - Gaussian (normal)
     - Lognormal
-    - Weibull Also included is a function for defining the probability
-      of distances or directions from a table of values.
+    - Weibull
+
+    Also included is a function for defining the probability of
+    distances or directions from a table of values.
 
 3.  *DirectionKernel*: A class extending the functionality of the
     *Kernels* class specifically for generating direction functions (or
@@ -212,7 +214,9 @@ classes:
     Kraft, & Nekola, 2001; Carrasco et al., 2010-2; Crespo-Pérez et al.,
     2011; Muirhead et al., 2006). They are typically expressed as a
     function in the form:
-    $$dispersal_{ij}=\frac{f(attractor1_{ij},attractor2_{ij},...)}{distance_{ij}^\beta}$$
+
+    $dispersal_{ij}=\frac{f(attractor1_{ij},attractor2_{ij},...)}{distance_{ij}^\beta}$
+
     where a function $f$ of *attractor* variables $attractor1$,
     $attractor2$, … (often a simple product), combined with the inverse
     distance to the power of a constant $\beta$ (often 1), is used to
@@ -275,7 +279,7 @@ classes:
       Fisher, 1937; Okubo & Kareiva, 2001; Robinet et al. 2012; Skellam,
       1951).
 
-8.  *AreaSpread* A class *inherited* from the *Dispersal* class
+8.  *AreaSpread*: A class *inherited* from the *Dispersal* class
     configured for spatially implicit area spread, whereby the simulated
     occupied area grows in proportion to the size of an unstructured or
     stage-based population given its capacity per unit area. When a
