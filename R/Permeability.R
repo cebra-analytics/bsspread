@@ -27,6 +27,11 @@
 #'     \item{\code{get_data()}}{Get the path data specifying the weights
 #'       between patches when the simulation region is patch-based.}
 #'   }
+#' @references
+#'   Etherington, T. R. (2016). Least-cost modelling and landscape ecology:
+#'   Concepts, applications, and opportunities',
+#'   \emph{Current Landscape Ecology Reports}, 1, 40–53.
+#'   <\doi{10.1007/s40823-016-0006-9}
 #' @include Region.R
 #' @export
 Permeability <- function(x, region, ...) {

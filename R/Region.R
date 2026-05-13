@@ -12,7 +12,7 @@
 #' (graphs) between cells (local and aggregate) or patches via permeability
 #' layers/networks. When used, the inverse of the permeability (0-1) of
 #' cells/patches is used to (linearly) scale the actual distance between
-#' adjacent/connected cells/patched. The effective distance between any two
+#' adjacent/connected cells/patches. The effective distance between any two
 #' cells/patches in the region is thus calculated via the shortest weighted
 #' path between the cells/patches.
 #'
