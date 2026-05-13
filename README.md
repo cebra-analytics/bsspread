@@ -18,14 +18,14 @@ simulation models are constructed by building and linking workflow
 components as follows:
 
 1.  Define the spatial representation and region of interest for the
-    study
+    study.
 2.  Configure the population representation and dynamics for the
-    biosecurity threat
-3.  Specify how each simulation is initialised
+    biosecurity threat.
+3.  Specify how each simulation is initialised.
 4.  Assemble one or more dispersal models for each mode or vector of
-    threat spread
+    threat spread.
 5.  Configure and run one or more stochastic spatio-temporal simulations
-    and save their results
+    and save their results.
 
 ## Workflow components
 
@@ -66,11 +66,11 @@ The population representation and dynamics of the biosecurity threat may
 be configured via one of the following object classes, which are based
 on (or *inherit*) the *Population* class:
 
-1.  *PresencePopulation*: Models presence-only populations
+1.  *PresencePopulation*: Models presence-only populations.
 2.  *UnstructPopulation*: Models unstructured populations and their
-    growth
+    growth.
 3.  *StagedPopulation*: Models stage or age-based populations and their
-    reproduction and survival dynamics
+    reproduction and survival dynamics.
 
 Presence-only populations are modelled via a binary indication of threat
 presence or absence at each location at each simulation time step. An
@@ -118,15 +118,15 @@ be configured via the *Initializer* class using either of the following
 approaches (Bradhurst et al., 2021; García Adeva, Botha, & Reynolds,
 2012):
 
-1.  Pre-defined initial population values at specified locations
+1.  Pre-defined initial population values at specified locations.
 2.  Stochastically generate an initial population for each simulation
     (replicate) at a location chosen via sampling using incursion
-    weightings specified for each location
+    weightings specified for each location.
 3.  Stochastically generate an initial population at one or more (or no)
     locations selected via sampling using arrival probabilities
     specified at each location. The stochastically generated threat
     arrivals may optionally continue to be generated at specified
-    simulation time intervals
+    simulation time intervals.
 
 Both stochastic generation options also utilise functionality provided
 by the *Incursions* class. Initial population sizes for unstructured and
@@ -142,7 +142,7 @@ mode or vector of threat spread. The various ways organisms may spread,
 described in Gippet et al. (2019) and Wilson et al. (2009), include:
 
 - Leading edge spread (or ‘diffusion’) from established occupancy to
-  nearby locations
+  nearby locations.
 - Corridor spread along geographical features such as rivers, roads,
   etc.
 - Natural long-range spread (commonly referred to as ‘jumps’) by wind,
@@ -161,20 +161,20 @@ classes:
     al. 2012), including configuration for:
 
     - The *proportion* of threat individuals dispersing at each time
-      step
+      step.
     - The number of dispersal *events* from each occupied location at
-      each time step
+      each time step.
     - *Density dependent* dispersal for spread that increases as the
       number of individuals approach *capacity* (e.g. in response to
-      overcrowding)
+      overcrowding).
     - The likelihood of dispersal given destination distances (via a
-      *distance function* or *kernel*)
+      *distance function* or *kernel*).
     - The likelihood of dispersal given destination directions (via a
-      *direction function* or *kernel*)
+      *direction function* or *kernel*).
     - The likelihood of dispersal given other destination attributes
-      (e.g. food or habitat) or ‘attractiveness’ (via *attractors*)
+      (e.g. food or habitat) or ‘attractiveness’ (via *attractors*).
     - The *permeability* of the (grid-based) landscape or connectivity
-      of (network-based) locations
+      of (network-based) locations.
 
 2.  *Kernels*: A class for generating distance or direction functions
     (or kernels) for calculating the (relative) probability of dispersal
@@ -199,9 +199,9 @@ classes:
     kernels), which enables:
 
     - Directions to be defined in degrees (0-360) using trigonometric
-      angles or navigational directions
+      angles or navigational directions.
     - The Beta distribution to be shifted or rotated (e.g. for dominant
-      winds)
+      winds).
 
 4.  *Gravity*: A class *inherited* from the *Dispersal* class configured
     for network gravity models. Gravity models provide mechanisms for
@@ -230,12 +230,12 @@ classes:
     Muirhead et al., 2006):
 
     - Population size or density of threat organisms, host species, or
-      human settlements
-    - Carrying capacity or suitability
-    - Environmental or climatic conditions
+      human settlements.
+    - Carrying capacity or suitability.
+    - Environmental or climatic conditions.
     - Human transport movement numbers or capacity between origins and
-      destinations
-    - Availability/quantity of host material, such as wood
+      destinations.
+    - Availability/quantity of host material, such as wood.
 
 6.  *Permeability*: a class to represent the permeability of grid-based
     landscapes, or location (node/patch) connectivity in network models.
@@ -266,7 +266,7 @@ classes:
       al., 2021; Jongejans, Skarpaas, & Shea, 2008). The optional
       configuration of *direction function*, *attractors*, and/or
       *permeability* will thus potentially result in asymmetric
-      diffusion
+      diffusion.
     - For spatially implicit models, diffusion is also defined by a
       speed specified by a *diffusion rate*. For presence-only
       populations a simple radial diffusion is applied, whereby the
