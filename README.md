@@ -467,7 +467,7 @@ terra::plot(initial_rast, colNA = "grey",
 
 Andow, D. A., Kareiva, P. M., Levin, S. A., & Okubo, A. (1990). ‘Spread
 of invading organisms’. *Landscape Ecology*, 4(2–3), 177.
-[doi:10.1007/bf00132860](https://doi.org/)
+[doi:10.1007/bf00132860](https://doi.org/10.1007/bf00132860)
 
 Antonov, M., Csárdi, G., Horvát, S., Müller, K., Nepusz, T., Noom, D.,
 Salmon, M., Traag, V., Welles, B. F., & Zanini, F. (2023). ‘igraph
