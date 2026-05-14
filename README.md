@@ -562,7 +562,7 @@ National Vegetation Information System (NVIS) V7.0
 Okubo, A., & Kareiva, P. (2001). ‘Some Examples of Animal Diffusion’. In
 A. Okubo & S. A. Levin (Eds.) *Diffusion and Ecological Problems: Modern
 Perspectives* (pp. 238-267). Springer New York.
-[doi:10.1007/9781475749786](https://doi.org/10.1007/9781475749786)
+[doi:10.1007/978-1-4757-4978-6](https://doi.org/10.1007/978-1-4757-4978-6)
 
 Ricker, W. E. (1958). ‘Handbook of computations for biological
 statistics of fish populations’. *Fisheries Research Board of Canada,
