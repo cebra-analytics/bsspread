@@ -459,56 +459,51 @@ terra::plot(initial_rast, colNA = "grey",
 
 ### Step 4: Dispersal models
 
-(in progress)
-
 ### Step 5: Simulator
 
-(in progress)
-
 ### Step 6: Results
-
-(in progress)
 
 ## References
 
 Andow, D. A., Kareiva, P. M., Levin, S. A., & Okubo, A. (1990). ‘Spread
 of invading organisms’. *Landscape Ecology*, 4(2–3), 177.
-<doi:10.1007/bf00132860>
+[doi:10.1007/bf00132860](https://doi.org/)
 
 Antonov, M., Csárdi, G., Horvát, S., Müller, K., Nepusz, T., Noom, D.,
 Salmon, M., Traag, V., Welles, B. F., & Zanini, F. (2023). ‘igraph
 enables fast and robust network analysis across programming languages’.
-*arXiv* preprint arXiv:2311.10260. <doi:10.48550/arXiv.2311.10260>
+*arXiv* preprint arXiv:2311.10260.
+[doi:10.48550/arXiv.2311.10260](https://doi.org/10.48550/arXiv.2311.10260)
 
 Bossenbroek, J. M., Kraft, C. E., & Nekola, J. C. (2001). ‘Prediction of
 Long-Distance Dispersal Using Gravity Models: Zebra Mussel Invasion of
 Inland Lakes’. *Ecological Applications*, 11(6), 1778–1788.
-<doi:10.2307/3061095>
+[doi:10.2307/3061095](https://doi.org/10.2307/3061095)
 
 Bradhurst, R., Spring, D., Stanaway, M., Milner, J., & Kompas, T.
 (2021). ‘A generalised and scalable framework for modelling incursions,
 surveillance and control of plant and environmental pests’.
 *Environmental Modelling & Software*, 139, N.PAG.
-<doi:10.1016/j.envsoft.2021.105004>
+[doi:10.1016/j.envsoft.2021.105004](https://doi.org/10.1016/j.envsoft.2021.105004)
 
 Carrasco, L. R., Harwood, T. D., Toepfer, S., MacLeod, A., Levay, N.,
 Kiss, J., Baker, R. H. A., Mumford, J. D., & Knight, J. D. (2010-1).
 ‘Dispersal kernels of the invasive alien western corn rootworm and the
 effectiveness of buffer zones in eradication programmes in Europe’.
 *Annals of Applied Biology*, 156(1), 63–77.
-<doi:10.1111/j.1744-7348.2009.00363.x>
+[doi:10.1111/j.1744-7348.2009.00363.x](https://doi.org/10.1111/j.1744-7348.2009.00363.x)
 
 Carrasco, L. R., Mumford, J. D., MacLeod, A., Harwood, T., Grabenweger,
 G., Leach, A. W., Knight, J. D., & Baker, R. H. A. (2010-2). ‘Unveiling
 human-assisted dispersal mechanisms in invasive alien insects:
 Integration of spatial stochastic simulation and phenology models’.
 *Ecological Modelling*, 221(17), 2068–2075.
-<doi:10.1016/j.ecolmodel.2010.05.012>
+[doi:10.1016/j.ecolmodel.2010.05.012](https://doi.org/10.1016/j.ecolmodel.2010.05.012)
 
 Crespo-Pérez, V., Rebaudo, F., Silvain, J.-F., & Dangles, O. (2011).
 ‘Modeling invasive species spread in complex landscapes: the case of
 potato moth in Ecuador’. *Landscape Ecology*, 26(10), 1447.
-<doi:10.1007/s10980-011-9649-4>
+[doi:10.1007/s10980-011-9649-4](https://doi.org/10.1007/s10980-011-9649-4)
 
 Csárdi, G., Nepusz, T. (2006). ‘The igraph software package for complex
 network research’. *InterJournal*, *Complex Systems*, 1695.
@@ -516,41 +511,49 @@ network research’. *InterJournal*, *Complex Systems*, 1695.
 
 Csárdi, G., Nepusz, T., Traag, V., Horvát, S., Zanini, F., Noom, D.,
 Müller, K., Schoch, D., & Salmon, M. (2026). ‘igraph: Network Analysis
-and Visualization in R’. <doi:10.5281/zenodo.7682609>. R package version
-2.3.1, <https://CRAN.R-project.org/package=igraph>
+and Visualization in R’.
+[doi:10.5281/zenodo.7682609](https://doi.org/10.5281/zenodo.7682609). R
+package version 2.3.1, <https://CRAN.R-project.org/package=igraph>
 
 Etherington, T. R. (2016). ‘Least-cost modelling and landscape ecology:
 Concepts, applications, and opportunities’. *Current Landscape Ecology
-Reports*, 1, 40–53. <doi:10.1007/s40823-016-0006-9>
+Reports*, 1, 40–53.
+[doi:10.1007/s40823-016-0006-9](https://doi.org/10.1007/s40823-016-0006-9)
 
 Fisher, R. A. (1937). ‘The wave of advance of advantageous genes’. *Ann.
-Eugenics* 7, 355–369. <doi:10.1111/j.1469-1809.1937.tb02153.x>
+Eugenics* 7, 355–369.
+[doi:10.1111/j.1469-1809.1937.tb02153.x](https://doi.org/10.1111/j.1469-1809.1937.tb02153.x)
 
 García Adeva, J. J., Botha, J. H., & Reynolds, M. (2012). ‘A simulation
 modelling approach to forecast establishment and spread of Bactrocera
 fruit flies’. *Ecological Modelling*, 227, 93–108.
-<doi:10.1016/j.ecolmodel.2011.11.026>
+[doi:10.1016/j.ecolmodel.2011.11.026](https://doi.org/10.1016/j.ecolmodel.2011.11.026)
 
 Gippet, J. M., Liebhold, A. M., Fenn-Moltu, G., & Bertelsmeier, C.
 (2019). ‘Human-mediated dispersal in insects’. *Current Opinion in
-Insect Science*, 35, 96. <doi:10.1016/j.cois.2019.07.005>
+Insect Science*, 35, 96.
+[doi:10.1016/j.cois.2019.07.005](https://doi.org/10.1016/j.cois.2019.07.005)
 
 Jongejans, E., Skarpaas, O., & Shea, K. (2008). ‘Dispersal, demography
 and spatial population models for conservation and control management’.
 *Perspectives In Plant Ecology Evolution And Systematics*, 9(3–4),
-153–170. <doi:10.1016/j.ppees.2007.09.005>
+153–170.
+[doi:10.1016/j.ppees.2007.09.005](https://doi.org/10.1016/j.ppees.2007.09.005)
 
 Lefkovitch Lp. (1965). ‘Study of Population Growth in Organisms Grouped
-by Stages’. *Biometrics*, 21(1), 1–18. <doi:10.2307/2528348>
+by Stages’. *Biometrics*, 21(1), 1–18.
+[doi:10.2307/2528348](https://doi.org/10.2307/2528348)
 
 Leslie, P. H. (1945). ‘On the Use of Matrices in Certain Population
-Mathematics’. *Biometrika*, 33(3), 183–212. <doi:10.2307/2332297>
+Mathematics’. *Biometrika*, 33(3), 183–212.
+[doi:10.2307/2332297](https://doi.org/10.2307/2332297)
 
 Muirhead, J. R., Leung, B., Overdijk, C., Kelly, D. W., Nandakumar, K.,
 Marchant, K. R., & MacIsaac, H. J. (2006). ‘Modelling local and
 long-distance dispersal of invasive emerald ash borer Agrilus
 planipennis (Coleoptera) in North America’. *Diversity & Distributions*,
-12(1), 71–79. <doi:10.1111/j.1366-9516.2006.00218.x>
+12(1), 71–79.
+[doi:10.1111/j.1366-9516.2006.00218.x](https://doi.org/10.1111/j.1366-9516.2006.00218.x)
 
 National Vegetation Information System (NVIS) V7.0
 <https://www.dcceew.gov.au/> from copyright Commonwealth of Australia
@@ -559,7 +562,7 @@ National Vegetation Information System (NVIS) V7.0
 Okubo, A., & Kareiva, P. (2001). ‘Some Examples of Animal Diffusion’. In
 A. Okubo & S. A. Levin (Eds.) *Diffusion and Ecological Problems: Modern
 Perspectives* (pp. 238-267). Springer New York.
-<doi:10.1007/9781475749786>
+[doi:10.1007/9781475749786](https://doi.org/10.1007/9781475749786)
 
 Ricker, W. E. (1958). ‘Handbook of computations for biological
 statistics of fish populations’. *Fisheries Research Board of Canada,
@@ -569,27 +572,31 @@ Robinet, C., Kehlenbeck, H., Kriticos, D. J., Baker, R. H. A., Battisti,
 A., Brunel, S., Dupin, M., Eyre, D., Faccoli, M., Ilieva, Z., Kenis, M.,
 Knight, J., Reynaud, P., Yart, A., & van der Werf, W. (2012). ‘A Suite
 of Models to Support the Quantitative Assessment of Spread in Pest Risk
-Analysis’. *PLoS ONE*, 7(10), 1–18. <doi:10.1371/journal.pone.0043366>
+Analysis’. *PLoS ONE*, 7(10), 1–18.
+[doi:10.1371/journal.pone.0043366](https://doi.org/10.1371/journal.pone.0043366)
 
 Schneider, D. W., Ellis, C. D., & Cummings, K. S. (1998). ‘A
 Transportation Model Assessment of the Risk to Native Mussel Communities
 from Zebra Mussel Spread’. *Conservation Biology*, 12(4), 788–800.
-<doi:10.1111/j.1523-1739.1998.97042.x>
+[doi:10.1111/j.1523-1739.1998.97042.x](https://doi.org/10.1111/j.1523-1739.1998.97042.x)
 
 Shaw, M. W. (1995). ‘Simulation of Population Expansion and Spatial
 Pattern when Individual Dispersal Distributions do not Decline
 Exponentially with Distance’. *Proceedings B: Biological Sciences*,
-259(1356), 243–248. <doi:10.1098/rspb.1995.0036>
+259(1356), 243–248.
+[doi:10.1098/rspb.1995.0036](https://doi.org/10.1098/rspb.1995.0036)
 
 Skellam, J. G. (1951). ‘Random Dispersal in Theoretical Populations’.
-*Biometrika*, 38(1/2), 196–218. <doi:10.2307/2332328>
+*Biometrika*, 38(1/2), 196–218.
+[doi:10.2307/2332328](https://doi.org/10.2307/2332328)
 
 Williams, N. S. G., Hahs, A. K., & Morgan, J. W. (2008). ‘A
 Dispersal-Constrained Habitat Suitability Model for Predicting Invasion
 of Alpine Vegetation’. *Ecological Applications*, 18(2), 347–359.
-<doi:10.1890/07-0868.1>
+[doi:10.1890/07-0868.1](https://doi.org/10.1890/07-0868.1)
 
 Wilson, J. R. U., Dormontt, E. E., Prentis, P. J., Lowe, A. J., &
 Richardson, D. M. (2009). ‘Something in the way you move: dispersal
 pathways affect invasion success’. *Trends in Ecology & Evolution*,
-24(3), 136. <doi:10.1016/j.tree.2008.10.007>
+24(3), 136.
+[doi:10.1016/j.tree.2008.10.007](https://doi.org/10.1016/j.tree.2008.10.007)
