@@ -341,7 +341,133 @@ remotes::install_github("cebra-analytics/bsspread")
 
 ## Example
 
-### Coming soon
+The following example assembles and runs a population spread simulation
+model for a Hawkweed species (*Hieracium pilosella*), an exotic weed for
+Australia, which approximately reproduces the spread model described in
+Williams, Hahs, & Morgan (2008). The In the following steps we build the
+workflow components, run the assembled simulation model, and examine the
+simulated results.
+
+### Step 1: Region
+
+The region of interest for our Hawkweed spread model is the Bogong High
+Plains area surrounding the ski-resort township of Falls Creek in
+Victoria, Australia. We derive template raster (GeoTIFF) for the region
+from the National Vegetation Information System (NVIS) V7.0 (NVIS, 2025)
+raster layers. We also use the NVIS data in step 2. Users may download
+[NVIS Raster
+Geodatabases](https://www.dcceew.gov.au/environment/environment-information-australia/national-vegetation-information-system/data-products)
+and place them in a suitable directory (e.g. *downloaded_data*) before
+loading and transforming the NVIS layer. We build our *Region* class
+object with our 100m resolution template and configure it for two-tier
+dispersal, whereby dispersal beyond a 1km radius is performed via a
+courser-grain 500m resolution grid.
+
+``` r
+# Load NVIS major vegetation groups (MGV)
+nvis_rast <- terra::rast(
+  paste0("../downloaded_data/NVIS_V7_0_AUST_RASTERS_EXT_ALL/",
+         "NVIS_V7_0_AUST_EXT.gdb"))[["NVIS7_0_AUST_EXT_MVG_ALB"]]
+# Crop to the region of interest
+region_nvis_rast <- terra::crop(nvis_rast,
+                                c(1354000, 1372000, -4120000, -4103000))
+# Region class object configured with a masked NVIS template
+region <- bsspread::Region(+(region_nvis_rast > 0))
+region$set_aggr(aggr_factor = 5, inner_radius = 1000)
+terra::plot(region$get_template(), colNA = "grey",
+            main = "Hawkweed example region")
+```
+
+<img src="man/figures/README-example_1-1.png" width="100%" style="display: block; margin: auto;" />
+
+### Step 2: Population model
+
+For our Hawkweed example we will utilise a presence-only population
+model. We will configure the establishment probability for the
+population via an approximate mapping of values for vegetation/landscape
+types provided in Williams, Hahs, & Morgan (2008), to NVIS (2025) major
+vegetation group (MVG) classes:
+
+| Vegetation type                  | Est. prob. | Mapped to MVG |
+|:---------------------------------|:----------:|:-------------:|
+| Bog                              |    0.01    |      27       |
+| Celmisia sericophylla herbland   |    0.01    |      21       |
+| Closed heathland                 |    0.50    |      18       |
+| Disturbed areas                  |    0.99    |      25       |
+| Kunzea heathland                 |    0.50    |      18       |
+| Late-lying snowpatch             |    0.10    |      26       |
+| Open heathland                   |    0.90    |      18       |
+| Poa hiemata tussock grassland    |    0.99    |      19       |
+| Poa costiniana tussock grassland |    0.99    |      19       |
+| Podocarpus heathland             |    0.01    |      18       |
+| Relic bog                        |    0.20    |      27       |
+| Rocky grassland                  |    0.50    |      21       |
+| Rocky outcrops                   |    0.01    |      27       |
+| Short turf snowpatch             |    0.30    |      21       |
+| Subalpine grassland              |    0.90    |      21       |
+| Forests (assumed low)            |    0.01    |       3       |
+| Woodlands (assumed low)          |    0.01    |       5       |
+
+``` r
+# Establishment probability via mapping to NVIS MVG 
+establish_pr_rast <- terra::classify(
+  region_nvis_rast,
+  matrix(c(
+    3,  0.01, # Eucalypt Open Forests
+    5,  0.01, # Eucalypt Woodlands
+    10, 0.01, # Other Forests and Woodlands
+    17, mean(c(0.50, 0.50, 0.90, 0.01)), # Other Shrublands (as per Heathlands)
+    18, mean(c(0.50, 0.50, 0.90, 0.01)), # Heathlands
+    19, 0.99, # Tussock Grasslands
+    21, mean(c(0.01, 0.50, 0.30, 0.90)), # Other Grasslands, Herblands, Sedgelands and Rushlands
+    24, 0.00, # Inland Aquatic - freshwater, salt lakes, lagoons
+    25, 0.99, # Cleared, non-native vegetation, buildings
+    26, 0.10, # Unclassified native vegetation
+    27, 0.01 # Naturally bare - sand, rock, claypan, mudflat
+  ), ncol = 2, byrow = TRUE))
+terra::plot(establish_pr_rast, colNA = "grey",
+            main = "Hawkweed establishment probability")
+```
+
+<img src="man/figures/README-example_2_1-1.png" width="100%" style="display: block; margin: auto;" />
+
+We can now build our presence-only population model.
+
+``` r
+# Presence-only population model
+population_model <- bsspread::PresencePopulation(
+  region,
+  establish_pr = establish_pr_rast[][,1])
+```
+
+### Step 3: Initialisation
+
+Each spread model simulation is initialised with Hawkweed presence in
+the Falls Creek township area.
+
+``` r
+# Initialise with Hawkweed presence in Falls Creek township area
+initial_rast <- terra::rast("data/falls_creek_town.tif")
+initialiser <- bsspread::Initializer(initial_rast,
+                                     region = region,
+                                     population_model = population_model)
+terra::plot(initial_rast, colNA = "grey",
+            main = "Initial Hawkweed presence (Falls Creek township)")
+```
+
+<img src="man/figures/README-example_3-1.png" width="100%" style="display: block; margin: auto;" />
+
+### Step 4: Dispersal models
+
+(in progress)
+
+### Step 5: Simulator
+
+(in progress)
+
+### Step 6: Results
+
+(in progress)
 
 ## References
 
@@ -425,6 +551,10 @@ Marchant, K. R., & MacIsaac, H. J. (2006). ‘Modelling local and
 long-distance dispersal of invasive emerald ash borer Agrilus
 planipennis (Coleoptera) in North America’. *Diversity & Distributions*,
 12(1), 71–79. <doi:10.1111/j.1366-9516.2006.00218.x>
+
+National Vegetation Information System (NVIS) V7.0
+<https://www.dcceew.gov.au/> from copyright Commonwealth of Australia
+2025
 
 Okubo, A., & Kareiva, P. (2001). ‘Some Examples of Animal Diffusion’. In
 A. Okubo & S. A. Levin (Eds.) *Diffusion and Ecological Problems: Modern
