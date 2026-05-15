@@ -459,9 +459,90 @@ terra::plot(initial_rast, colNA = "grey",
 
 ### Step 4: Dispersal models
 
+The Hawkweed spread is modelled via a kernel-based *Dispersal* class
+object with custom distance and direction functions or kernels.
+
+#### Distance kernel
+
+The distance kernel for our Hawkweed spread is based on a function
+described in Williams et al. (2008) and Hauser et al. (2016 - App.S2).
+To reproduce this custom function we build a lookup table for the
+function via a *Kernels* class object:
+
+``` r
+# Dispersal kernel (Williams et al., 2008; Hauser et al. 2016 - App.S2)
+distance_function <- function(d) 1 - exp(-1*(d/100)^-1.0385)
+distance_lookup <- data.frame(d = 0:10000, # m
+                              p = distance_function(0:10000))
+kernel_generator <- bsspread::Kernels()
+distance_kernel <- kernel_generator$get_lookup_function(distance_lookup)
+plot(0:5000, distance_kernel(0:5000), type = "l",
+     xlab = "Distance (m)", ylab = "Pr(dispersal)",
+     main = "Hawkweed dispersal distance kernel")
+```
+
+<img src="man/figures/README-example_4_1-1.png" width="100%" style="display: block; margin: auto;" />
+
+#### Direction kernel
+
+The direction kernel for our Hawkweed spread is based on a prevailing
+wind directions illustrated in Hauser et al. (2016 - Figure 1c). To
+reproduce this as a custom function we approximate a lookup table for
+the function via a *DirectionKernel* class object:
+
+``` r
+# Approximated from Hauser et al. (2016) Figure 1c
+direction_lookup <- as.data.frame(
+  matrix(c( 0.0,  1.0, # N
+           22.5,  1.0, # NNE
+           45.0,  0.2, # NE
+           67.5,  0.2, # ENE
+           90.0,  0.3, # E
+           112.5, 0.5, # ESE
+           135.0, 0.6, # SE
+           157.5, 0.5, # SSE
+           180.0, 0.3, # S
+           202.5, 0.2, # SSW
+           225.0, 0.2, # SW
+           247.5, 0.3, # WSW
+           270.0, 0.5, # W
+           292.5, 0.6, # WNW
+           315.0, 0.7, # NW
+           337.5, 1.0  # NNW
+  ), ncol = 2, byrow = TRUE))
+names(direction_lookup) <- c("dir", "pr")
+rownames(direction_lookup) <- c("N", "NNE", "NE", "ENE", 
+                                "E", "ESE", "SE", "SSE", 
+                                "S", "SSW", "SW", "WSW",
+                                "W", "WNW", "NW", "NNW")
+kernel_generator <- bsspread::DirectionKernel(direction_type = "navigational",
+                                              orientation = "from")
+direction_kernel <- kernel_generator$get_lookup_function(direction_lookup)
+radar_data <- as.data.frame(t(as.matrix(direction_kernel(c(90:359, 0:89)))))
+radar_data <- rbind(rep(1, 360) , rep(0, 360) , radar_data)
+vlabels <- rep("", 360)
+vlabels[seq(1, 360, 45)] <- rownames(direction_lookup)[c(1, seq(15, 2, -2))]
+fmsb::radarchart(radar_data, vlabels = vlabels, pty = 32, seg = 36,
+                 cglcol = "grey", pfcol = "darkgrey", 
+                 title = "Probability of Hawkweed dispersal to direction")
+```
+
+<img src="man/figures/README-example_4_2-1.png" width="100%" style="display: block; margin: auto;" />
+
+#### Dispersal class object
+
+We can now build our *Dispersal* class object with the custom distance
+and direction kernels.
+
+(coming soon)
+
 ### Step 5: Simulator
 
+(coming soon)
+
 ### Step 6: Results
+
+(coming soon)
 
 ## References
 
@@ -533,6 +614,12 @@ Gippet, J. M., Liebhold, A. M., Fenn-Moltu, G., & Bertelsmeier, C.
 (2019). ‘Human-mediated dispersal in insects’. *Current Opinion in
 Insect Science*, 35, 96.
 [doi:10.1016/j.cois.2019.07.005](https://doi.org/10.1016/j.cois.2019.07.005)
+
+Hauser, C. E., Giljohann, K. M., Rigby, M., Herbert, K., Curran, I.,
+Pascoe, C., Williams, N. S. G., Cousens, R. D., & Moore, J. L. (2016).
+‘Practicable methods for delimiting a plant invasion’. *Diversity and
+Distributions*, 22(1/2), 136–147.
+[doi:10.1111/ddi.12388](https://doi.org/10.1111/ddi.12388)
 
 Jongejans, E., Skarpaas, O., & Shea, K. (2008). ‘Dispersal, demography
 and spatial population models for conservation and control management’.
