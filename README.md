@@ -360,7 +360,7 @@ Geodatabases](https://www.dcceew.gov.au/environment/environment-information-aust
 and place them in a suitable directory (e.g. *downloaded_data*) before
 loading and transforming the NVIS layer. We build our *Region* class
 object with our 100m resolution template and configure it for two-tier
-dispersal, whereby dispersal beyond a 1km radius is performed via a
+dispersal, whereby dispersal beyond a 10km radius is performed via a
 courser-grain 500m resolution grid.
 
 ``` r
@@ -373,7 +373,7 @@ region_nvis_rast <- terra::crop(nvis_rast,
                                 c(1354000, 1372000, -4120000, -4103000))
 # Region class object configured with a masked NVIS template
 region <- bsspread::Region(+(region_nvis_rast > 0))
-region$set_aggr(aggr_factor = 5, inner_radius = 1000)
+region$set_aggr(aggr_factor = 5, inner_radius = 5000)
 terra::plot(region$get_template(), colNA = "grey",
             main = "Hawkweed example region")
 ```
@@ -440,15 +440,16 @@ population_model <- bsspread::PresencePopulation(
   establish_pr = establish_pr_rast[][,1])
 ```
 
-### Step 3: Initialisation
+### Step 3: Initialization
 
-Each spread model simulation is initialised with Hawkweed presence in
+Each spread model simulation is initialized with Hawkweed presence in
 the Falls Creek township area.
 
 ``` r
 # Initialise with Hawkweed presence in Falls Creek township area
 initial_rast <- terra::rast("data/falls_creek_town.tif")
-initialiser <- bsspread::Initializer(initial_rast,
+initial_rast <- initial_rast*(establish_pr_rast > 0.1) # suitable location
+initializer <- bsspread::Initializer(initial_rast,
                                      region = region,
                                      population_model = population_model)
 terra::plot(initial_rast, colNA = "grey",
@@ -532,17 +533,131 @@ fmsb::radarchart(radar_data, vlabels = vlabels, pty = 32, seg = 36,
 #### Dispersal class object
 
 We can now build our *Dispersal* class object with the custom distance
-and direction kernels.
+and direction kernels. Note that the mean number of *events* of 100 was
+chosen to approximately reproduce the simulated the
+dispersal-constrained habitat suitability from Williams et al. (2008 -
+Figure 6), scaled by a factor of 10 to achieve a reasonably even
+stochastic spread (i.e. sufficiently sampled locations).
 
-(coming soon)
+``` r
+dispersal_model <- bsspread::Dispersal(region,
+                                       population_model,
+                                       events = 100,
+                                       proportion = NULL,
+                                       distance_function = distance_kernel,
+                                       direction_function = direction_kernel,
+                                       attractors = list(),
+                                       permeability = NULL,
+                                       max_distance = NULL)
+```
 
 ### Step 5: Simulator
 
-(coming soon)
+We can now build and run our population spread model simulations via a
+*Simulator* class object, with links to our population model,
+initializer, and dispersal model. We will run 1000 replicate stochastic
+model simulations each having a 2-year time steps.
+
+``` r
+progress_function <- function(n, r, tm) {
+  if (r %% 100 == 0 && tm == 2) {
+    print(paste("replicate", r))
+  }
+  return(n)
+}
+simulator <- bsspread::Simulator(region,
+                                 time_steps = 2,
+                                 step_duration = 1,
+                                 step_units = "years",
+                                 replicates = 1000,
+                                 parallel_cores = 8,
+                                 initializer = initializer,
+                                 population_model = population_model,
+                                 dispersal_models = list(dispersal_model),
+                                 user_function = progress_function)
+results <- simulator$run()
+#> [1] "replicate 100"
+#> [1] "replicate 200"
+#> [1] "replicate 300"
+#> [1] "replicate 400"
+#> [1] "replicate 500"
+#> [1] "replicate 600"
+#> [1] "replicate 700"
+#> [1] "replicate 800"
+#> [1] "replicate 900"
+#> [1] "replicate 1000"
+```
 
 ### Step 6: Results
 
-(coming soon)
+The *Simulator* class object’s *run* method returns a *Results* class
+object encapsulating the collated simulation results, as well as
+functions for accessing raw results and saving results to files. Note
+that it is recommended to create and set the destination directory for
+the result files (e.g. *setwd(“results_dir”)*) prior to saving results.
+
+``` r
+# Save raster files for each simulated time step
+result_rast <- results$save_rasters()
+result_rast
+#> $occupancy_mean
+#> class       : SpatRaster 
+#> size        : 170, 180, 3  (nrow, ncol, nlyr)
+#> resolution  : 100, 100  (x, y)
+#> extent      : 1354000, 1372000, -4120000, -4103000  (xmin, xmax, ymin, ymax)
+#> coord. ref. : GDA2020 / Australian Albers (EPSG:9473) 
+#> sources     : occupancy_t0_mean.tif  
+#>               occupancy_t1_mean.tif  
+#>               occupancy_t2_mean.tif  
+#> names       : 0, 1, 2 
+#> min values  : 0, 0, 0 
+#> max values  : 1, 1, 1
+# Plot the mean occupancy for time steps 1 and 2
+label <- attr(result_rast$occupancy_mean, "metadata")$label
+for (i in 2:3) {
+  terra::plot(log(result_rast$occupancy_mean[[i]], base = 10), colNA = "black",
+              main = paste(label, ": time step", i - 1, "(log)"))
+}
+```
+
+<img src="man/figures/README-example_6_1-1.png" width="100%" style="display: block; margin: auto;" /><img src="man/figures/README-example_6_1-2.png" width="100%" style="display: block; margin: auto;" />
+
+The raster plots indicate the mean (log) occupancy across the 1000
+replicate simulations. Note that unstructured and staged population
+models also produce raster plots for the standard deviation (SD) of
+occupancy, as well as mean and SD for population sized. We may also
+examine the total occupancy (locations occupied) and the total area
+occupied via summary tables (CSV).
+
+``` r
+# Save CSV summary tables
+results$save_csv()
+total_occupancy <- read.csv("total_occupancy.csv")
+colnames(total_occupancy)[1] <- "Total occupancy"
+print(total_occupancy)
+#>   Total occupancy t0        t1       t2
+#> 1            mean  1 17.310000 408.8430
+#> 2              sd  0  3.956204  97.1722
+total_area_occupied <- read.csv("total_area_occupied.csv")
+colnames(total_area_occupied)[1] <- "Total area occupied"
+print(total_area_occupied)
+#>   Total area occupied    t0        t1      t2
+#> 1                mean 10000 173100.00 4088430
+#> 2                  sd     0  39562.04  971722
+```
+
+Time-series plots of total occupancy and total area occupied may also be
+saved. These plots show the mean +/- 2 SD.
+
+``` r
+# Save summary time-series plots
+results$save_plots()
+dir(pattern = "*.png")
+#> [1] "total_area_occupied.png" "total_occupancy.png"
+```
+
+![Total occupancy](man/figures/total_occupancy.png) ![Total area
+occupied](man/figures/total_area_occupied.png)
 
 ## References
 
