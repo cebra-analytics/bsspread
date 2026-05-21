@@ -241,17 +241,19 @@ population_model <- bsspread::PresencePopulation(
 
 ### Step 3: Initialization
 
-Each spread model simulation is initialized with Hawkweed presence in the Falls Creek township area.
+Each spread model simulation is initialized with Hawkweed presence at a location within the Falls Creek township area. Each location is stochastically selected via relative weights using the establishment probabilities with the area.
 
 ```{r example_3, message = FALSE, fig.align = "center"}
 # Initialise with Hawkweed presence in Falls Creek township area
 initial_rast <- terra::rast("data/falls_creek_town.tif")
-initial_rast <- initial_rast*(establish_pr_rast > 0.1) # suitable location
-initializer <- bsspread::Initializer(initial_rast,
+incursions <- bsspread::Incursions(initial_rast*establish_pr_rast,
+                                  region = region,
+                                  type = "weight")
+initializer <- bsspread::Initializer(incursions,
                                      region = region,
                                      population_model = population_model)
-terra::plot(initial_rast, colNA = "grey",
-            main = "Initial Hawkweed presence (Falls Creek township)")
+terra::plot(initial_rast*establish_pr_rast, colNA = "grey",
+            main = "Initial Hawkweed likelihood (Falls Creek township)")
 ```
 
 ### Step 4: Dispersal models
@@ -317,18 +319,14 @@ fmsb::radarchart(radar_data, vlabels = vlabels, pty = 32, seg = 36,
 
 #### Dispersal class object
 
-We can now build our *Dispersal* class object with the custom distance and direction kernels. Note that the mean number of *events* of 100 was chosen to approximately reproduce the simulated the dispersal-constrained habitat suitability from Williams et al. (2008 - Figure 6), scaled by a factor of 10 to achieve a reasonably even stochastic spread (i.e. sufficiently sampled locations).
+We can now build our *Dispersal* class object with the custom distance and direction kernels. To estimate the mean number of dispersal *events* from each occupied location at each simulated time step we consider published information about Hawkweed seed dispersal. Hawkweeds produce up to 40,000 seeds a year per one squared metre mat, and can form a colony up to 0.5 metres across in its first year (CRC, 2003). Approximately 8% of seeds travel greater than 100 metres (Williams et al., 2008). Thus, we would expect up to $40,000\times0.25\times0.08=800$ seeds to disperse (> 100 m) from each (new) colony, although we wouldn't expect all seed arrivals to establish and grow into a new colony (in the following year). To approximately reproduce the simulated the dispersal-constrained habitat suitability from Williams et al. (2008 - Figure 6), we estimate that approximately 10% of seed arrivals establish in suitable locations, thus the mean number of dispersal *events* of 80 was chosen for our model.
 
 ```{r example_4_3, message = FALSE, fig.align = "center"}
 dispersal_model <- bsspread::Dispersal(region,
                                        population_model,
-                                       events = 100,
-                                       proportion = NULL,
+                                       events = 80,
                                        distance_function = distance_kernel,
-                                       direction_function = direction_kernel,
-                                       attractors = list(),
-                                       permeability = NULL,
-                                       max_distance = NULL)
+                                       direction_function = direction_kernel)
 ```
 
 ### Step 5: Simulator
@@ -407,6 +405,8 @@ Bradhurst, R., Spring, D., Stanaway, M., Milner, J., & Kompas, T. (2021). 'A gen
 Carrasco, L. R., Harwood, T. D., Toepfer, S., MacLeod, A., Levay, N., Kiss, J., Baker, R. H. A., Mumford, J. D., & Knight, J. D. (2010-1). 'Dispersal kernels of the invasive alien western corn rootworm and the effectiveness of buffer zones in eradication programmes in Europe'. *Annals of Applied Biology*, 156(1), 63–77. [doi:10.1111/j.1744-7348.2009.00363.x](https://doi.org/10.1111/j.1744-7348.2009.00363.x)
 
 Carrasco, L. R., Mumford, J. D., MacLeod, A., Harwood, T., Grabenweger, G., Leach, A. W., Knight, J. D., & Baker, R. H. A. (2010-2). 'Unveiling human-assisted dispersal mechanisms in invasive alien insects: Integration of spatial stochastic simulation and phenology models'. *Ecological Modelling*, 221(17), 2068–2075. [doi:10.1016/j.ecolmodel.2010.05.012](https://doi.org/10.1016/j.ecolmodel.2010.05.012)
+
+CRC (2003). Orange Hawkweed Weed Management Guide (2003) CRC for Weed Management. Accessed in 2026 via <https://weeds.org.au/profiles/orange-hawkweed/>
 
 Crespo-Pérez, V., Rebaudo, F., Silvain, J.-F., & Dangles, O. (2011). 'Modeling invasive species spread in complex landscapes: the case of potato moth in Ecuador'. *Landscape Ecology*, 26(10), 1447. [doi:10.1007/s10980-011-9649-4](https://doi.org/10.1007/s10980-011-9649-4)
 

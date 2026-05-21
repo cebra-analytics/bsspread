@@ -442,18 +442,22 @@ population_model <- bsspread::PresencePopulation(
 
 ### Step 3: Initialization
 
-Each spread model simulation is initialized with Hawkweed presence in
-the Falls Creek township area.
+Each spread model simulation is initialized with Hawkweed presence at a
+location within the Falls Creek township area. Each location is
+stochastically selected via relative weights using the establishment
+probabilities with the area.
 
 ``` r
 # Initialise with Hawkweed presence in Falls Creek township area
 initial_rast <- terra::rast("data/falls_creek_town.tif")
-initial_rast <- initial_rast*(establish_pr_rast > 0.1) # suitable location
-initializer <- bsspread::Initializer(initial_rast,
+incursions <- bsspread::Incursions(initial_rast*establish_pr_rast,
+                                  region = region,
+                                  type = "weight")
+initializer <- bsspread::Initializer(incursions,
                                      region = region,
                                      population_model = population_model)
-terra::plot(initial_rast, colNA = "grey",
-            main = "Initial Hawkweed presence (Falls Creek township)")
+terra::plot(initial_rast*establish_pr_rast, colNA = "grey",
+            main = "Initial Hawkweed likelihood (Falls Creek township)")
 ```
 
 <img src="man/figures/README-example_3-1.png" width="100%" style="display: block; margin: auto;" />
@@ -533,22 +537,27 @@ fmsb::radarchart(radar_data, vlabels = vlabels, pty = 32, seg = 36,
 #### Dispersal class object
 
 We can now build our *Dispersal* class object with the custom distance
-and direction kernels. Note that the mean number of *events* of 100 was
-chosen to approximately reproduce the simulated the
-dispersal-constrained habitat suitability from Williams et al. (2008 -
-Figure 6), scaled by a factor of 10 to achieve a reasonably even
-stochastic spread (i.e. sufficiently sampled locations).
+and direction kernels. To estimate the mean number of dispersal *events*
+from each occupied location at each simulated time step we consider
+published information about Hawkweed seed dispersal. Hawkweeds produce
+up to 40,000 seeds a year per one squared metre mat, and can form a
+colony up to 0.5 metres across in its first year (CRC, 2003).
+Approximately 8% of seeds travel greater than 100 metres (Williams et
+al., 2008). Thus, we would expect up to $40,000\times0.25\times0.08=800$
+seeds to disperse (\> 100 m) from each (new) colony, although we
+wouldn’t expect all seed arrivals to establish and grow into a new
+colony (in the following year). To approximately reproduce the simulated
+the dispersal-constrained habitat suitability from Williams et
+al. (2008 - Figure 6), we estimate that approximately 10% of seed
+arrivals establish in suitable locations, thus the mean number of
+dispersal *events* of 80 was chosen for our model.
 
 ``` r
 dispersal_model <- bsspread::Dispersal(region,
                                        population_model,
-                                       events = 100,
-                                       proportion = NULL,
+                                       events = 80,
                                        distance_function = distance_kernel,
-                                       direction_function = direction_kernel,
-                                       attractors = list(),
-                                       permeability = NULL,
-                                       max_distance = NULL)
+                                       direction_function = direction_kernel)
 ```
 
 ### Step 5: Simulator
@@ -609,9 +618,9 @@ result_rast
 #> sources     : occupancy_t0_mean.tif  
 #>               occupancy_t1_mean.tif  
 #>               occupancy_t2_mean.tif  
-#> names       : 0, 1, 2 
-#> min values  : 0, 0, 0 
-#> max values  : 1, 1, 1
+#> names       :     0,     1,     2 
+#> min values  : 0.000, 0.000, 0.000 
+#> max values  : 0.178, 0.425, 0.693
 # Plot the mean occupancy for time steps 1 and 2
 label <- attr(result_rast$occupancy_mean, "metadata")$label
 for (i in 2:3) {
@@ -635,15 +644,15 @@ results$save_csv()
 total_occupancy <- read.csv("total_occupancy.csv")
 colnames(total_occupancy)[1] <- "Total occupancy"
 print(total_occupancy)
-#>   Total occupancy t0        t1       t2
-#> 1            mean  1 17.310000 408.8430
-#> 2              sd  0  3.956204  97.1722
+#>   Total occupancy t0      t1        t2
+#> 1            mean  1 14.1970 278.55300
+#> 2              sd  0  3.7702  81.02139
 total_area_occupied <- read.csv("total_area_occupied.csv")
 colnames(total_area_occupied)[1] <- "Total area occupied"
 print(total_area_occupied)
-#>   Total area occupied    t0        t1      t2
-#> 1                mean 10000 173100.00 4088430
-#> 2                  sd     0  39562.04  971722
+#>   Total area occupied    t0     t1        t2
+#> 1                mean 10000 141970 2785530.0
+#> 2                  sd     0  37702  810213.9
 ```
 
 Time-series plots of total occupancy and total area occupied may also be
@@ -695,6 +704,10 @@ human-assisted dispersal mechanisms in invasive alien insects:
 Integration of spatial stochastic simulation and phenology models’.
 *Ecological Modelling*, 221(17), 2068–2075.
 [doi:10.1016/j.ecolmodel.2010.05.012](https://doi.org/10.1016/j.ecolmodel.2010.05.012)
+
+CRC (2003). Orange Hawkweed Weed Management Guide (2003) CRC for Weed
+Management. Accessed in 2026 via
+<https://weeds.org.au/profiles/orange-hawkweed/>
 
 Crespo-Pérez, V., Rebaudo, F., Silvain, J.-F., & Dangles, O. (2011).
 ‘Modeling invasive species spread in complex landscapes: the case of
