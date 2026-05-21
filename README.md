@@ -543,7 +543,7 @@ published information about Hawkweed seed dispersal. Hawkweeds produce
 up to 40,000 seeds a year per one squared metre mat, and can form a
 colony up to 0.5 metres across in its first year (CRC, 2003).
 Approximately 8% of seeds travel greater than 100 metres (Williams et
-al., 2008). Thus, we would expect up to $40,000\times0.25\times0.08=800$
+al., 2008). Thus, we would expect up to 40000\*0.25\*0.08 = 800
 seeds to disperse (\> 100 m) from each (new) colony, although we
 wouldn’t expect all seed arrivals to establish and grow into a new
 colony (in the following year). To approximately reproduce the simulated
