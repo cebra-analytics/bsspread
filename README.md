@@ -449,8 +449,8 @@ random location (grid-cell) within the Falls Creek township area.
 # Initialise Hawkweed presence within the Falls Creek township area
 initial_rast <- terra::rast("data/falls_creek_town.tif")
 incursions <- bsspread::Incursions(initial_rast,
-                                  region = region,
-                                  type = "weight")
+                                   region = region,
+                                   type = "weight")
 initializer <- bsspread::Initializer(incursions,
                                      region = region,
                                      population_model = population_model)
