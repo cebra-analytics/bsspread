@@ -374,7 +374,7 @@ region_nvis_rast <- terra::crop(nvis_rast,
 # Region class object configured with a masked NVIS template
 region <- bsspread::Region(+(region_nvis_rast > 0))
 region$set_aggr(aggr_factor = 5, inner_radius = 5000)
-terra::plot(region$get_template(), colNA = "grey",
+terra::plot(region$get_rast(1), colNA = "grey",
             main = "Hawkweed example region")
 ```
 
@@ -618,7 +618,7 @@ result_rast
 #>               occupancy_t2_mean.tif  
 #> names       :     0,     1,     2 
 #> min values  : 0.000, 0.000, 0.000 
-#> max values  : 0.026, 0.238, 0.575
+#> max values  : 0.024, 0.223, 0.593
 # Plot the mean occupancy for time steps 1 and 2
 label <- attr(result_rast$occupancy_mean, "metadata")$label
 for (i in 2:3) {
@@ -643,14 +643,14 @@ total_occupancy <- read.csv("total_occupancy.csv")
 colnames(total_occupancy)[1] <- "Total occupancy"
 print(total_occupancy)
 #>   Total occupancy t0        t1        t2
-#> 1            mean  1 15.132000 306.65600
-#> 2              sd  0  4.103098  90.57881
+#> 1            mean  1 14.962000 302.70300
+#> 2              sd  0  4.141462  90.83065
 total_area_occupied <- read.csv("total_area_occupied.csv")
 colnames(total_area_occupied)[1] <- "Total area occupied"
 print(total_area_occupied)
 #>   Total area occupied    t0        t1        t2
-#> 1                mean 10000 151320.00 3066560.0
-#> 2                  sd     0  41030.98  905788.1
+#> 1                mean 10000 149620.00 3027030.0
+#> 2                  sd     0  41414.62  908306.5
 ```
 
 Time-series plots of total occupancy and total area occupied may also be

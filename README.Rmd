@@ -181,7 +181,7 @@ region_nvis_rast <- terra::crop(nvis_rast,
 # Region class object configured with a masked NVIS template
 region <- bsspread::Region(+(region_nvis_rast > 0))
 region$set_aggr(aggr_factor = 5, inner_radius = 5000)
-terra::plot(region$get_template(), colNA = "grey",
+terra::plot(region$get_rast(1), colNA = "grey",
             main = "Hawkweed example region")
 ```
 
