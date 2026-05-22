@@ -168,7 +168,7 @@ The following example assembles and runs a population spread simulation model fo
 
 ### Step 1: Region
 
-The region of interest for our Hawkweed spread model is the Bogong High Plains area surrounding the ski-resort township of Falls Creek in Victoria, Australia. We derive template raster (GeoTIFF) for the region from the National Vegetation Information System (NVIS) V7.0 (NVIS, 2025) raster layers. We also use the NVIS data in step 2. Users may download [NVIS Raster Geodatabases](https://www.dcceew.gov.au/environment/environment-information-australia/national-vegetation-information-system/data-products) and place them in a suitable directory (e.g. *downloaded_data*) before loading and transforming the NVIS layer. We build our *Region* class object with our 100m resolution template and configure it for two-tier dispersal, whereby dispersal beyond a 10km radius is performed via a courser-grain 500m resolution grid.
+The region of interest for our Hawkweed spread model is the Bogong High Plains area surrounding the ski-resort township of Falls Creek in Victoria, Australia. We derive template raster (GeoTIFF) for the region from the National Vegetation Information System (NVIS) V7.0 (NVIS, 2025) raster layers. We also use the NVIS data in step 2. Users may download [NVIS Raster Geodatabases](https://www.dcceew.gov.au/environment/environment-information-australia/national-vegetation-information-system/data-products) and place them in a suitable directory (e.g. *downloaded_data*) before loading and transforming the NVIS layer. We build our *Region* class object with our 100 m resolution template and configure it for two-tier dispersal, whereby dispersal beyond a 5 km radius is performed via a courser-grain 500 m resolution grid.
 
 ```{r example_1, message = FALSE, fig.align = "center"}
 # Load NVIS major vegetation groups (MGV)
@@ -241,19 +241,19 @@ population_model <- bsspread::PresencePopulation(
 
 ### Step 3: Initialization
 
-Each spread model simulation is initialized with Hawkweed presence at a location within the Falls Creek township area. Each location is stochastically selected via relative weights using the establishment probabilities with the area.
+Each spread model simulation is initialized with Hawkweed presence at a random location (grid-cell) within the Falls Creek township area.
 
 ```{r example_3, message = FALSE, fig.align = "center"}
-# Initialise with Hawkweed presence in Falls Creek township area
+# Initialise Hawkweed presence within the Falls Creek township area
 initial_rast <- terra::rast("data/falls_creek_town.tif")
-incursions <- bsspread::Incursions(initial_rast*establish_pr_rast,
+incursions <- bsspread::Incursions(initial_rast,
                                   region = region,
                                   type = "weight")
 initializer <- bsspread::Initializer(incursions,
                                      region = region,
                                      population_model = population_model)
-terra::plot(initial_rast*establish_pr_rast, colNA = "grey",
-            main = "Initial Hawkweed likelihood (Falls Creek township)")
+terra::plot(initial_rast, colNA = "grey",
+            main = "Initial Hawkweed location within Falls Creek township")
 ```
 
 ### Step 4: Dispersal models

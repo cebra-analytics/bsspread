@@ -359,9 +359,9 @@ raster layers. We also use the NVIS data in step 2. Users may download
 Geodatabases](https://www.dcceew.gov.au/environment/environment-information-australia/national-vegetation-information-system/data-products)
 and place them in a suitable directory (e.g. *downloaded_data*) before
 loading and transforming the NVIS layer. We build our *Region* class
-object with our 100m resolution template and configure it for two-tier
-dispersal, whereby dispersal beyond a 10km radius is performed via a
-courser-grain 500m resolution grid.
+object with our 100 m resolution template and configure it for two-tier
+dispersal, whereby dispersal beyond a 5 km radius is performed via a
+courser-grain 500 m resolution grid.
 
 ``` r
 # Load NVIS major vegetation groups (MGV)
@@ -443,21 +443,19 @@ population_model <- bsspread::PresencePopulation(
 ### Step 3: Initialization
 
 Each spread model simulation is initialized with Hawkweed presence at a
-location within the Falls Creek township area. Each location is
-stochastically selected via relative weights using the establishment
-probabilities with the area.
+random location (grid-cell) within the Falls Creek township area.
 
 ``` r
-# Initialise with Hawkweed presence in Falls Creek township area
+# Initialise Hawkweed presence within the Falls Creek township area
 initial_rast <- terra::rast("data/falls_creek_town.tif")
-incursions <- bsspread::Incursions(initial_rast*establish_pr_rast,
+incursions <- bsspread::Incursions(initial_rast,
                                   region = region,
                                   type = "weight")
 initializer <- bsspread::Initializer(incursions,
                                      region = region,
                                      population_model = population_model)
-terra::plot(initial_rast*establish_pr_rast, colNA = "grey",
-            main = "Initial Hawkweed likelihood (Falls Creek township)")
+terra::plot(initial_rast, colNA = "grey",
+            main = "Initial Hawkweed location within Falls Creek township")
 ```
 
 <img src="man/figures/README-example_3-1.png" width="100%" style="display: block; margin: auto;" />
@@ -543,14 +541,14 @@ published information about Hawkweed seed dispersal. Hawkweeds produce
 up to 40,000 seeds a year per one squared metre mat, and can form a
 colony up to 0.5 metres across in its first year (CRC, 2003).
 Approximately 8% of seeds travel greater than 100 metres (Williams et
-al., 2008). Thus, we would expect up to 40000\*0.25\*0.08 = 800
-seeds to disperse (\> 100 m) from each (new) colony, although we
-wouldn’t expect all seed arrivals to establish and grow into a new
-colony (in the following year). To approximately reproduce the simulated
-the dispersal-constrained habitat suitability from Williams et
-al. (2008 - Figure 6), we estimate that approximately 10% of seed
-arrivals establish in suitable locations, thus the mean number of
-dispersal *events* of 80 was chosen for our model.
+al., 2008). Thus, we would expect up to 40000\*0.25\*0.08 = 800 seeds to
+disperse (\> 100 m) from each (new) colony, although we wouldn’t expect
+all seed arrivals to establish and grow into a new colony (in the
+following year). To approximately reproduce the simulated the
+dispersal-constrained habitat suitability from Williams et al. (2008 -
+Figure 6), we estimate that approximately 10% of seed arrivals establish
+in suitable locations, thus the mean number of dispersal *events* of 80
+was chosen for our model.
 
 ``` r
 dispersal_model <- bsspread::Dispersal(region,
@@ -620,7 +618,7 @@ result_rast
 #>               occupancy_t2_mean.tif  
 #> names       :     0,     1,     2 
 #> min values  : 0.000, 0.000, 0.000 
-#> max values  : 0.178, 0.425, 0.693
+#> max values  : 0.026, 0.238, 0.575
 # Plot the mean occupancy for time steps 1 and 2
 label <- attr(result_rast$occupancy_mean, "metadata")$label
 for (i in 2:3) {
@@ -644,15 +642,15 @@ results$save_csv()
 total_occupancy <- read.csv("total_occupancy.csv")
 colnames(total_occupancy)[1] <- "Total occupancy"
 print(total_occupancy)
-#>   Total occupancy t0      t1        t2
-#> 1            mean  1 14.1970 278.55300
-#> 2              sd  0  3.7702  81.02139
+#>   Total occupancy t0        t1        t2
+#> 1            mean  1 15.132000 306.65600
+#> 2              sd  0  4.103098  90.57881
 total_area_occupied <- read.csv("total_area_occupied.csv")
 colnames(total_area_occupied)[1] <- "Total area occupied"
 print(total_area_occupied)
-#>   Total area occupied    t0     t1        t2
-#> 1                mean 10000 141970 2785530.0
-#> 2                  sd     0  37702  810213.9
+#>   Total area occupied    t0        t1        t2
+#> 1                mean 10000 151320.00 3066560.0
+#> 2                  sd     0  41030.98  905788.1
 ```
 
 Time-series plots of total occupancy and total area occupied may also be

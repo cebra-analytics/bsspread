@@ -154,7 +154,10 @@ spatial population models for conservation and control management.
 
 Lefkovitch, L. P. (1965). The Study of Population Growth in Organisms
 Grouped by Stages. \emph{Biometrics}, 21(1), 1–18.
-\doi{doi.org/10.2307/2528348}
+\doi{10.2307/2528348}
+
+Leslie, P. H. (1945). On the Use of Matrices in Certain Population
+Mathematics. \emph{Biometrika}, 33(3), 183–212. \doi{10.2307/2332297}
 
 Ricker, W. E. (1958). Handbook of computations for biological statistics
 of fish populations. \emph{Bulletin (Fisheries Research Board of Canada)},
