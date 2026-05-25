@@ -345,7 +345,7 @@ remotes::install_github("cebra-analytics/bsspread")
 The following example assembles and runs a population spread simulation
 model for a Hawkweed species (*Hieracium pilosella*), an exotic weed for
 Australia, which approximately reproduces the spread model described in
-Williams, Hahs, & Morgan (2008). The In the following steps we build the
+Williams, Hahs, & Morgan (2008). In the following steps we build the
 workflow components, run the assembled simulation model, and examine the
 simulated results.
 
