@@ -103,9 +103,10 @@ that are applicable for capacity-limited dynamics (García Adeva, Botha,
 Either population model (presence-only, unstructured, or staged) may be
 optionally configured with the likelihood or probability that the pest
 will establish on arrival for each grid or network-based dispersal
-destination (Bradhurst et al., 2021; García Adeva, Botha, & Reynolds,
-2012; Jongejans, Skarpaas, & Shea, 2008). This establishment probability
-may also be configured to vary temporally within the simulated model.
+destination, often based on threat suitability at each location
+(Bradhurst et al., 2021; García Adeva, Botha, & Reynolds, 2012;
+Jongejans, Skarpaas, & Shea, 2008). This establishment probability may
+also be configured to vary temporally within the simulated model.
 Likewise, the growth or transition rates, as well as the carrying
 capacity (in unstructured or staged populations) may be configured to
 vary spatially, temporally, or both (spatio-temporally) within the
@@ -384,9 +385,9 @@ terra::plot(region$get_rast(1), colNA = "grey",
 
 For our Hawkweed example we will utilise a presence-only population
 model. We will configure the establishment probability for the
-population via an approximate mapping of values for vegetation/landscape
-types provided in Williams, Hahs, & Morgan (2008), to NVIS (2025) major
-vegetation group (MVG) classes:
+population via an approximate mapping of habitat suitability values for
+vegetation/landscape types provided in Williams, Hahs, & Morgan (2008),
+to NVIS (2025) major vegetation group (MVG) classes:
 
 | Vegetation type                  | Est. prob. | Mapped to MVG |
 |:---------------------------------|:----------:|:-------------:|
@@ -543,12 +544,22 @@ colony up to 0.5 metres across in its first year (CRC, 2003).
 Approximately 8% of seeds travel greater than 100 metres (Williams et
 al., 2008). Thus, we would expect up to 40000\*0.25\*0.08 = 800 seeds to
 disperse (\> 100 m) from each (new) colony, although we wouldn’t expect
-all seed arrivals to establish and grow into a new colony (in the
-following year). To approximately reproduce the simulated the
-dispersal-constrained habitat suitability from Williams et al. (2008 -
-Figure 6), we estimate that approximately 10% of seed arrivals establish
-in suitable locations, thus the mean number of dispersal *events* of 80
-was chosen for our model.
+all seeds arriving in suitable locations to establish and grow into a
+new colony in the following year. Seeds remain viable for up to 7 years
+(Hauser & McCarthy, 2009) and may establish in suitable locations in
+subsequent years. These delayed seed establishment dynamics may be
+modelled with complex stage-based population models over longer
+time-spans. However, for our simple presence-only model we only consider
+seed arrivals that establish new colonies in their first year. To
+approximately reproduce the simulated the dispersal-constrained habitat
+suitability from Williams et al. (2008 - Figure 6) and Hauser & McCarthy
+(2009 - Figure 2a), we estimate that up to 10% of seed arrivals
+establish within suitable locations in their first year, thus a mean
+number of dispersal *events* of 80 was chosen for our model.
+Alternatively, we could have scaled our establishment probability
+estimated in step 2 by 10% to model the single-year establishment of all
+(up to 800) seeds dispersing, but this would be more computationally
+demanding to simulate.
 
 ``` r
 dispersal_model <- bsspread::Dispersal(region,
@@ -618,7 +629,7 @@ result_rast
 #>               occupancy_t2_mean.tif  
 #> names       :     0,     1,     2 
 #> min values  : 0.000, 0.000, 0.000 
-#> max values  : 0.024, 0.223, 0.593
+#> max values  : 0.035, 0.256, 0.638
 # Plot the mean occupancy for time steps 1 and 2
 label <- attr(result_rast$occupancy_mean, "metadata")$label
 for (i in 2:3) {
@@ -643,14 +654,14 @@ total_occupancy <- read.csv("total_occupancy.csv")
 colnames(total_occupancy)[1] <- "Total occupancy"
 print(total_occupancy)
 #>   Total occupancy t0        t1        t2
-#> 1            mean  1 14.962000 302.70300
-#> 2              sd  0  4.141462  90.83065
+#> 1            mean  1 15.076000 303.77800
+#> 2              sd  0  4.132227  87.71417
 total_area_occupied <- read.csv("total_area_occupied.csv")
 colnames(total_area_occupied)[1] <- "Total area occupied"
 print(total_area_occupied)
 #>   Total area occupied    t0        t1        t2
-#> 1                mean 10000 149620.00 3027030.0
-#> 2                  sd     0  41414.62  908306.5
+#> 1                mean 10000 150760.00 3037780.0
+#> 2                  sd     0  41322.27  877141.7
 ```
 
 Time-series plots of total occupancy and total area occupied may also be
@@ -746,6 +757,11 @@ Pascoe, C., Williams, N. S. G., Cousens, R. D., & Moore, J. L. (2016).
 ‘Practicable methods for delimiting a plant invasion’. *Diversity and
 Distributions*, 22(1/2), 136–147.
 [doi:10.1111/ddi.12388](https://doi.org/10.1111/ddi.12388)
+
+Hauser, C. E., & McCarthy, M. A. (2009). ‘Streamlining “search and
+destroy”: cost-effective surveillance for invasive species management’.
+*Ecology Letters*, 12(7), 683–692.
+[doi:10.1111/j.1461-0248.2009.01323.x](https://doi.org/10.1111/j.1461-0248.2009.01323.x)
 
 Jongejans, E., Skarpaas, O., & Shea, K. (2008). ‘Dispersal, demography
 and spatial population models for conservation and control management’.
