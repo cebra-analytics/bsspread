@@ -34,7 +34,7 @@ population spread simulation models.
 
 ### Region
 
-The region of interest for the sutdy may be configured via the *Region*
+The region of interest for the study may be configured via the *Region*
 object class. The spatial representation may be configured as either:
 
 1.  A grid-based raster layer (GeoTIFF file), whereby model processes

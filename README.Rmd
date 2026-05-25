@@ -34,7 +34,7 @@ This section further describes the workflow components for building population s
 
 ### Region
 
-The region of interest for the sutdy may be configured via the *Region* object class. The spatial representation may be configured as either:
+The region of interest for the study may be configured via the *Region* object class. The spatial representation may be configured as either:
 
 1. A grid-based raster layer (GeoTIFF file), whereby model processes are configured and simulated using the active (non-NA) cell locations.
 1. A network of locations or patches defined via a table of longitude and latitude coordinates (CSV file).
