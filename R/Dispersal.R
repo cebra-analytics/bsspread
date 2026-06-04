@@ -376,6 +376,15 @@ Dispersal.Region <- function(region, population_model,
       }
     }
 
+    if (length(attractors)) {
+      for (attractor in attractors) {
+        if (inherits(attractor, "Attractor") &&
+            is.function(attractor$warm_value_cache)) {
+          attractor$warm_value_cache()
+        }
+      }
+    }
+
     # Function to calculate dispersals from a single occupied location (index)
     calculate_dispersals <- function(i) {
 

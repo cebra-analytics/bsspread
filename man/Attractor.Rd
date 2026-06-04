@@ -54,6 +54,8 @@ spatial raster layer, and functional when region is two-tiered.}
 \item{\code{get_is_dynamic()}}{Get indicator for dynamic attractors.}
 \item{\code{set_multiplier(mult)}}{Dynamically set a multiplier for the
 attractor values.}
+\item{\code{warm_value_cache()}}{Pre-build cached region and aggregate
+value vectors (used before dispersal origin loops).}
 }
 }
 \description{
