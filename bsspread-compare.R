@@ -2070,14 +2070,6 @@ if (eq_enabled) {
     )
 }
 
-if (identical(Sys.getenv("DISPERSAL_TIMING"), "1")) {
-    message("DISPERSAL_TIMING=1: dispersal phase breakdown enabled")
-} else {
-    message(sprintf(
-        "DISPERSAL_TIMING=%s (set DISPERSAL_TIMING=1 for paths/calc/apply breakdown)",
-        dQuote(Sys.getenv("DISPERSAL_TIMING", unset = ""), FALSE)))
-}
-
 checkpoint_data <- NULL
 if (checkpoint_resume) {
     ckpt_path <- checkpoint_file
@@ -2164,34 +2156,15 @@ for (r in seq_len(2)) {
             tm == profile_timestep_n
 
         if (length(dispersal_models)) {
-            dispersal_timing_on <-
-                identical(Sys.getenv("DISPERSAL_TIMING"), "1")
-            disp_paths_s <- 0
-            disp_attr_s <- 0
-            disp_calc_s <- 0
-            disp_apply_s <- 0
             run_dispersal <- function() {
                 n <<- dispersal_models[[1]]$pack(n)
                 for (i in seq_along(dispersal_models)) {
                     t_dm <- Sys.time()
                     n <<- dispersal_models[[i]]$disperse(n, tm)
-                    if (dispersal_timing_on) {
-                        dt <- attr(n, "dispersal_timing")
-                        if (is.list(dt)) {
-                            disp_paths_s <<- disp_paths_s + dt$calculate_paths_s
-                            disp_attr_s <<- disp_attr_s + dt$attractors_s
-                            disp_calc_s <<- disp_calc_s + dt$calculate_dispersals_s
-                            disp_apply_s <<- disp_apply_s + dt$apply_dispersals_s
-                        }
-                        message(sprintf(
-                            "    dispersal model %d: %.2fs (paths=%.2fs attr=%.2fs calc=%.2fs apply=%.2fs)",
-                            i,
-                            as.numeric(Sys.time() - t_dm, units = "secs"),
-                            if (is.list(dt)) dt$calculate_paths_s else 0,
-                            if (is.list(dt)) dt$attractors_s else 0,
-                            if (is.list(dt)) dt$calculate_dispersals_s else 0,
-                            if (is.list(dt)) dt$apply_dispersals_s else 0))
-                    }
+                    message(sprintf(
+                        "    dispersal model %d: %.2fs",
+                        i,
+                        as.numeric(Sys.time() - t_dm, units = "secs")))
                 }
                 n <<- dispersal_models[[1]]$unpack(n)
             }
@@ -2339,19 +2312,11 @@ for (r in seq_len(2)) {
                 rng_check = rng_check
             )
         }
-        dispersal_extra <- ""
-        if (length(dispersal_models) &&
-            identical(Sys.getenv("DISPERSAL_TIMING"), "1")) {
-            dispersal_extra <- sprintf(
-                " [paths=%.2fs attr=%.2fs calc=%.2fs apply=%.2fs]",
-                disp_paths_s, disp_attr_s, disp_calc_s, disp_apply_s)
-        }
         message(sprintf(
-            "tm=%s r=%s | grow=%.2fs  dispersal=%.2fs%s  impacts=%.2fs  actions=%.2fs  other=%.2fs | total=%.2fs | %s free | rng check=%.4f",
+            "tm=%s r=%s | grow=%.2fs  dispersal=%.2fs  impacts=%.2fs  actions=%.2fs  other=%.2fs | total=%.2fs | %s free | rng check=%.4f",
             tm, r,
             elapsed(t0, t1),
             elapsed(t1, t2),
-            dispersal_extra,
             elapsed(t2, t3),
             elapsed(t3, t4),
             elapsed(t4, t5),
