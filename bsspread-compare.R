@@ -6,6 +6,19 @@ profile_replicate <- 1L
 profile_timestep_n <- 25L
 profile_output <- ""  # empty -> <outputdir>/profvis_timestep_r{r}_tm{tm}.html
 
+# --- Checkpoint (warm path cache for profiling later timesteps) ---
+# Save at end of tm N (default r=profile_replicate):
+#   CHECKPOINT_TM=24 CHECKPOINT_STOP=1 Rscript bsspread-compare.R
+# Resume from tm N+1 (rebuilds region/dispersal; injects paths + n + RNG):
+#   CHECKPOINT_RESUME=1 CHECKPOINT_FILE=/path/checkpoint_tm24_r1.rds Rscript ...
+checkpoint_tm <- as.integer(Sys.getenv("CHECKPOINT_TM", unset = "0"))
+checkpoint_replicate <- as.integer(Sys.getenv(
+    "CHECKPOINT_REPLICATE",
+    unset = as.character(profile_replicate)))
+checkpoint_file <- Sys.getenv("CHECKPOINT_FILE", unset = "")
+checkpoint_resume <- identical(Sys.getenv("CHECKPOINT_RESUME"), "1")
+checkpoint_stop <- identical(Sys.getenv("CHECKPOINT_STOP"), "1")
+
 # data_utils.R
 # Platform wrapper utils
 # -----------------------------------------------
@@ -1784,6 +1797,81 @@ generate_result_animations <- function(region, population_model, result_layers) 
   }
 }
 
+# Checkpoint helpers (paths live in Region's closure, not on the region list)
+get_region_paths <- function(region) {
+    environment(region$calculate_paths)$paths
+}
+
+set_region_paths <- function(region, paths) {
+    environment(region$calculate_paths)$paths <- paths
+}
+
+# Terra/permeability pointers in paths do not survive saveRDS; drop before save.
+prepare_paths_for_checkpoint <- function(paths) {
+    paths$perms <- NULL
+    if (is.list(paths$graphs) && !is.null(paths$graphs$poly)) {
+        paths$graphs$poly <- NULL
+    }
+    paths
+}
+
+restore_region_paths <- function(region, saved_paths) {
+    env <- environment(region$calculate_paths)
+    live_perms <- env$paths$perms
+    set_region_paths(region, saved_paths)
+    if (!is.null(live_perms)) {
+        environment(region$calculate_paths)$paths$perms <- live_perms
+    }
+}
+
+default_checkpoint_file <- function(tm, r, outputdir) {
+    file.path(outputdir, sprintf("checkpoint_tm%d_r%d.rds", tm, r))
+}
+
+save_simulation_checkpoint <- function(file, tm, r, n, region,
+                                       calc_impacts = NULL) {
+    dir.create(dirname(file), recursive = TRUE, showWarnings = FALSE)
+    payload <- list(
+        rng = .Random.seed,
+        n = n,
+        paths = prepare_paths_for_checkpoint(get_region_paths(region)),
+        tm_saved = tm,
+        tm_next = tm + 1L,
+        r = r,
+        calc_impacts = calc_impacts
+    )
+    saveRDS(payload, file)
+    message(sprintf(
+        "Wrote checkpoint (tm_next=%d, r=%d, %d path origins) -> %s",
+        payload$tm_next,
+        r,
+        length(payload$paths$idx),
+        file
+    ))
+}
+
+load_simulation_checkpoint <- function(file) {
+    if (!file.exists(file)) {
+        stop("Checkpoint file not found: ", file, call. = FALSE)
+    }
+    bench <- readRDS(file)
+    required <- c("rng", "n", "paths", "tm_next", "r")
+    missing <- setdiff(required, names(bench))
+    if (length(missing)) {
+        stop("Checkpoint missing fields: ", paste(missing, collapse = ", "),
+            call. = FALSE)
+    }
+    tm_saved_label <- if (is.null(bench$tm_saved)) "?" else bench$tm_saved
+    message(sprintf(
+        "Loaded checkpoint (saved tm=%s, resume tm_next=%d, r=%d, %d path origins)",
+        tm_saved_label,
+        bench$tm_next,
+        bench$r,
+        length(bench$paths$idx)
+    ))
+    bench
+}
+
 # Create objects
 if (!is.null(input.params$context) && !is.null(input.params$context$impacts) && input.params$context$impacts$include) {
     impact_types <- unlist(input.params$context$impacts[c("social", "economic", "ecological")])
@@ -1990,10 +2078,35 @@ if (identical(Sys.getenv("DISPERSAL_TIMING"), "1")) {
         dQuote(Sys.getenv("DISPERSAL_TIMING", unset = ""), FALSE)))
 }
 
+checkpoint_data <- NULL
+if (checkpoint_resume) {
+    ckpt_path <- checkpoint_file
+    if (!nzchar(ckpt_path)) {
+        stop("CHECKPOINT_RESUME=1 requires CHECKPOINT_FILE (or set CHECKPOINT_TM when saving)",
+            call. = FALSE)
+    }
+    checkpoint_data <- load_simulation_checkpoint(ckpt_path)
+    .Random.seed <- checkpoint_data$rng
+    restore_region_paths(region, checkpoint_data$paths)
+    population_model$set_capacity_mult(checkpoint_data$n)
+    message("Checkpoint: region path cache restored (fresh permeability rasters)")
+}
+
 for (r in seq_len(2)) {
     if (identical(Sys.getenv("PATHS_EQ_DUMP", unset = ""), "1")) {
         Sys.setenv(PATHS_EQ_REPLICATE = as.character(r))
     }
+
+    resume_this_r <- !is.null(checkpoint_data) && r == checkpoint_data$r
+    tm_start <- if (resume_this_r) checkpoint_data$tm_next else 1L
+
+    if (resume_this_r) {
+        n <- checkpoint_data$n
+        calc_impacts <- checkpoint_data$calc_impacts
+        message(sprintf(
+            "Checkpoint resume: replicate %d from tm=%d (skipping initialise and tm 0:%d)",
+            r, tm_start, tm_start - 1L))
+    } else {
     n <- initializer$initialize()
     if (region$spatially_implicit()) {
         if (any(sapply(dispersal_models, function(dm) inherits(dm, 
@@ -2042,7 +2155,9 @@ for (r in seq_len(2)) {
             replicate = r
         )
     }
-    for (tm in 1:time_steps) {
+    } # end !resume_this_r initialise block
+
+    for (tm in tm_start:time_steps) {
         t0 <- Sys.time()
         profile_this <- isTRUE(profile_timestep) &&
             r == profile_replicate &&
@@ -2244,6 +2359,26 @@ for (r in seq_len(2)) {
             prettyunits::pretty_bytes(mem_info$avail),
             rng_check
         ))
+
+        if (checkpoint_tm > 0L && tm == checkpoint_tm && r == checkpoint_replicate) {
+            ckpt_out <- checkpoint_file
+            if (!nzchar(ckpt_out)) {
+                ckpt_out <- default_checkpoint_file(
+                    checkpoint_tm, r, input.env$outputdir)
+            }
+            save_simulation_checkpoint(
+                file = ckpt_out,
+                tm = tm,
+                r = r,
+                n = n,
+                region = region,
+                calc_impacts = calc_impacts
+            )
+            if (checkpoint_stop) {
+                message("CHECKPOINT_STOP=1: exiting after checkpoint save")
+                quit(save = "no", status = 0)
+            }
+        }
     }
 }
 
