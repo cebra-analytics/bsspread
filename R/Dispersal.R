@@ -708,10 +708,18 @@ Dispersal.Region <- function(region, population_model,
         } else {
 
           # Sample specified number of dispersal event destinations
-          if (any(unlist(destination_p) > 0)) {
-            destinations <- sample(1:length(unlist(destination_p)),
-                                   size = dispersals, replace = TRUE,
-                                   prob = unlist(destination_p))
+          has_destinations <- any(
+            destination_p$cell > 0) ||
+            (aggr_paths_present && any(destination_p$aggr > 0)
+          )
+          if (has_destinations) {
+            dest_p <- if (aggr_paths_present) {
+              c(destination_p$cell, destination_p$aggr)
+            } else {
+              destination_p$cell
+            }
+            destinations <- sample(seq_along(dest_p), size = dispersals,
+                                  replace = TRUE, prob = dest_p)
           } else {
             dispersals <- FALSE
           }
