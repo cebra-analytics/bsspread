@@ -7,15 +7,18 @@ profile_timestep_n <- 25L
 profile_output <- ""  # empty -> <outputdir>/profvis_timestep_r{r}_tm{tm}.html
 
 # --- Checkpoint (warm path cache for profiling later timesteps) ---
-# Save at end of tm N (default r=profile_replicate):
+# Save at end of tm N (writes CHECKPOINT_FILE_OUT or <outputdir>/checkpoint_tm{N}_r{r}.rds):
 #   CHECKPOINT_TM=24 CHECKPOINT_STOP=1 Rscript bsspread-compare.R
-# Resume from tm N+1 (rebuilds region/dispersal; injects paths + n + RNG):
-#   CHECKPOINT_RESUME=1 CHECKPOINT_FILE=/path/checkpoint_tm24_r1.rds Rscript ...
+# Resume from tm N+1 (reads CHECKPOINT_FILE_IN or legacy CHECKPOINT_FILE):
+#   CHECKPOINT_RESUME=1 CHECKPOINT_FILE_IN=/path/checkpoint_tm24_r1.rds Rscript ...
+# Example: tm=24 in, run tm=25 on main, save baseline tm=25 out:
+#   CHECKPOINT_RESUME=1 CHECKPOINT_FILE_IN=.../checkpoint_tm24_r1.rds \
+#     CHECKPOINT_TM=25 CHECKPOINT_FILE_OUT=.../checkpoint_tm25_r1.rds CHECKPOINT_STOP=1 \
+#     Rscript bsspread-compare.R
 checkpoint_tm <- as.integer(Sys.getenv("CHECKPOINT_TM", unset = "0"))
 checkpoint_replicate <- as.integer(Sys.getenv(
     "CHECKPOINT_REPLICATE",
     unset = as.character(profile_replicate)))
-checkpoint_file <- Sys.getenv("CHECKPOINT_FILE", unset = "")
 checkpoint_resume <- identical(Sys.getenv("CHECKPOINT_RESUME"), "1")
 checkpoint_stop <- identical(Sys.getenv("CHECKPOINT_STOP"), "1")
 
@@ -1828,6 +1831,22 @@ default_checkpoint_file <- function(tm, r, outputdir) {
     file.path(outputdir, sprintf("checkpoint_tm%d_r%d.rds", tm, r))
 }
 
+checkpoint_file_in <- function() {
+    explicit <- Sys.getenv("CHECKPOINT_FILE_IN", unset = "")
+    if (nzchar(explicit)) {
+        return(explicit)
+    }
+    Sys.getenv("CHECKPOINT_FILE", unset = "")
+}
+
+checkpoint_file_out <- function(tm, r, outputdir) {
+    explicit <- Sys.getenv("CHECKPOINT_FILE_OUT", unset = "")
+    if (nzchar(explicit)) {
+        return(explicit)
+    }
+    default_checkpoint_file(tm, r, outputdir)
+}
+
 save_simulation_checkpoint <- function(file, tm, r, n, region,
                                        calc_impacts = NULL) {
     dir.create(dirname(file), recursive = TRUE, showWarnings = FALSE)
@@ -2072,10 +2091,12 @@ if (eq_enabled) {
 
 checkpoint_data <- NULL
 if (checkpoint_resume) {
-    ckpt_path <- checkpoint_file
+    ckpt_path <- checkpoint_file_in()
     if (!nzchar(ckpt_path)) {
-        stop("CHECKPOINT_RESUME=1 requires CHECKPOINT_FILE (or set CHECKPOINT_TM when saving)",
-            call. = FALSE)
+        stop(
+            "CHECKPOINT_RESUME=1 requires CHECKPOINT_FILE_IN or CHECKPOINT_FILE",
+            call. = FALSE
+        )
     }
     checkpoint_data <- load_simulation_checkpoint(ckpt_path)
     .Random.seed <- checkpoint_data$rng
@@ -2326,11 +2347,8 @@ for (r in seq_len(2)) {
         ))
 
         if (checkpoint_tm > 0L && tm == checkpoint_tm && r == checkpoint_replicate) {
-            ckpt_out <- checkpoint_file
-            if (!nzchar(ckpt_out)) {
-                ckpt_out <- default_checkpoint_file(
-                    checkpoint_tm, r, input.env$outputdir)
-            }
+            ckpt_out <- checkpoint_file_out(
+                checkpoint_tm, r, input.env$outputdir)
             save_simulation_checkpoint(
                 file = ckpt_out,
                 tm = tm,
