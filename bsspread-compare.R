@@ -1,7 +1,7 @@
 set.seed(42)
 
 # --- Profiling (script-side profvis; no Dispersal.R hooks) ---
-profile_timestep <- TRUE
+profile_timestep <- FALSE
 profile_replicate <- 1L
 profile_timestep_n <- 25L
 profile_output <- ""  # empty -> <outputdir>/profvis_timestep_r{r}_tm{tm}.html
