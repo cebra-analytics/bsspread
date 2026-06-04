@@ -2105,6 +2105,8 @@ if (checkpoint_resume) {
     message("Checkpoint: region path cache restored (fresh permeability rasters)")
 }
 
+gc_time_prev <- sum(gc.time())
+
 for (r in seq_len(2)) {
     if (identical(Sys.getenv("PATHS_EQ_DUMP", unset = ""), "1")) {
         Sys.setenv(PATHS_EQ_REPLICATE = as.character(r))
@@ -2317,6 +2319,10 @@ for (r in seq_len(2)) {
 
         elapsed <- function(a, b) as.numeric(b - a, units = "secs")
         mem_info <- ps::ps_system_memory()
+        proc_mem <- ps::ps_memory_info(ps::ps_handle(Sys.getpid()))
+        gc_time_now <- sum(gc.time())
+        gc_step_s <- gc_time_now - gc_time_prev
+        gc_time_prev <- gc_time_now
         rng_check <- runif(1)
         if (eq_enabled) {
             eq_state <- eq_capture_step(
@@ -2334,7 +2340,7 @@ for (r in seq_len(2)) {
             )
         }
         message(sprintf(
-            "tm=%s r=%s | grow=%.2fs  dispersal=%.2fs  impacts=%.2fs  actions=%.2fs  other=%.2fs | total=%.2fs | %s free | rng check=%.4f",
+            "tm=%s r=%s | grow=%.2fs  dispersal=%.2fs  impacts=%.2fs  actions=%.2fs  other=%.2fs | total=%.2fs | %s sys avail | %s rss | gc=%.3fs | rng check=%.4f",
             tm, r,
             elapsed(t0, t1),
             elapsed(t1, t2),
@@ -2343,6 +2349,8 @@ for (r in seq_len(2)) {
             elapsed(t4, t5),
             elapsed(t0, t5),
             prettyunits::pretty_bytes(mem_info$avail),
+            prettyunits::pretty_bytes(proc_mem["rss"]),
+            gc_step_s,
             rng_check
         ))
 
