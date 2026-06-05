@@ -385,6 +385,13 @@ Dispersal.Region <- function(region, population_model,
       }
     }
 
+    # One terra extract per disperse(); per-origin aggr weights use integer subset
+    aggr_cell_counts <- NULL
+    if (region$two_tier()) {
+      aggr <- region$get_aggr()
+      aggr_cell_counts <- as.vector(aggr$rast[aggr$indices][, 1])
+    }
+
     # Function to calculate dispersals from a single occupied location (index)
     calculate_dispersals <- function(i) {
 
@@ -417,8 +424,7 @@ Dispersal.Region <- function(region, population_model,
       destination_p <- list(cell = rep(1,
                                        length(paths$idx[[loc_char]]$cell)))
       if (aggr_paths_present) {
-        destination_p$aggr <- region$get_aggr()$rast[
-          region$get_aggr()$indices[paths$idx[[loc_char]]$aggr]][,1]
+        destination_p$aggr <- aggr_cell_counts[paths$idx[[loc_char]]$aggr]
       }
 
       ## Adjust destination (relative) probabilities based on distance
@@ -682,8 +688,7 @@ Dispersal.Region <- function(region, population_model,
           if (aggr_paths_present) {
 
             # Number or (non-NA) region cells in each aggregate cell
-            aggr_cells <- region$get_aggr()$rast[
-              region$get_aggr()$indices[paths$idx[[loc_char]]$aggr]][,1]
+            aggr_cells <- aggr_cell_counts[paths$idx[[loc_char]]$aggr]
 
             # Sample region cell counts for aggregate cells
             aggr_cells <- stats::rbinom(
