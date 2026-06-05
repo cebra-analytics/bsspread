@@ -21,6 +21,10 @@ checkpoint_replicate <- as.integer(Sys.getenv(
     unset = "2"))
 checkpoint_resume <- identical(Sys.getenv("CHECKPOINT_RESUME"), "1")
 checkpoint_stop <- identical(Sys.getenv("CHECKPOINT_STOP"), "1")
+# Re-seed before each replicate's initialise (same session, warm path cache):
+#   BENCHMARK_RESEED_PER_REPLICATE=1  (uses params$random_seed)
+benchmark_reseed_per_replicate <- identical(
+    Sys.getenv("BENCHMARK_RESEED_PER_REPLICATE"), "1")
 
 # data_utils.R
 # Platform wrapper utils
@@ -2198,6 +2202,13 @@ for (r in replicate_seq) {
             "Checkpoint resume: replicate %d from tm=%d (skipping initialise and tm 0:%d)",
             r, tm_start, tm_start - 1L))
     } else {
+    if (benchmark_reseed_per_replicate &&
+        is.numeric(input.params$random_seed)) {
+        set.seed(input.params$random_seed)
+        message(sprintf(
+            "BENCHMARK_RESEED_PER_REPLICATE: set.seed for replicate %d",
+            r))
+    }
     n <- initializer$initialize()
     if (region$spatially_implicit()) {
         if (any(sapply(dispersal_models, function(dm) inherits(dm, 
@@ -2291,74 +2302,135 @@ for (r in replicate_seq) {
             }
         }
 
-    for (tm in tm_start:tm_end_r) {
-        t0 <- Sys.time()
-        profile_this <- isTRUE(profile_timestep) &&
-            r == profile_replicate &&
-            tm == profile_timestep_n
+        for (tm in tm_start:tm_end_r) {
+            t0 <- Sys.time()
+            profile_this <- isTRUE(profile_timestep) &&
+                r == profile_replicate &&
+                tm == profile_timestep_n
 
-        if (length(dispersal_models)) {
-            run_dispersal <- function() {
-                n <<- dispersal_models[[1]]$pack(n)
-                for (i in seq_along(dispersal_models)) {
-                    t_dm <- Sys.time()
-                    n <<- dispersal_models[[i]]$disperse(n, tm)
-                    message(sprintf(
-                        "    dispersal model %d: %.2fs",
-                        i,
-                        as.numeric(Sys.time() - t_dm, units = "secs")))
+            if (length(dispersal_models)) {
+                run_dispersal <- function() {
+                    n <<- dispersal_models[[1]]$pack(n)
+                    for (i in seq_along(dispersal_models)) {
+                        t_dm <- Sys.time()
+                        n <<- dispersal_models[[i]]$disperse(n, tm)
+                        message(sprintf(
+                            "    dispersal model %d: %.2fs",
+                            i,
+                            as.numeric(Sys.time() - t_dm, units = "secs")))
+                    }
+                    n <<- dispersal_models[[1]]$unpack(n)
                 }
-                n <<- dispersal_models[[1]]$unpack(n)
             }
-        }
 
-        if (profile_this &&
-            requireNamespace("profvis", quietly = TRUE) &&
-            requireNamespace("htmlwidgets", quietly = TRUE)) {
-            profvis_out <- profile_output
-            if (!nzchar(profvis_out)) {
-                profvis_out <- file.path(
-                    input.env$outputdir,
-                    sprintf("profvis_timestep_r%d_tm%d.html", r, tm))
-            }
-            prof_dir <- dirname(profvis_out)
-            if (nzchar(prof_dir)) {
-                dir.create(prof_dir, recursive = TRUE, showWarnings = FALSE)
-            }
-            message(sprintf(
-                "Profiling timestep at r=%d tm=%d -> %s",
-                r, tm, profvis_out))
-            prof_obj <- profvis::profvis({
-                n <<- population_model$grow(n, tm)
-                t1 <<- Sys.time()
+            if (profile_this &&
+                requireNamespace("profvis", quietly = TRUE) &&
+                requireNamespace("htmlwidgets", quietly = TRUE)) {
+                profvis_out <- profile_output
+                if (!nzchar(profvis_out)) {
+                    profvis_out <- file.path(
+                        input.env$outputdir,
+                        sprintf("profvis_timestep_r%d_tm%d.html", r, tm))
+                }
+                prof_dir <- dirname(profvis_out)
+                if (nzchar(prof_dir)) {
+                    dir.create(prof_dir, recursive = TRUE, showWarnings = FALSE)
+                }
+                message(sprintf(
+                    "Profiling timestep at r=%d tm=%d -> %s",
+                    r, tm, profvis_out))
+                prof_obj <- profvis::profvis({
+                    n <<- population_model$grow(n, tm)
+                    t1 <<- Sys.time()
+                    if (length(dispersal_models)) {
+                        run_dispersal()
+                    }
+                    t2 <<- Sys.time()
+                    if (length(impacts)) {
+                        calc_impacts <<- lapply(impacts, function(impacts_i) {
+                            n <<- impacts_i$calculate(n, tm)
+                            attr(n, "impacts")
+                        })
+                        attr(n, "impacts") <- NULL
+                        population_model$set_capacity_mult(n)
+                    }
+                    t3 <<- Sys.time()
+                    if (length(actions)) {
+                        for (i in 1:length(actions)) {
+                            n <<- actions[[i]]$clear_attributes(n)
+                        }
+                        for (i in 1:length(actions)) {
+                            n <<- actions[[i]]$apply(n, tm)
+                        }
+                    }
+                    t4 <<- Sys.time()
+                    if (is.function(user_function)) {
+                        n_attr <- attributes(n)
+                        if (length(formals(user_function)) == 3) {
+                            n <<- user_function(n, r, tm)
+                        } else {
+                            n <<- user_function(n)
+                        }
+                        if (length(n_attr)) {
+                            for (i in 1:length(n_attr)) {
+                                if (!names(n_attr[i]) %in% names(attributes(n))) {
+                                    attr(n, names(n_attr[i])) <- n_attr[[i]]
+                                }
+                            }
+                        }
+                    }
+                    results$collate(r, tm, n, calc_impacts)
+                    if (is.function(continued_incursions)) {
+                        n <<- continued_incursions(tm, n)
+                    }
+                })
+                prof_ok <- tryCatch({
+                    htmlwidgets::saveWidget(prof_obj, profvis_out, selfcontained = TRUE)
+                    TRUE
+                }, error = function(e) {
+                    message("profvis saveWidget failed: ", conditionMessage(e))
+                    FALSE
+                })
+                if (prof_ok && file.exists(profvis_out)) {
+                    message("Wrote profvis output to ", profvis_out)
+                } else {
+                    message("Profvis output not found at ", profvis_out)
+                }
+            } else {
+                n <- population_model$grow(n, tm)
+                t1 <- Sys.time()
+
                 if (length(dispersal_models)) {
                     run_dispersal()
                 }
-                t2 <<- Sys.time()
+                t2 <- Sys.time()
+
                 if (length(impacts)) {
-                    calc_impacts <<- lapply(impacts, function(impacts_i) {
+                    calc_impacts <- lapply(impacts, function(impacts_i) {
                         n <<- impacts_i$calculate(n, tm)
                         attr(n, "impacts")
                     })
                     attr(n, "impacts") <- NULL
                     population_model$set_capacity_mult(n)
                 }
-                t3 <<- Sys.time()
+                t3 <- Sys.time()
+
                 if (length(actions)) {
                     for (i in 1:length(actions)) {
-                        n <<- actions[[i]]$clear_attributes(n)
+                        n <- actions[[i]]$clear_attributes(n)
                     }
                     for (i in 1:length(actions)) {
-                        n <<- actions[[i]]$apply(n, tm)
+                        n <- actions[[i]]$apply(n, tm)
                     }
                 }
-                t4 <<- Sys.time()
+                t4 <- Sys.time()
+
                 if (is.function(user_function)) {
                     n_attr <- attributes(n)
                     if (length(formals(user_function)) == 3) {
-                        n <<- user_function(n, r, tm)
+                        n <- user_function(n, r, tm)
                     } else {
-                        n <<- user_function(n)
+                        n <- user_function(n)
                     }
                     if (length(n_attr)) {
                         for (i in 1:length(n_attr)) {
@@ -2370,135 +2442,74 @@ for (r in replicate_seq) {
                 }
                 results$collate(r, tm, n, calc_impacts)
                 if (is.function(continued_incursions)) {
-                    n <<- continued_incursions(tm, n)
+                    n <- continued_incursions(tm, n)
                 }
-            })
-            prof_ok <- tryCatch({
-                htmlwidgets::saveWidget(prof_obj, profvis_out, selfcontained = TRUE)
-                TRUE
-            }, error = function(e) {
-                message("profvis saveWidget failed: ", conditionMessage(e))
-                FALSE
-            })
-            if (prof_ok && file.exists(profvis_out)) {
-                message("Wrote profvis output to ", profvis_out)
+            }
+            t5 <- Sys.time()
+
+            elapsed <- function(a, b) as.numeric(b - a, units = "secs")
+            mem_info <- ps::ps_system_memory()
+            proc_mem <- ps::ps_memory_info(ps::ps_handle(Sys.getpid()))
+            gc_time_now <- sum(gc.time())
+            gc_step_s <- gc_time_now - gc_time_prev
+            gc_time_prev <- gc_time_now
+            rng_check <- runif(1)
+            if (eq_enabled) {
+                eq_state <- eq_capture_step(
+                    state = eq_state,
+                    n = n,
+                    timestep = tm,
+                    replicate = r,
+                    grow_s = elapsed(t0, t1),
+                    dispersal_s = elapsed(t1, t2),
+                    impacts_s = elapsed(t2, t3),
+                    actions_s = elapsed(t3, t4),
+                    other_s = elapsed(t4, t5),
+                    total_s = elapsed(t0, t5),
+                    rng_check = rng_check
+                )
+            }
+            bench_rep_prefix <- if (benchmark_scaling_reps > 0L) {
+                sprintf("BENCHMARK_REP=%d ", scaling_rep_i)
             } else {
-                message("Profvis output not found at ", profvis_out)
+                ""
             }
-        } else {
-            n <- population_model$grow(n, tm)
-            t1 <- Sys.time()
+            message(sprintf(
+                paste0(
+                    "%stm=%s r=%s | grow=%.2fs  dispersal=%.2fs  ",
+                    "impacts=%.2fs  actions=%.2fs  other=%.2fs | total=%.2fs | ",
+                    "%s sys avail | %s rss | gc=%.3fs | rng check=%.4f"
+                ),
+                bench_rep_prefix, tm, r,
+                elapsed(t0, t1),
+                elapsed(t1, t2),
+                elapsed(t2, t3),
+                elapsed(t3, t4),
+                elapsed(t4, t5),
+                elapsed(t0, t5),
+                prettyunits::pretty_bytes(mem_info$avail),
+                prettyunits::pretty_bytes(proc_mem["rss"]),
+                gc_step_s,
+                rng_check
+            ))
 
-            if (length(dispersal_models)) {
-                run_dispersal()
-            }
-            t2 <- Sys.time()
-
-            if (length(impacts)) {
-                calc_impacts <- lapply(impacts, function(impacts_i) {
-                    n <<- impacts_i$calculate(n, tm)
-                    attr(n, "impacts")
-                })
-                attr(n, "impacts") <- NULL
-                population_model$set_capacity_mult(n)
-            }
-            t3 <- Sys.time()
-
-            if (length(actions)) {
-                for (i in 1:length(actions)) {
-                    n <- actions[[i]]$clear_attributes(n)
-                }
-                for (i in 1:length(actions)) {
-                    n <- actions[[i]]$apply(n, tm)
-                }
-            }
-            t4 <- Sys.time()
-
-            if (is.function(user_function)) {
-                n_attr <- attributes(n)
-                if (length(formals(user_function)) == 3) {
-                    n <- user_function(n, r, tm)
-                } else {
-                    n <- user_function(n)
-                }
-                if (length(n_attr)) {
-                    for (i in 1:length(n_attr)) {
-                        if (!names(n_attr[i]) %in% names(attributes(n))) {
-                            attr(n, names(n_attr[i])) <- n_attr[[i]]
-                        }
-                    }
+            if (checkpoint_tm > 0L && tm == checkpoint_tm && r == checkpoint_replicate) {
+                ckpt_out <- checkpoint_file_out(
+                    checkpoint_tm, r, input.env$outputdir)
+                save_simulation_checkpoint(
+                    file = ckpt_out,
+                    tm = tm,
+                    r = r,
+                    n = n,
+                    region = region,
+                    calc_impacts = calc_impacts
+                )
+                if (checkpoint_stop) {
+                    message("CHECKPOINT_STOP=1: exiting after checkpoint save")
+                    quit(save = "no", status = 0)
                 }
             }
-            results$collate(r, tm, n, calc_impacts)
-            if (is.function(continued_incursions)) {
-                n <- continued_incursions(tm, n)
-            }
         }
-        t5 <- Sys.time()
-
-        elapsed <- function(a, b) as.numeric(b - a, units = "secs")
-        mem_info <- ps::ps_system_memory()
-        proc_mem <- ps::ps_memory_info(ps::ps_handle(Sys.getpid()))
-        gc_time_now <- sum(gc.time())
-        gc_step_s <- gc_time_now - gc_time_prev
-        gc_time_prev <- gc_time_now
-        rng_check <- runif(1)
-        if (eq_enabled) {
-            eq_state <- eq_capture_step(
-                state = eq_state,
-                n = n,
-                timestep = tm,
-                replicate = r,
-                grow_s = elapsed(t0, t1),
-                dispersal_s = elapsed(t1, t2),
-                impacts_s = elapsed(t2, t3),
-                actions_s = elapsed(t3, t4),
-                other_s = elapsed(t4, t5),
-                total_s = elapsed(t0, t5),
-                rng_check = rng_check
-            )
-        }
-        bench_rep_prefix <- if (benchmark_scaling_reps > 0L) {
-            sprintf("BENCHMARK_REP=%d ", scaling_rep_i)
-        } else {
-            ""
-        }
-        message(sprintf(
-            paste0(
-                "%stm=%s r=%s | grow=%.2fs  dispersal=%.2fs  ",
-                "impacts=%.2fs  actions=%.2fs  other=%.2fs | total=%.2fs | ",
-                "%s sys avail | %s rss | gc=%.3fs | rng check=%.4f"
-            ),
-            bench_rep_prefix, tm, r,
-            elapsed(t0, t1),
-            elapsed(t1, t2),
-            elapsed(t2, t3),
-            elapsed(t3, t4),
-            elapsed(t4, t5),
-            elapsed(t0, t5),
-            prettyunits::pretty_bytes(mem_info$avail),
-            prettyunits::pretty_bytes(proc_mem["rss"]),
-            gc_step_s,
-            rng_check
-        ))
-
-        if (checkpoint_tm > 0L && tm == checkpoint_tm && r == checkpoint_replicate) {
-            ckpt_out <- checkpoint_file_out(
-                checkpoint_tm, r, input.env$outputdir)
-            save_simulation_checkpoint(
-                file = ckpt_out,
-                tm = tm,
-                r = r,
-                n = n,
-                region = region,
-                calc_impacts = calc_impacts
-            )
-            if (checkpoint_stop) {
-                message("CHECKPOINT_STOP=1: exiting after checkpoint save")
-                quit(save = "no", status = 0)
-            }
-        }
-    }
     } # end scaling_rep_i
 }
 
@@ -2517,47 +2528,3 @@ if (eq_enabled) {
         eq_files$occupancy_path
     ))
 }
-
-# rate_limited_weblog("Completed timestep 0 of replicate 1 (0%)")
-
-# results <- simulator$run()
-# weblog(sprintf(
-#     "Completed timestep %s of replicate %s (100%%)", 
-#     input.params$simulator$time_steps,
-#     input.params$simulator$replicates
-# ))
-# print("Simulation complete. Saving outputs..")
-
-# # Set working directory to output
-# setwd(input.env$outputdir)
-
-# # Save occupancy/population rasters for each collated time step
-# if (region$get_type() == "grid") {
-#     result_layers <- results$save_rasters(gdal = c("COMPRESS=LZW", "TILED=YES"), overwrite = TRUE)
-# }
-
-# # Save CSV & plots
-# results$save_csv()
-# tryCatch(
-#     expr = {
-#         results$save_plots(width = 1000, height = 500)
-#     },
-#     error = function(e) {
-#         print(e)
-#     }
-# )
-
-# # Generate animations
-# if (region$get_type() == "grid") {
-#   tryCatch({
-#     generate_result_animations(region, population_model, result_layers)
-#   }, error = function(e) {
-#     warning(
-#       sprintf("Animation generation failed: %s.", e$message),
-#       call. = FALSE
-#     )
-#   })
-# }
-
-# sessionInfo()
-
