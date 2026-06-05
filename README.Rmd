@@ -36,9 +36,9 @@ This section further describes the workflow components for building population s
 
 The region of interest for the study may be configured via the *Region* object class. The spatial representation may be configured as either:
 
-1. A grid-based raster layer (GeoTIFF file), whereby model processes are configured and simulated using the active (non-NA) cell locations.
-1. A network of locations or patches defined via a table of longitude and latitude coordinates (CSV file).
-1. A spatially implicit area.
+- A grid-based raster layer (GeoTIFF file), whereby model processes are configured and simulated using the active (non-NA) cell locations.
+- A network of locations or patches defined via a table of longitude and latitude coordinates (CSV file).
+- A spatially implicit area.
 
 When defined by a grid-based raster layer, the region can be configured for two-tier dispersal, whereby long-distance dispersal is calculated using a courser (aggregate) spatial resolution for destinations outside of an inner radius from each threat-occupied location, within which local dispersal is calculated using the original spatial resolution of the region.
 
@@ -50,9 +50,9 @@ The *Region* class also provides functionality for configuring and calculating m
 
 The population representation and dynamics of the biosecurity threat may be configured via one of the following object classes, which are based on (or *inherit*) the *Population* class:
 
-1. *PresencePopulation*: Models presence-only populations.
-1. *UnstructPopulation*: Models unstructured populations and their growth.
-1. *StagedPopulation*: Models stage or age-based populations and their reproduction and survival dynamics.
+- *PresencePopulation*: Models presence-only populations.
+- *UnstructPopulation*: Models unstructured populations and their growth.
+- *StagedPopulation*: Models stage or age-based populations and their reproduction and survival dynamics.
 
 Presence-only populations are modelled via a binary indication of threat presence or absence at each location at each simulation time step. An optional *spread delay* parameter may be configured to account for the time it takes for a threat species to have the ability to spread after it has established in each new location (e.g. seeding plants). This representation provides a simple approach that may be suitable for modelling spread for some threats, and are particularly useful when the parameters required for growth or population dynamics are unknown (Bradhurst et al., 2021; Jongejans, Skarpaas, & Shea, 2008).
 
@@ -66,9 +66,9 @@ Either population model (presence-only, unstructured, or staged) may be optional
 
 The generation of the initial population for each model simulation may be configured via the  *Initializer* class using either of the following approaches (Bradhurst et al., 2021; García Adeva, Botha, & Reynolds, 2012):
 
-1. Pre-defined initial population values at specified locations.
-1. Stochastically generate an initial population for each simulation (replicate) at a location chosen via sampling using incursion weightings specified for each location.
-1. Stochastically generate an initial population at one or more (or no) locations selected via sampling using arrival probabilities specified at each location. The stochastically generated threat arrivals may optionally continue to be generated at specified simulation time intervals.
+- Pre-defined initial population values at specified locations.
+- Stochastically generate an initial population for each simulation (replicate) at a location chosen via sampling using incursion weightings specified for each location.
+- Stochastically generate an initial population at one or more (or no) locations selected via sampling using arrival probabilities specified at each location. The stochastically generated threat arrivals may optionally continue to be generated at specified simulation time intervals.
 
 Both stochastic generation options also utilise functionality provided by the *Incursions* class. Initial population sizes for unstructured and staged models are generated via Poison sampling using specified means. Initial distributions of staged populations are determined stochastically via expected stage/age ratios, given the stages/ages specified for initialisation.
 

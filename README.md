@@ -37,12 +37,11 @@ population spread simulation models.
 The region of interest for the study may be configured via the *Region*
 object class. The spatial representation may be configured as either:
 
-1.  A grid-based raster layer (GeoTIFF file), whereby model processes
-    are configured and simulated using the active (non-NA) cell
-    locations.
-2.  A network of locations or patches defined via a table of longitude
-    and latitude coordinates (CSV file).
-3.  A spatially implicit area.
+- A grid-based raster layer (GeoTIFF file), whereby model processes are
+  configured and simulated using the active (non-NA) cell locations.
+- A network of locations or patches defined via a table of longitude and
+  latitude coordinates (CSV file).
+- A spatially implicit area.
 
 When defined by a grid-based raster layer, the region can be configured
 for two-tier dispersal, whereby long-distance dispersal is calculated
@@ -66,11 +65,11 @@ The population representation and dynamics of the biosecurity threat may
 be configured via one of the following object classes, which are based
 on (or *inherit*) the *Population* class:
 
-1.  *PresencePopulation*: Models presence-only populations.
-2.  *UnstructPopulation*: Models unstructured populations and their
-    growth.
-3.  *StagedPopulation*: Models stage or age-based populations and their
-    reproduction and survival dynamics.
+- *PresencePopulation*: Models presence-only populations.
+- *UnstructPopulation*: Models unstructured populations and their
+  growth.
+- *StagedPopulation*: Models stage or age-based populations and their
+  reproduction and survival dynamics.
 
 Presence-only populations are modelled via a binary indication of threat
 presence or absence at each location at each simulation time step. An
@@ -119,15 +118,15 @@ be configured via the *Initializer* class using either of the following
 approaches (Bradhurst et al., 2021; García Adeva, Botha, & Reynolds,
 2012):
 
-1.  Pre-defined initial population values at specified locations.
-2.  Stochastically generate an initial population for each simulation
-    (replicate) at a location chosen via sampling using incursion
-    weightings specified for each location.
-3.  Stochastically generate an initial population at one or more (or no)
-    locations selected via sampling using arrival probabilities
-    specified at each location. The stochastically generated threat
-    arrivals may optionally continue to be generated at specified
-    simulation time intervals.
+- Pre-defined initial population values at specified locations.
+- Stochastically generate an initial population for each simulation
+  (replicate) at a location chosen via sampling using incursion
+  weightings specified for each location.
+- Stochastically generate an initial population at one or more (or no)
+  locations selected via sampling using arrival probabilities specified
+  at each location. The stochastically generated threat arrivals may
+  optionally continue to be generated at specified simulation time
+  intervals.
 
 Both stochastic generation options also utilise functionality provided
 by the *Incursions* class. Initial population sizes for unstructured and
@@ -444,9 +443,10 @@ population_model <- bsspread::PresencePopulation(
 ### Step 3: Initialization
 
 Each spread model simulation is initialized with Hawkweed presence at a
-random location (grid-cell) within the Falls Creek township area.
-A raster defining the township area can be downloaded from [here](https://github.com/cebra-analytics/bsspread/tree/main/data)
-and copied into a *data* directory.
+random location (grid-cell) within the Falls Creek township area. A
+raster defining the township area can be downloaded from
+[here](https://github.com/cebra-analytics/bsspread/tree/main/data) and
+copied into a *data* directory.
 
 ``` r
 # Initialise Hawkweed presence within the Falls Creek township area
@@ -631,7 +631,7 @@ result_rast
 #>               occupancy_t2_mean.tif  
 #> names       :     0,     1,     2 
 #> min values  : 0.000, 0.000, 0.000 
-#> max values  : 0.035, 0.256, 0.638
+#> max values  : 0.023, 0.244, 0.581
 # Plot the mean occupancy for time steps 1 and 2
 label <- attr(result_rast$occupancy_mean, "metadata")$label
 for (i in 2:3) {
@@ -656,14 +656,14 @@ total_occupancy <- read.csv("total_occupancy.csv")
 colnames(total_occupancy)[1] <- "Total occupancy"
 print(total_occupancy)
 #>   Total occupancy t0        t1        t2
-#> 1            mean  1 15.076000 303.77800
-#> 2              sd  0  4.132227  87.71417
+#> 1            mean  1 15.004000 302.90900
+#> 2              sd  0  4.095944  88.91058
 total_area_occupied <- read.csv("total_area_occupied.csv")
 colnames(total_area_occupied)[1] <- "Total area occupied"
 print(total_area_occupied)
 #>   Total area occupied    t0        t1        t2
-#> 1                mean 10000 150760.00 3037780.0
-#> 2                  sd     0  41322.27  877141.7
+#> 1                mean 10000 150040.00 3029090.0
+#> 2                  sd     0  40959.44  889105.8
 ```
 
 Time-series plots of total occupancy and total area occupied may also be
