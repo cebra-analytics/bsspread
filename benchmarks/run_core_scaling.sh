@@ -240,7 +240,7 @@ append_csv_row() {
   # Escape commas in notes
   notes="${notes//,/;}"
 
-  printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
+  printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
     "${ts}" "${SCALING_RUN_STARTED_AT}" "${SCALING_RUN_ID}" "${sha}" "${HOSTNAME_SHORT}" \
     "${cpus}" "${rep_idx}" "${warmup}" \
     "${MASTER_CKPT}" "${CHECKPOINT_SAVED_TM}" "${CHECKPOINT_REPLICATE}" "${BENCHMARK_TIMESTEP}" \
