@@ -445,6 +445,8 @@ population_model <- bsspread::PresencePopulation(
 
 Each spread model simulation is initialized with Hawkweed presence at a
 random location (grid-cell) within the Falls Creek township area.
+A raster defining the township area can be downloaded from [here](https://github.com/cebra-analytics/bsspread/tree/main/data)
+and copied into a *data* directory.
 
 ``` r
 # Initialise Hawkweed presence within the Falls Creek township area
