@@ -18,7 +18,7 @@ profile_output <- ""  # empty -> <outputdir>/profvis_timestep_r{r}_tm{tm}.html
 checkpoint_tm <- as.integer(Sys.getenv("CHECKPOINT_TM", unset = "0"))
 checkpoint_replicate <- as.integer(Sys.getenv(
     "CHECKPOINT_REPLICATE",
-    unset = as.character(profile_replicate)))
+    unset = "2"))
 checkpoint_resume <- identical(Sys.getenv("CHECKPOINT_RESUME"), "1")
 checkpoint_stop <- identical(Sys.getenv("CHECKPOINT_STOP"), "1")
 
@@ -1048,9 +1048,7 @@ input.params <- params
 input.env <- params[['platform:env']]
 rm(params)
 
-if(!dir.exists("/workdir/output/905981bc-5b25-11f1-83ba-0ac9cb3ae0bb")) {
-    dir.create("/workdir/output/905981bc-5b25-11f1-83ba-0ac9cb3ae0bb", recursive = TRUE)
-}
+if(!dir.exists(input.env$outputdir)) { dir.create(input.env$outputdir, recursive = TRUE) }
 
 # Set terra tmpdir to job scratch space
 terra::terraOptions(tempdir = input.env$workdir)
@@ -1891,6 +1889,24 @@ load_simulation_checkpoint <- function(file) {
     bench
 }
 
+# Deep copy for repeated benchmark reps without re-readRDS (serialize round-trip).
+duplicate_simulation_checkpoint <- function(bench) {
+    unserialize(serialize(bench, NULL))
+}
+
+duplicate_checkpoint_paths <- function(paths) {
+    unserialize(serialize(paths, NULL))
+}
+
+# Reset state from an immutable scaling master (paths deep-copied; n/rng from master).
+apply_scaling_checkpoint_restore <- function(region, population_model, master) {
+    .Random.seed <- master$rng
+    restore_region_paths(region, duplicate_checkpoint_paths(master$paths))
+    population_model$set_capacity_mult(master$n)
+    n <<- master$n
+    master$calc_impacts
+}
+
 # Create objects
 if (!is.null(input.params$context) && !is.null(input.params$context$impacts) && input.params$context$impacts$include) {
     impact_types <- unlist(input.params$context$impacts[c("social", "economic", "ecological")])
@@ -2020,11 +2036,17 @@ progress_function <- function(n, r, tm) {
     return(n)
 }
 
-# Use serial (not parallel) when there is a random seed
+# Use serial (not parallel) when there is a random seed (unless benchmark override)
 if (is.numeric(input.params$random_seed)) {
-    cpus <- 1
     set.seed(input.params$random_seed)
-    print("Using seed, this will run without parallel threads!")
+    if (identical(Sys.getenv("BENCHMARK_ALLOW_PARALLEL"), "1")) {
+        message(
+            "random_seed set but BENCHMARK_ALLOW_PARALLEL=1: using TASK_CPUS/DEFAULT_CPUS"
+        )
+    } else {
+        cpus <- 1
+        print("Using seed, this will run without parallel threads!")
+    }
 }
 
 simulator <- bsmanage::ManageSimulator(
@@ -2099,6 +2121,9 @@ if (checkpoint_resume) {
         )
     }
     checkpoint_data <- load_simulation_checkpoint(ckpt_path)
+    if (as.integer(Sys.getenv("BENCHMARK_SCALING_REPS", unset = "0")) > 0L) {
+        checkpoint_data <- duplicate_simulation_checkpoint(checkpoint_data)
+    }
     .Random.seed <- checkpoint_data$rng
     restore_region_paths(region, checkpoint_data$paths)
     population_model$set_capacity_mult(checkpoint_data$n)
@@ -2107,7 +2132,58 @@ if (checkpoint_resume) {
 
 gc_time_prev <- sum(gc.time())
 
-for (r in seq_len(2)) {
+benchmark_replicate <- Sys.getenv("BENCHMARK_REPLICATE", unset = "")
+checkpoint_warmup_reps <- Sys.getenv("CHECKPOINT_WARMUP_REPS", unset = "")
+if (nzchar(benchmark_replicate)) {
+    replicate_seq <- as.integer(benchmark_replicate)
+} else if (nzchar(checkpoint_warmup_reps)) {
+    warmup_reps <- as.integer(strsplit(
+        checkpoint_warmup_reps, ",", fixed = TRUE)[[1]])
+    replicate_seq <- c(warmup_reps, checkpoint_replicate)
+    message(sprintf(
+        paste0(
+            "Checkpoint create: warmup replicate(s) %s (shared region path cache), ",
+            "then replicate %d"
+        ),
+        paste(warmup_reps, collapse = ", "),
+        checkpoint_replicate
+    ))
+} else if (checkpoint_resume && !is.null(checkpoint_data)) {
+    # Resume only the replicate stored in the checkpoint (e.g. tm=29 r=2 -> run r=2)
+    replicate_seq <- checkpoint_data$r
+    message(sprintf(
+        "Checkpoint resume: running replicate %d only (set BENCHMARK_REPLICATE to override)",
+        checkpoint_data$r
+    ))
+} else {
+    replicate_seq <- seq_len(2)
+}
+benchmark_time_end <- Sys.getenv("BENCHMARK_TIME_END", unset = "")
+tm_run_end <- if (nzchar(benchmark_time_end)) {
+    as.integer(benchmark_time_end)
+} else {
+    time_steps
+}
+checkpoint_warmup_time_end <- Sys.getenv("CHECKPOINT_WARMUP_TIME_END", unset = "")
+warmup_tm_end <- if (nzchar(checkpoint_warmup_time_end)) {
+    as.integer(checkpoint_warmup_time_end)
+} else {
+    time_steps
+}
+warmup_reps_vec <- if (nzchar(checkpoint_warmup_reps)) {
+    as.integer(strsplit(checkpoint_warmup_reps, ",", fixed = TRUE)[[1]])
+} else {
+    integer(0)
+}
+if (length(warmup_reps_vec) && nzchar(checkpoint_warmup_reps)) {
+    message(sprintf(
+        "Checkpoint create: warmup replicate(s) run through tm=%d; checkpoint replicate through tm=%d",
+        warmup_tm_end,
+        tm_run_end
+    ))
+}
+
+for (r in replicate_seq) {
     if (identical(Sys.getenv("PATHS_EQ_DUMP", unset = ""), "1")) {
         Sys.setenv(PATHS_EQ_REPLICATE = as.character(r))
     }
@@ -2172,7 +2248,50 @@ for (r in seq_len(2)) {
     }
     } # end !resume_this_r initialise block
 
-    for (tm in tm_start:time_steps) {
+    tm_end_r <- if (length(warmup_reps_vec) && r %in% warmup_reps_vec) {
+        warmup_tm_end
+    } else {
+        tm_run_end
+    }
+
+    benchmark_scaling_reps <- as.integer(Sys.getenv(
+        "BENCHMARK_SCALING_REPS", unset = "0"))
+    scaling_ckpt_master <- NULL
+    if (benchmark_scaling_reps > 0L) {
+        if (is.null(checkpoint_data) || !resume_this_r) {
+            stop(
+                "BENCHMARK_SCALING_REPS requires CHECKPOINT_RESUME for the checkpoint replicate",
+                call. = FALSE)
+        }
+        scaling_ckpt_master <- checkpoint_data
+        message(sprintf(
+            paste0(
+                "BENCHMARK_SCALING_REPS=%d: one process, scenario built once; ",
+                "frozen checkpoint + paths copy per rep (no readRDS)"
+            ),
+            benchmark_scaling_reps))
+    }
+    scaling_rep_count <- if (benchmark_scaling_reps > 0L) {
+        benchmark_scaling_reps
+    } else {
+        1L
+    }
+
+    for (scaling_rep_i in seq_len(scaling_rep_count)) {
+        if (!is.null(scaling_ckpt_master)) {
+            calc_impacts <- apply_scaling_checkpoint_restore(
+                region, population_model, scaling_ckpt_master)
+            # n assigned in parent via <<- inside apply_scaling_checkpoint_restore
+            message(sprintf(
+                "BENCHMARK scaling rep %d/%d (paths copy from frozen checkpoint)",
+                scaling_rep_i, scaling_rep_count))
+            if (identical(Sys.getenv("BENCHMARK_SCALING_GC"), "1") &&
+                scaling_rep_i < scaling_rep_count) {
+                gc(FALSE)
+            }
+        }
+
+    for (tm in tm_start:tm_end_r) {
         t0 <- Sys.time()
         profile_this <- isTRUE(profile_timestep) &&
             r == profile_replicate &&
@@ -2339,9 +2458,18 @@ for (r in seq_len(2)) {
                 rng_check = rng_check
             )
         }
+        bench_rep_prefix <- if (benchmark_scaling_reps > 0L) {
+            sprintf("BENCHMARK_REP=%d ", scaling_rep_i)
+        } else {
+            ""
+        }
         message(sprintf(
-            "tm=%s r=%s | grow=%.2fs  dispersal=%.2fs  impacts=%.2fs  actions=%.2fs  other=%.2fs | total=%.2fs | %s sys avail | %s rss | gc=%.3fs | rng check=%.4f",
-            tm, r,
+            paste0(
+                "%stm=%s r=%s | grow=%.2fs  dispersal=%.2fs  ",
+                "impacts=%.2fs  actions=%.2fs  other=%.2fs | total=%.2fs | ",
+                "%s sys avail | %s rss | gc=%.3fs | rng check=%.4f"
+            ),
+            bench_rep_prefix, tm, r,
             elapsed(t0, t1),
             elapsed(t1, t2),
             elapsed(t2, t3),
@@ -2371,6 +2499,14 @@ for (r in seq_len(2)) {
             }
         }
     }
+    } # end scaling_rep_i
+}
+
+benchmark_scaling_reps_done <- as.integer(Sys.getenv(
+    "BENCHMARK_SCALING_REPS", unset = "0"))
+if (benchmark_scaling_reps_done > 0L) {
+    message("BENCHMARK_SCALING_REPS complete")
+    quit(save = "no", status = 0)
 }
 
 if (eq_enabled) {
