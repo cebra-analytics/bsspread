@@ -29,6 +29,9 @@ benchmark_reseed_per_replicate <- identical(
 #   BENCHMARK_PARALLEL_REPLICATES=1 TASK_CPUS=4
 benchmark_parallel_replicates <- identical(
     Sys.getenv("BENCHMARK_PARALLEL_REPLICATES"), "1")
+# Skip results$finalize() and save_rasters/csv/plots (timing-only benchmark runs):
+#   BENCHMARK_SKIP_SAVE=1
+benchmark_skip_save <- identical(Sys.getenv("BENCHMARK_SKIP_SAVE"), "1")
 
 # data_utils.R
 # Platform wrapper utils
@@ -2757,4 +2760,46 @@ if (eq_enabled) {
         eq_files$metrics_path,
         eq_files$occupancy_path
     ))
+}
+
+if (benchmark_skip_save) {
+    message("BENCHMARK_SKIP_SAVE=1: skipping results finalize and output writes")
+} else {
+    results$finalize()
+    rate_limited_weblog(sprintf(
+        "Completed timestep %s of replicate %s (100%%)",
+        input.params$simulator$time_steps,
+        input.params$simulator$replicates
+    ))
+    message("Simulation complete. Saving outputs..")
+
+    setwd(input.env$outputdir)
+
+    result_layers <- NULL
+    if (region$get_type() == "grid") {
+        result_layers <- results$save_rasters(
+            gdal = c("COMPRESS=LZW", "TILED=YES"),
+            overwrite = TRUE
+        )
+    }
+
+    results$save_csv()
+    tryCatch(
+        results$save_plots(width = 1000, height = 500),
+        error = function(e) {
+            print(e)
+        }
+    )
+
+    if (region$get_type() == "grid" && !is.null(result_layers)) {
+        tryCatch(
+            generate_result_animations(region, population_model, result_layers),
+            error = function(e) {
+                warning(
+                    sprintf("Animation generation failed: %s.", e$message),
+                    call. = FALSE
+                )
+            }
+        )
+    }
 }
