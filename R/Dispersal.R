@@ -376,6 +376,11 @@ Dispersal.Region <- function(region, population_model,
       }
     }
 
+    # Pre-fetch attractor values as plain vectors before parallel block.
+    # Avoids passing full Attractor environments (with terra SpatRasters) to
+    # workers and eliminates per-origin environment traversal in get_values().
+    attractor_cell_vals <- NULL
+    attractor_aggr_vals <- NULL
     if (length(attractors)) {
       for (attractor in attractors) {
         if (inherits(attractor, "Attractor") &&
@@ -383,6 +388,13 @@ Dispersal.Region <- function(region, population_model,
           attractor$warm_value_cache()
         }
       }
+      attractor_cell_vals <- lapply(attractors, function(a) {
+        if (inherits(a, "Attractor")) a$get_values() else NULL
+      })
+      attractor_aggr_vals <- lapply(attractors, function(a) {
+        if (inherits(a, "Attractor") &&
+            is.function(a$get_aggr_values)) a$get_aggr_values() else NULL
+      })
     }
 
     # One terra extract per disperse(); per-origin aggr weights use integer subset
@@ -522,16 +534,16 @@ Dispersal.Region <- function(region, population_model,
       }
 
       ## Adjust (relative) probabilities via attractors
-      if (length(attractors)) {
-        for (attractor in attractors) {
-          if (inherits(attractor, "Attractor")) {
+      if (!is.null(attractor_cell_vals)) {
+        for (j in seq_along(attractor_cell_vals)) {
+          if (!is.null(attractor_cell_vals[[j]])) {
             destination_p$cell <-
-              (destination_p$cell*
-                 attractor$get_values(paths$idx[[loc_char]]$cell))
-            if (aggr_paths_present) {
+              destination_p$cell*
+                attractor_cell_vals[[j]][paths$idx[[loc_char]]$cell]
+            if (aggr_paths_present && !is.null(attractor_aggr_vals[[j]])) {
               destination_p$aggr <-
-                (destination_p$aggr*
-                   attractor$get_aggr_values(paths$idx[[loc_char]]$aggr))
+                destination_p$aggr*
+                  attractor_aggr_vals[[j]][paths$idx[[loc_char]]$aggr]
             }
           }
         }
@@ -774,9 +786,11 @@ Dispersal.Region <- function(region, population_model,
 
               # Perform a weighted sample via attractors when present
               aggr_p <- rep(1, length(aggr_cells))
-              for (attractor in attractors) {
-                if (inherits(attractor, "Attractor")) {
-                  aggr_p <- aggr_p*attractor$get_values(aggr_cells)
+              if (!is.null(attractor_cell_vals)) {
+                for (j in seq_along(attractor_cell_vals)) {
+                  if (!is.null(attractor_cell_vals[[j]])) {
+                    aggr_p <- aggr_p*attractor_cell_vals[[j]][aggr_cells]
+                  }
                 }
               }
               aggr_i <- aggr_cells[sample(
