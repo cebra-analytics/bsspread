@@ -864,9 +864,34 @@ Dispersal.Region <- function(region, population_model,
           }
         }
 
-        # Return population relocation components
-        list(i = i, dispersals = dispersals, remaining = remaining,
-             destinations = destinations, dispersers = dispersers)
+        # Return population relocation components (aggregated per destination)
+        if (population_type == "presence_only") {
+          dest <- unique(destinations)
+          if (!length(dest)) {
+            return(list(i = i, dispersals = FALSE))
+          }
+          list(i = i, dispersals = TRUE, remaining = remaining, dest = dest)
+        } else if (population_type == "unstructured") {
+          dest <- integer(0)
+          counts <- numeric(0)
+          if (length(destinations)) {
+            agg <- rowsum(rowSums(dispersers), destinations, reorder = FALSE)
+            dest <- as.integer(rownames(agg))
+            counts <- agg[, 1L]
+          }
+          list(i = i, dispersals = TRUE, remaining = remaining,
+               dest = dest, counts = counts)
+        } else if (population_type == "stage_structured") {
+          dest <- integer(0)
+          counts <- matrix(numeric(0), ncol = length(dispersal_stages))
+          if (length(destinations)) {
+            agg <- rowsum(dispersers, destinations, reorder = FALSE)
+            dest <- as.integer(rownames(agg))
+            counts <- agg
+          }
+          list(i = i, dispersals = TRUE, remaining = remaining,
+               dest = dest, counts = counts)
+        }
 
       } else {
 
@@ -915,19 +940,15 @@ Dispersal.Region <- function(region, population_model,
         n$remaining[d$i, dispersal_stages] <- d$remaining
 
         # Update relocated population
-        if (population_type == "presence_only") {
-          n$relocated[unique(d$destinations)] <- TRUE
-        } else if (population_type == "unstructured") {
-          dispersers <- rowsum(rowSums(d$dispersers), d$destinations,
-                               reorder = FALSE)
-          destinations <- as.integer(rownames(dispersers))
-          n$relocated[destinations] <-
-            n$relocated[destinations] + dispersers[, 1L]
-        } else if (population_type == "stage_structured") {
-          dispersers <- rowsum(d$dispersers, d$destinations, reorder = FALSE)
-          destinations <- as.integer(rownames(dispersers))
-          n$relocated[destinations, dispersal_stages] <-
-            n$relocated[destinations, dispersal_stages] + dispersers
+        if (length(d$dest)) {
+          if (population_type == "presence_only") {
+            n$relocated[d$dest] <- TRUE
+          } else if (population_type == "unstructured") {
+            n$relocated[d$dest] <- n$relocated[d$dest] + d$counts
+          } else if (population_type == "stage_structured") {
+            n$relocated[d$dest, dispersal_stages] <-
+              n$relocated[d$dest, dispersal_stages] + d$counts
+          }
         }
       }
     }
