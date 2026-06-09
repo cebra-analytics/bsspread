@@ -2546,10 +2546,14 @@ for (r in replicate_seq) {
                     for (i in seq_along(dispersal_models)) {
                         t_dm <- Sys.time()
                         n <<- dispersal_models[[i]]$disperse(n, tm)
+                        aggr_n <- attr(n, "dispersal_aggr_n")
                         message(sprintf(
-                            "    dispersal model %d: %.2fs",
+                            "    dispersal model %d: %.2fs%s",
                             i,
-                            as.numeric(Sys.time() - t_dm, units = "secs")))
+                            as.numeric(Sys.time() - t_dm, units = "secs"),
+                            if (!is.null(aggr_n) && aggr_n > 0)
+                                sprintf(" (aggr_dest=%d)", aggr_n)
+                            else ""))
                     }
                     n <<- dispersal_models[[1]]$unpack(n)
                 }
