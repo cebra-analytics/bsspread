@@ -904,9 +904,11 @@ Dispersal.Region <- function(region, population_model,
     if (is.numeric(parallel_cores) &&
         min(parallel_cores, length(dispersal_ready)) > 1) {
 
-      # Calculate and collect in parallel
-      doParallel::registerDoParallel(cores = min(parallel_cores,
-                                                 length(dispersal_ready)))
+      # Calculate and collect in parallel via socket workers (not mclapply).
+      # Forking after terra/GDAL/TBB use in the parent can serialize workers or
+      # hang on C-level locks; doParallel spawns fresh R processes instead.
+      cores <- min(parallel_cores, length(dispersal_ready))
+      doParallel::registerDoParallel(cores = cores)
       dispersal_list <- foreach(
         i = dispersal_ready,
         .errorhandling = c("stop")) %dopar% {
@@ -915,9 +917,12 @@ Dispersal.Region <- function(region, population_model,
       doParallel::stopImplicitCluster()
 
       # Recover from parallel memory failures via serial calculations
-      if (any(sapply(dispersal_list, is.null))) {
+      failed <- vapply(dispersal_list,
+                       function(d) is.null(d) || inherits(d, "try-error"),
+                       logical(1))
+      if (any(failed)) {
         message("Parallel dispersal memory failures detected - trying serial")
-        for (i in which(sapply(dispersal_list, is.null))) {
+        for (i in which(failed)) {
           dispersal_list[[i]] <- calculate_dispersals(dispersal_ready[i])
         }
       }
