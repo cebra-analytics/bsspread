@@ -412,7 +412,8 @@ Dispersal.Region <- function(region, population_model,
       }
 
       ## Check that dispersal paths are present
-      if (length(unlist(paths$idx[[loc_char]])) == 0) {
+      if (length(paths$idx[[loc_char]]$cell) == 0 &&
+          length(paths$idx[[loc_char]]$aggr) == 0) {
         return(list(i = i, dispersals = FALSE))
       }
       aggr_paths_present <- region$two_tier()
