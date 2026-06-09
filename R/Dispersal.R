@@ -331,9 +331,6 @@ Dispersal.Region <- function(region, population_model,
   # Generic disperse method (may be overridden in subclass)
   self$disperse <- function(n, tm) {
 
-    # Ensure cell characters are stored without scientific notation
-    options(scipen = 999)
-
     # Calculate paths
     region$calculate_paths(n$indices)
 
@@ -409,7 +406,7 @@ Dispersal.Region <- function(region, population_model,
 
       ## Map path lists use location indices as characters
       loc_i <- n$indices[i]
-      loc_char <- as.character(loc_i)
+      loc_char <- cell_key(loc_i)
 
       ## Get paths for location
       paths <- region$get_paths(
@@ -975,9 +972,6 @@ Dispersal.Region <- function(region, population_model,
         }
       }
     }
-
-    # Reinstate default scientific notation
-    options(scipen = 0)
 
     attr(n, "dispersal_aggr_n") <- total_aggr_n
     return(n)
