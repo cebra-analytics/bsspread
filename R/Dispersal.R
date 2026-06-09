@@ -918,18 +918,14 @@ Dispersal.Region <- function(region, population_model,
         if (population_type == "presence_only") {
           n$relocated[unique(d$destinations)] <- TRUE
         } else if (population_type == "unstructured") {
-          destinations <- unique(d$destinations)
-          dispersers <- sapply(destinations, function(di)
-            sum(d$dispersers[which(d$destinations == di)]))
+          dispersers <- rowsum(rowSums(d$dispersers), d$destinations,
+                               reorder = FALSE)
+          destinations <- as.integer(rownames(dispersers))
           n$relocated[destinations] <-
-            n$relocated[destinations] + dispersers
+            n$relocated[destinations] + dispersers[, 1L]
         } else if (population_type == "stage_structured") {
-          destinations <- unique(d$destinations)
-          dispersers <- sapply(destinations, function(di)
-            colSums(d$dispersers[which(d$destinations == di),,drop = FALSE]))
-          if (is.matrix(dispersers)) {
-            dispersers <- t(dispersers)
-          }
+          dispersers <- rowsum(d$dispersers, d$destinations, reorder = FALSE)
+          destinations <- as.integer(rownames(dispersers))
           n$relocated[destinations, dispersal_stages] <-
             n$relocated[destinations, dispersal_stages] + dispersers
         }
