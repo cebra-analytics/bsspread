@@ -35,6 +35,12 @@ benchmark_skip_save <- identical(Sys.getenv("BENCHMARK_SKIP_SAVE"), "1")
 # Per-phase RNG stream probes (bsspread::rng_probe; digest(.Random.seed), non-mutating):
 #   RNG_PROBE=1 TASK_CPUS=1 Rscript bsspread-compare.R
 # Optional: RNG_PROBE_TM=3,4  RNG_PROBE_ORIGIN_MAX=50  RNG_PROBE_ORIGIN_DUMP=8
+# A/B on main-investigating-rng-drift (optimised build only; baseline unchanged):
+#   EQ_REVERT_AGGR_WEIGHTS=1  — baseline aggr raster lookup per origin
+#   EQ_REVERT_APPLY=1         — baseline sapply apply loop + worker returns
+# Example:
+#   RNG_PROBE=1 RNG_PROBE_TM=3 RNG_PROBE_ORIGIN_DUMP=8 EQ_REVERT_AGGR_WEIGHTS=1 \
+#   TASK_CPUS=1 BENCHMARK_REPLICATE=1 Rscript bsspread-compare.R 2>&1 | tee rng_dump_o8_aggr.log
 
 # data_utils.R
 # Platform wrapper utils
