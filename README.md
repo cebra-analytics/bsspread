@@ -551,14 +551,22 @@ new colony in the following year. Seeds remain viable for up to 7 years
 (Hauser & McCarthy, 2009) and may establish in suitable locations in
 subsequent years. These delayed seed establishment dynamics may be
 modelled with complex stage-based population models over longer
-time-spans. For our simple presence-only model, however, we consider any
-seed arrivals that may establish new colonies in the near future, and
-thus utilise an estimated mean number of dispersal *events* of 800.
+time-spans. However, for our simple presence-only model we only consider
+seed arrivals that establish new colonies in their first year. To
+approximately reproduce the simulated the dispersal-constrained habitat
+suitability from Williams et al. (2008 - Figure 6) and Hauser & McCarthy
+(2009 - Figure 2a), we estimate that up to 10% of seed arrivals
+establish within suitable locations in their first year, thus a mean
+number of dispersal *events* of 80 was chosen for our model.
+Alternatively, we could have scaled our establishment probability
+estimated in step 2 by 10% to model the single-year establishment of all
+(up to 800) seeds dispersing, but this would be more computationally
+demanding to simulate.
 
 ``` r
 dispersal_model <- bsspread::Dispersal(region,
                                        population_model,
-                                       events = 800,
+                                       events = 80,
                                        distance_function = distance_kernel,
                                        direction_function = direction_kernel)
 ```
@@ -567,37 +575,37 @@ dispersal_model <- bsspread::Dispersal(region,
 
 We can now build and run our population spread model simulations via a
 *Simulator* class object, with links to our population model,
-initializer, and dispersal model. We will run 10,000 replicate
-stochastic model simulations each having a 1-year time step.
+initializer, and dispersal model. We will run 1000 replicate stochastic
+model simulations each having two 1-year time steps.
 
 ``` r
 progress_function <- function(n, r, tm) {
-  if (r %% 1000 == 0 ) {
+  if (r %% 100 == 0 && tm == 2) {
     print(paste("replicate", r))
   }
   return(n)
 }
 simulator <- bsspread::Simulator(region,
-                                 time_steps = 1,
+                                 time_steps = 2,
                                  step_duration = 1,
                                  step_units = "years",
-                                 replicates = 10000,
+                                 replicates = 1000,
                                  parallel_cores = 8,
                                  initializer = initializer,
                                  population_model = population_model,
                                  dispersal_models = list(dispersal_model),
                                  user_function = progress_function)
 results <- simulator$run()
+#> [1] "replicate 100"
+#> [1] "replicate 200"
+#> [1] "replicate 300"
+#> [1] "replicate 400"
+#> [1] "replicate 500"
+#> [1] "replicate 600"
+#> [1] "replicate 700"
+#> [1] "replicate 800"
+#> [1] "replicate 900"
 #> [1] "replicate 1000"
-#> [1] "replicate 2000"
-#> [1] "replicate 3000"
-#> [1] "replicate 4000"
-#> [1] "replicate 5000"
-#> [1] "replicate 6000"
-#> [1] "replicate 7000"
-#> [1] "replicate 8000"
-#> [1] "replicate 9000"
-#> [1] "replicate 10000"
 ```
 
 ### Step 6: Results
@@ -614,24 +622,27 @@ result_rast <- results$save_rasters()
 result_rast
 #> $occupancy_mean
 #> class       : SpatRaster 
-#> size        : 170, 180, 2  (nrow, ncol, nlyr)
+#> size        : 170, 180, 3  (nrow, ncol, nlyr)
 #> resolution  : 100, 100  (x, y)
 #> extent      : 1354000, 1372000, -4120000, -4103000  (xmin, xmax, ymin, ymax)
 #> coord. ref. : GDA2020 / Australian Albers (EPSG:9473) 
 #> sources     : occupancy_t0_mean.tif  
 #>               occupancy_t1_mean.tif  
-#> names       :      0,      1 
-#> min values  : 0.0000, 0.0000 
-#> max values  : 0.0184, 0.6961
-# Plot the mean occupancy for time step 1
+#>               occupancy_t2_mean.tif  
+#> names       :     0,     1,    2 
+#> min values  : 0.000, 0.000, 0.00 
+#> max values  : 0.021, 0.229, 0.58
+# Plot the mean occupancy for time steps 1 and 2
 label <- attr(result_rast$occupancy_mean, "metadata")$label
-terra::plot(log(result_rast$occupancy_mean[[2]], base = 10), colNA = "black",
-            main = paste(label, "of Hawkweed (log)"))
+for (i in 2:3) {
+  terra::plot(log(result_rast$occupancy_mean[[i]], base = 10), colNA = "black",
+              main = paste(label, ": time step", i - 1, "(log)"))
+}
 ```
 
-<img src="man/figures/README-example_6_1-1.png" width="100%" style="display: block; margin: auto;" />
+<img src="man/figures/README-example_6_1-1.png" width="100%" style="display: block; margin: auto;" /><img src="man/figures/README-example_6_1-2.png" width="100%" style="display: block; margin: auto;" />
 
-The raster plots indicate the mean (log) occupancy across the 10,000
+The raster plots indicate the mean (log) occupancy across the 1000
 replicate simulations. Note that unstructured and staged population
 models also produce raster plots for the standard deviation (SD) of
 occupancy, as well as mean and SD for population sized. We may also
@@ -644,15 +655,15 @@ results$save_csv()
 total_occupancy <- read.csv("total_occupancy.csv")
 colnames(total_occupancy)[1] <- "Total occupancy"
 print(total_occupancy)
-#>   Total occupancy t0        t1
-#> 1            mean  1 123.95530
-#> 2              sd  0  17.98784
+#>   Total occupancy t0        t1       t2
+#> 1            mean  1 15.187000 305.7310
+#> 2              sd  0  4.263826  92.2142
 total_area_occupied <- read.csv("total_area_occupied.csv")
 colnames(total_area_occupied)[1] <- "Total area occupied"
 print(total_area_occupied)
-#>   Total area occupied    t0        t1
-#> 1                mean 10000 1239553.0
-#> 2                  sd     0  179878.4
+#>   Total area occupied    t0        t1      t2
+#> 1                mean 10000 151870.00 3057310
+#> 2                  sd     0  42638.26  922142
 ```
 
 Time-series plots of total occupancy and total area occupied may also be
