@@ -51,7 +51,7 @@ eq_capture_step <- function(state,
                             actions_s = NA_real_,
                             other_s = NA_real_,
                             total_s = NA_real_,
-                            rng_check = NA_real_) {
+                            rng_check = NA_character_) {
   stopifnot(is.list(state), !is.null(state$metrics))
 
   occ <- eq_occ_indices(n)
@@ -79,7 +79,7 @@ eq_capture_step <- function(state,
     actions_s = as.numeric(actions_s),
     other_s = as.numeric(other_s),
     total_s = as.numeric(total_s),
-    rng_check = as.numeric(rng_check),
+    rng_check = as.character(rng_check),
     stringsAsFactors = FALSE
   )
 
