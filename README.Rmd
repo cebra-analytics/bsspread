@@ -319,32 +319,32 @@ fmsb::radarchart(radar_data, vlabels = vlabels, pty = 32, seg = 36,
 
 #### Dispersal class object
 
-We can now build our *Dispersal* class object with the custom distance and direction kernels. To estimate the mean number of dispersal *events* from each occupied location at each simulated time step we consider published information about Hawkweed seed dispersal. Hawkweeds produce up to 40,000 seeds a year per one squared metre mat, and can form a colony up to 0.5 metres across in its first year (CRC, 2003). Approximately 8% of seeds travel greater than 100 metres (Williams et al., 2008). Thus, we would expect up to 40000\*0.25\*0.08 = 800 seeds to disperse (> 100 m) from each (new) colony, although we wouldn't expect all seeds arriving in suitable locations to establish and grow into a new colony in the following year. Seeds remain viable for up to 7 years (Hauser & McCarthy, 2009) and may establish in suitable locations in subsequent years. These delayed seed establishment dynamics may be modelled with complex stage-based population models over longer time-spans. However, for our simple presence-only model we only consider seed arrivals that establish new colonies in their first year. To approximately reproduce the simulated the dispersal-constrained habitat suitability from Williams et al. (2008 - Figure 6) and Hauser & McCarthy (2009 - Figure 2a), we estimate that up to 10% of seed arrivals establish within suitable locations in their first year, thus a mean number of dispersal *events* of 80 was chosen for our model. Alternatively, we could have scaled our establishment probability estimated in step 2 by 10% to model the single-year establishment of all (up to 800) seeds dispersing, but this would be more computationally demanding to simulate.
+We can now build our *Dispersal* class object with the custom distance and direction kernels. To estimate the mean number of dispersal *events* from each occupied location at each simulated time step we consider published information about Hawkweed seed dispersal. Hawkweeds produce up to 40,000 seeds a year per one squared metre mat, and can form a colony up to 0.5 metres across in its first year (CRC, 2003). Approximately 8% of seeds travel greater than 100 metres (Williams et al., 2008). Thus, we would expect up to 40000\*0.25\*0.08 = 800 seeds to disperse (> 100 m) from each (new) colony, although we wouldn't expect all seeds arriving in suitable locations to establish and grow into a new colony in the following year. Seeds remain viable for up to 7 years (Hauser & McCarthy, 2009) and may establish in suitable locations in subsequent years. These delayed seed establishment dynamics may be modelled with complex stage-based population models over longer time-spans. For our simple presence-only model, however, we consider any seed arrivals that may establish new colonies in the near future, and thus utilise an estimated mean number of dispersal *events* of 800.
 
 ```{r example_4_3, message = FALSE, fig.align = "center"}
 dispersal_model <- bsspread::Dispersal(region,
                                        population_model,
-                                       events = 80,
+                                       events = 800,
                                        distance_function = distance_kernel,
                                        direction_function = direction_kernel)
 ```
 
 ### Step 5: Simulator
 
-We can now build and run our population spread model simulations via a *Simulator* class object, with links to our population model, initializer, and dispersal model. We will run 1000 replicate stochastic model simulations each having a 2-year time steps.
+We can now build and run our population spread model simulations via a *Simulator* class object, with links to our population model, initializer, and dispersal model. We will run 10,000 replicate stochastic model simulations each having a 1-year time step.
 
 ```{r example_5, message = FALSE, fig.align = "center"}
 progress_function <- function(n, r, tm) {
-  if (r %% 100 == 0 && tm == 2) {
+  if (r %% 1000 == 0 ) {
     print(paste("replicate", r))
   }
   return(n)
 }
 simulator <- bsspread::Simulator(region,
-                                 time_steps = 2,
+                                 time_steps = 1,
                                  step_duration = 1,
                                  step_units = "years",
-                                 replicates = 1000,
+                                 replicates = 10000,
                                  parallel_cores = 8,
                                  initializer = initializer,
                                  population_model = population_model,
@@ -361,15 +361,13 @@ The *Simulator* class object's *run* method returns a *Results* class object enc
 # Save raster files for each simulated time step
 result_rast <- results$save_rasters()
 result_rast
-# Plot the mean occupancy for time steps 1 and 2
+# Plot the mean occupancy for time step 1
 label <- attr(result_rast$occupancy_mean, "metadata")$label
-for (i in 2:3) {
-  terra::plot(log(result_rast$occupancy_mean[[i]], base = 10), colNA = "black",
-              main = paste(label, ": time step", i - 1, "(log)"))
-}
+terra::plot(log(result_rast$occupancy_mean[[2]], base = 10), colNA = "black",
+            main = paste(label, "of Hawkweed (log)"))
 ```
 
-The raster plots indicate the mean (log) occupancy across the 1000 replicate simulations. Note that unstructured and staged population models also produce raster plots for the standard deviation (SD) of occupancy, as well as mean and SD for population sized. We may also examine the total occupancy (locations occupied) and the total area occupied via summary tables (CSV).
+The raster plots indicate the mean (log) occupancy across the 10,000 replicate simulations. Note that unstructured and staged population models also produce raster plots for the standard deviation (SD) of occupancy, as well as mean and SD for population sized. We may also examine the total occupancy (locations occupied) and the total area occupied via summary tables (CSV).
 
 ```{r example_6_2, message = FALSE, fig.align = "center"}
 # Save CSV summary tables
