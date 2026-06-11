@@ -187,7 +187,7 @@ terra::plot(region$get_rast(1), colNA = "grey",
 
 ### Step 2: Population model
 
-For our Hawkweed example we will utilise a presence-only population model. We will configure the establishment probability for the population via an approximate mapping of habitat suitability values for vegetation/landscape types provided in Williams, Hahs, & Morgan (2008), to NVIS (2025) major vegetation group (MVG) classes:
+For our Hawkweed example we will utilise a presence-only population model. We will configure the establishment probability for the population via an approximate mapping of habitat suitability values for vegetation/landscape types provided in Williams, Hahs, & Morgan (2008 - Table 1), to NVIS (2025) major vegetation group (MVG) classes:
 
 | Vegetation type | Est. prob. | Mapped to MVG |
 |:-|:-:|:-:|
@@ -209,6 +209,8 @@ For our Hawkweed example we will utilise a presence-only population model. We wi
 | Forests (assumed low) | 0.01 | 3 |
 | Woodlands (assumed low) | 0.01 | 5 |
 
+The NVIS layer classifies the Falls Creek township area as "unclassified native vegetation", although the area highly suitable according to Williams, Hahs, & Morgan (2008 - Figure 4). We will thus increase the establishment probability of the township area to 0.99. A raster defining the township area can be downloaded from [here](https://github.com/cebra-analytics/bsspread/tree/main/data) and copied into a *data* directory.
+
 ```{r example_2_1, message = FALSE, fig.align = "center"}
 # Establishment probability via mapping to NVIS MVG 
 establish_pr_rast <- terra::classify(
@@ -226,6 +228,9 @@ establish_pr_rast <- terra::classify(
     26, 0.10, # Unclassified native vegetation
     27, 0.01 # Naturally bare - sand, rock, claypan, mudflat
   ), ncol = 2, byrow = TRUE))
+# Set Falls Creek township area to 0.99
+town_rast <- terra::rast("data/falls_creek_town.tif")
+establish_pr_rast <- establish_pr_rast*(town_rast == 0) + town_rast*0.99
 terra::plot(establish_pr_rast, colNA = "grey",
             main = "Hawkweed establishment probability")
 ```

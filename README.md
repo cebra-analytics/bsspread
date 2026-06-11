@@ -385,8 +385,8 @@ terra::plot(region$get_rast(1), colNA = "grey",
 For our Hawkweed example we will utilise a presence-only population
 model. We will configure the establishment probability for the
 population via an approximate mapping of habitat suitability values for
-vegetation/landscape types provided in Williams, Hahs, & Morgan (2008),
-to NVIS (2025) major vegetation group (MVG) classes:
+vegetation/landscape types provided in Williams, Hahs, & Morgan (2008 -
+Table 1), to NVIS (2025) major vegetation group (MVG) classes:
 
 | Vegetation type                  | Est. prob. | Mapped to MVG |
 |:---------------------------------|:----------:|:-------------:|
@@ -408,6 +408,14 @@ to NVIS (2025) major vegetation group (MVG) classes:
 | Forests (assumed low)            |    0.01    |       3       |
 | Woodlands (assumed low)          |    0.01    |       5       |
 
+The NVIS layer classifies the Falls Creek township area as “unclassified
+native vegetation”, although the area highly suitable according to
+Williams, Hahs, & Morgan (2008 - Figure 4). We will thus increase the
+establishment probability of the township area to 0.99. A raster
+defining the township area can be downloaded from
+[here](https://github.com/cebra-analytics/bsspread/tree/main/data) and
+copied into a *data* directory.
+
 ``` r
 # Establishment probability via mapping to NVIS MVG 
 establish_pr_rast <- terra::classify(
@@ -425,6 +433,9 @@ establish_pr_rast <- terra::classify(
     26, 0.10, # Unclassified native vegetation
     27, 0.01 # Naturally bare - sand, rock, claypan, mudflat
   ), ncol = 2, byrow = TRUE))
+# Set Falls Creek township area to 0.99
+town_rast <- terra::rast("data/falls_creek_town.tif")
+establish_pr_rast <- establish_pr_rast*(town_rast == 0) + town_rast*0.99
 terra::plot(establish_pr_rast, colNA = "grey",
             main = "Hawkweed establishment probability")
 ```
@@ -629,9 +640,9 @@ result_rast
 #> sources     : occupancy_t0_mean.tif  
 #>               occupancy_t1_mean.tif  
 #>               occupancy_t2_mean.tif  
-#> names       :     0,     1,    2 
-#> min values  : 0.000, 0.000, 0.00 
-#> max values  : 0.021, 0.229, 0.58
+#> names       :     0,     1,     2 
+#> min values  : 0.000, 0.000, 0.000 
+#> max values  : 0.033, 0.251, 0.898
 # Plot the mean occupancy for time steps 1 and 2
 label <- attr(result_rast$occupancy_mean, "metadata")$label
 for (i in 2:3) {
@@ -656,14 +667,14 @@ total_occupancy <- read.csv("total_occupancy.csv")
 colnames(total_occupancy)[1] <- "Total occupancy"
 print(total_occupancy)
 #>   Total occupancy t0        t1       t2
-#> 1            mean  1 15.187000 305.7310
-#> 2              sd  0  4.263826  92.2142
+#> 1            mean  1 24.150000 430.5870
+#> 2              sd  0  5.308265 101.6852
 total_area_occupied <- read.csv("total_area_occupied.csv")
 colnames(total_area_occupied)[1] <- "Total area occupied"
 print(total_area_occupied)
 #>   Total area occupied    t0        t1      t2
-#> 1                mean 10000 151870.00 3057310
-#> 2                  sd     0  42638.26  922142
+#> 1                mean 10000 241500.00 4305870
+#> 2                  sd     0  53082.65 1016852
 ```
 
 Time-series plots of total occupancy and total area occupied may also be
