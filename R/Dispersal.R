@@ -924,15 +924,13 @@ Dispersal.Region <- function(region, population_model,
           list(i = i, dispersals = dispersals, remaining = remaining,
                destinations = destinations, dispersers = dispersers)
         } else {
-          # Return population relocation components (aggregated per destination)
+          # Return population relocation components (aggregated per destination).
+          # dispersals may be 0 after establishment wipeout; remaining is still
+          # returned so committed leavers can be deducted.
           aggr_n_out <- if (aggr_paths_present) aggr_n else 0L
           if (population_type == "presence_only") {
-            dest <- unique(destinations)
-            if (!length(dest)) {
-              return(list(i = i, dispersals = FALSE))
-            }
-            list(i = i, dispersals = TRUE, remaining = remaining,
-                 dest = dest, aggr_n = aggr_n_out)
+            list(i = i, dispersals = dispersals, remaining = remaining,
+                 dest = unique(destinations), aggr_n = aggr_n_out)
           } else if (population_type == "unstructured") {
             dest <- integer(0)
             counts <- numeric(0)
@@ -941,7 +939,7 @@ Dispersal.Region <- function(region, population_model,
               dest <- as.integer(rownames(agg))
               counts <- agg[, 1L]
             }
-            list(i = i, dispersals = TRUE, remaining = remaining,
+            list(i = i, dispersals = dispersals, remaining = remaining,
                  dest = dest, counts = counts, aggr_n = aggr_n_out)
           } else if (population_type == "stage_structured") {
             dest <- integer(0)
@@ -951,7 +949,7 @@ Dispersal.Region <- function(region, population_model,
               dest <- as.integer(rownames(agg))
               counts <- agg
             }
-            list(i = i, dispersals = TRUE, remaining = remaining,
+            list(i = i, dispersals = dispersals, remaining = remaining,
                  dest = dest, counts = counts, aggr_n = aggr_n_out)
           }
         }
@@ -1035,9 +1033,11 @@ Dispersal.Region <- function(region, population_model,
     } else {
       total_aggr_n <- 0L
       for (d in dispersal_list) {
+        if (!is.null(d$remaining)) {
+          n$remaining[d$i, dispersal_stages] <- d$remaining
+        }
         if (d$dispersals) {
           total_aggr_n <- total_aggr_n + d$aggr_n
-          n$remaining[d$i, dispersal_stages] <- d$remaining
           if (length(d$dest)) {
             if (population_type == "presence_only") {
               n$relocated[d$dest] <- TRUE
