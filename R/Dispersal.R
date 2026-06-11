@@ -887,12 +887,13 @@ Dispersal.Region <- function(region, population_model,
     # Perform dispersal to cell destinations
     for (d in dispersal_list) {
 
-      if (d$dispersals) {
-
-        # Update remaining population
+      # Update remaining population
+      if (!is.null(d$remaining)) {
         n$remaining[d$i, dispersal_stages] <- d$remaining
+      }
 
-        # Update relocated population
+      # Update relocated population
+      if (d$dispersals) {
         if (population_type == "presence_only") {
           n$relocated[unique(d$destinations)] <- TRUE
         } else if (population_type == "unstructured") {
