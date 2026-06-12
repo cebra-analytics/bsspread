@@ -187,7 +187,19 @@ terra::plot(region$get_rast(1), colNA = "grey",
 
 ### Step 2: Population model
 
-For our Hawkweed example we will utilise a presence-only population model. We will configure the establishment probability for the population via an approximate mapping of habitat suitability values for vegetation/landscape types provided in Williams, Hahs, & Morgan (2008 - Table 1), to NVIS (2025) major vegetation group (MVG) classes:
+For our Hawkweed example we will utilise a presence-only population model. We will configure the establishment probability for the population by approximately reproducing the habitat suitability index (HSI) provided in Williams, Hahs, & Morgan (2008 - Figure 4).
+
+#### Habitat suitability
+
+The habitat suitability index (HSI) provided by Williams, Hahs, & Morgan (2008) combined three components:
+
+- Vegetation type
+- Soil moisture
+- Level of disturbance
+
+via $HCI = (vegetation\cdot moisture\cdot disturbance)^{1/3}$.
+
+For the vegetation component of our habitat suitability we approximately map habitat suitability values for vegetation/landscape types provided in Williams, Hahs, & Morgan (2008 - Table 1) to NVIS (2025) major vegetation group (MVG) classes:
 
 | Vegetation type | Est. prob. | Mapped to MVG |
 |:-|:-:|:-:|
@@ -196,7 +208,7 @@ For our Hawkweed example we will utilise a presence-only population model. We wi
 | Closed heathland | 0.50 | 18 |
 | Disturbed areas | 0.99 | 25 |
 | Kunzea heathland | 0.50 | 18 |
-| Late-lying snowpatch | 0.10 | 26 |
+| Late-lying snowpatch | 0.10 | - |
 | Open heathland | 0.90 | 18 |
 | Poa hiemata tussock grassland | 0.99 | 19 |
 | Poa costiniana tussock grassland | 0.99 | 19 |
@@ -209,11 +221,11 @@ For our Hawkweed example we will utilise a presence-only population model. We wi
 | Forests (assumed low) | 0.01 | 3 |
 | Woodlands (assumed low) | 0.01 | 5 |
 
-The NVIS layer classifies the Falls Creek township area as "unclassified native vegetation", although the area highly suitable according to Williams, Hahs, & Morgan (2008 - Figure 4). We will thus increase the establishment probability of the township area to 0.99. A raster defining the township area can be downloaded from [here](https://github.com/cebra-analytics/bsspread/tree/main/data) and copied into a *data* directory.
+The NVIS layer classifies the Falls Creek township area as "unclassified native vegetation", which is considered highly suitable according to Williams, Hahs, & Morgan (2008 - Figure 4), albeit spaces between infrastructure. We therefore set the establishment probability of "unclassified native vegetation" to a value of 0.75.
 
 ```{r example_2_1, message = FALSE, fig.align = "center"}
-# Establishment probability via mapping to NVIS MVG 
-establish_pr_rast <- terra::classify(
+# Vegetation suitability via mapping to NVIS MVG 
+vegetation_suit_rast <- terra::classify(
   region_nvis_rast,
   matrix(c(
     3,  0.01, # Eucalypt Open Forests
@@ -225,15 +237,38 @@ establish_pr_rast <- terra::classify(
     21, mean(c(0.01, 0.50, 0.30, 0.90)), # Other Grasslands, Herblands, Sedgelands and Rushlands
     24, 0.00, # Inland Aquatic - freshwater, salt lakes, lagoons
     25, 0.99, # Cleared, non-native vegetation, buildings
-    26, 0.10, # Unclassified native vegetation
+    26, 0.75, # Unclassified native vegetation
     27, 0.01 # Naturally bare - sand, rock, claypan, mudflat
   ), ncol = 2, byrow = TRUE))
-# Set Falls Creek township area to 0.99
-town_rast <- terra::rast("data/falls_creek_town.tif")
-establish_pr_rast <- establish_pr_rast*(town_rast == 0) + town_rast*0.99
-terra::plot(establish_pr_rast, colNA = "grey",
-            main = "Hawkweed establishment probability")
+terra::plot(vegetation_suit_rast, colNA = "grey",
+            main = "Hawkweed vegetation suitability")
 ```
+
+For the soil moisture component of our habitat suitability we utilise a constant value of 1, which assumes a medium soil moisture level across our region. Williams, Hahs, & Morgan (2008 - Figure 1) classifies medium soil moisture (wetness index) values as suitable (1) and lower and upper values as unsuitable (0). They utilised a fine-grain (20 metre resolution) layer of moisture values, which was not (easily) reproducible. We examined soil moisture distributions via [tern](https://portal.tern.org.au/metadata/d1995ee8-53f0-4a7d-91c2-ad5e4a23e5e0) (Stenson et al., 2021), and found that medium levels of soil moisture were evident across our region at a 1km resolution.
+
+For the level of disturbance component of our habitat suitability we utilise (one minus) habitat condition via the [CSIRO HCAS layer](https://data.csiro.au/collection/csiro:63571) (Valavi et al., 2025) as an approximation to the more complex disturbance component described in Williams, Hahs, & Morgan (2008). Lower values of habitat condition correspond to higher levels of disturbance, thus we utilise 1 - HCAS. Users may download the [CSIRO HCAS layer](https://data.csiro.au/collection/csiro:63571) and place it in a suitable directory (e.g. *downloaded_data*).
+
+```{r example_2_2, message = FALSE, fig.align = "center"}
+# Disturbance suitability via 1 - HCAS
+hcas_rast <- terra::rast("../downloaded_data/HCAS33_HCB_1988_2024.tif")
+disturb_suit_rast <- 1 - terra::resample(
+  terra::project(terra::crop(hcas_rast,
+                             c(1354000, 1372000, -4120000, -4103000)),
+                 region_nvis_rast), region_nvis_rast)
+terra::plot(disturb_suit_rast, colNA = "grey",
+            main = "Hawkweed disturbance suitability")
+```
+
+We can now combine our layers for our approximate habitat suitability via $HCI = (vegetation\cdot moisture\cdot disturbance)^{1/3}$.
+
+```{r example_2_3, message = FALSE, fig.align = "center"}
+# Combined habitat suitability
+habitat_suit_rast <- (vegetation_suit_rast*1*disturb_suit_rast)^(1/3)
+terra::plot(habitat_suit_rast, colNA = "grey",
+            main = "Hawkweed habitat suitability")
+```
+
+#### Presence-only population model
 
 We can now build our presence-only population model.
 
@@ -241,7 +276,7 @@ We can now build our presence-only population model.
 # Presence-only population model
 population_model <- bsspread::PresencePopulation(
   region,
-  establish_pr = establish_pr_rast[][,1])
+  establish_pr = habitat_suit_rast[][,1])
 ```
 
 ### Step 3: Initialization
@@ -452,6 +487,10 @@ Schneider, D. W., Ellis, C. D., & Cummings, K. S. (1998). 'A Transportation Mode
 Shaw, M. W. (1995). 'Simulation of Population Expansion and Spatial Pattern when Individual Dispersal Distributions do not Decline Exponentially with Distance'. *Proceedings B: Biological Sciences*, 259(1356), 243–248. [doi:10.1098/rspb.1995.0036](https://doi.org/10.1098/rspb.1995.0036)
 
 Skellam, J. G. (1951). 'Random Dispersal in Theoretical Populations'. *Biometrika*, 38(1/2), 196–218. [doi:10.2307/2332328](https://doi.org/10.2307/2332328)
+
+Stenson, M., Searle, R., Malone, B., Sommer, A., Renzullo, L. & Di, H. (2021). Australia wide daily volumetric soil moisture estimates. Version 1.0. Terrestrial Ecosystem Research Network. Dataset. [doi:10.25901/b020-nm39](https://dx.doi.org/10.25901/b020-nm39). Viewable access via <https://shiny.esoil.io/SMIPS/> 
+
+Valavi R, Levick SR, Lehmann EA, Liu N, Giljohann KM, Williams KJ, Collings S, Johnson S, Botha EJ, Munroe SEM, Van Niel TG, Newnham G, Paget M, Malley C, Carlile P, Gunawardana D, Lyon P, Richards AE, Tetreault Campbell S and Ferrier S (2025) 'HCAS 3.3 (1988-2024) base model estimate of habitat condition (90m grid), National Connectivity Index 2.0 (NCI) and annual time series for continental Australia'. Data collection 65549. *CSIRO*, Canberra, Australia. DOI: <https://data.csiro.au/collection/csiro:65549>.
 
 Williams, N. S. G., Hahs, A. K., & Morgan, J. W. (2008). 'A Dispersal-Constrained Habitat Suitability Model for Predicting Invasion of Alpine Vegetation'. *Ecological Applications*, 18(2), 347–359. [doi:10.1890/07-0868.1](https://doi.org/10.1890/07-0868.1)
 
