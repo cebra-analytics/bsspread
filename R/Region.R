@@ -538,6 +538,10 @@ Region.SpatRaster <- function(x, ...) {
                                     cells = 1:terra::ncell(aggr$rast),
                                     directions = "bishop", pairs = TRUE),
                     weight = sqrt(2)))
+            cell_adj_df <- data.frame(from = cell_key(cell_adj_df[, "from"]),
+                                      to = cell_key(cell_adj_df[, "to"]),
+                                      weight = cell_adj_df[, "weight"],
+                                      stringsAsFactors = FALSE)
 
             # Create graph for all aggregate cells (including NAs)
             paths$graphs$aggr <<- igraph::graph_from_data_frame(
@@ -615,6 +619,10 @@ Region.SpatRaster <- function(x, ...) {
                                   pairs = TRUE), weight = 1),
             cbind(terra::adjacent(x, cells = cell_idx, directions = "bishop",
                                   pairs = TRUE), weight = sqrt(2)))
+          cell_adj_df <- data.frame(from   = cell_key(cell_adj_df[, "from"]),
+                                    to     = cell_key(cell_adj_df[, "to"]),
+                                    weight = cell_adj_df[, "weight"],
+                                    stringsAsFactors = FALSE)
 
           # Create or update graph
           if (is.null(paths$graphs$cell)) {
@@ -676,6 +684,10 @@ Region.SpatRaster <- function(x, ...) {
           cbind(terra::adjacent(x, cells = 1:terra::ncell(x),
                                 directions = "bishop", pairs = TRUE),
                 weight = sqrt(2)))
+        cell_adj_df <- data.frame(from   = cell_key(cell_adj_df[, "from"]),
+                                  to     = cell_key(cell_adj_df[, "to"]),
+                                  weight = cell_adj_df[, "weight"],
+                                  stringsAsFactors = FALSE)
 
         # Create graph for all region cells (including NAs)
         paths$graphs$cell <<- igraph::graph_from_data_frame(
