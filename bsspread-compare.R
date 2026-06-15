@@ -2178,7 +2178,7 @@ if (nzchar(benchmark_replicate)) {
         seq_len(input.params$simulator$replicates)
     }
 } else {
-    replicate_seq <- seq_len(2)
+    replicate_seq <- seq_len(input.params$simulator$replicates)
 }
 benchmark_time_end <- Sys.getenv("BENCHMARK_TIME_END", unset = "")
 tm_run_end <- if (nzchar(benchmark_time_end)) {
