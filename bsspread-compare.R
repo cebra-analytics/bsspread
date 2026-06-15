@@ -2420,6 +2420,21 @@ if (benchmark_parallel_replicates) {
         run_one_replicate_parallel,
         mc.cores = parallel_rep_cores)
     rep_wall_s <- as.numeric(Sys.time() - rep_wall_start, units = "secs")
+
+    failed_reps <- which(vapply(rep_outputs, inherits, logical(1), "try-error"))
+    if (length(failed_reps) > 0L) {
+        for (fi in failed_reps) {
+            message(sprintf(
+                "BENCHMARK_PARALLEL_REPLICATES: replicate %d FAILED:\n%s",
+                replicate_seq[fi],
+                as.character(rep_outputs[[fi]])))
+        }
+        stop(sprintf(
+            "BENCHMARK_PARALLEL_REPLICATES: %d replicate(s) failed: r=%s",
+            length(failed_reps),
+            paste(replicate_seq[failed_reps], collapse = ", ")))
+    }
+
     for (out in rep_outputs) {
         for (col in out$collations) {
             results$collate(col$r, col$tm, col$n, col$calc_impacts)
