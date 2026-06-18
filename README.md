@@ -395,7 +395,7 @@ Table 1), to NVIS (2025) major vegetation group (MVG) classes:
 | Closed heathland                 |    0.50    |      18       |
 | Disturbed areas                  |    0.99    |      25       |
 | Kunzea heathland                 |    0.50    |      18       |
-| Late-lying snowpatch             |    0.10    |      26       |
+| Late-lying snowpatch             |    0.10    |      \-       |
 | Open heathland                   |    0.90    |      18       |
 | Poa hiemata tussock grassland    |    0.99    |      19       |
 | Poa costiniana tussock grassland |    0.99    |      19       |
@@ -408,13 +408,8 @@ Table 1), to NVIS (2025) major vegetation group (MVG) classes:
 | Forests (assumed low)            |    0.01    |       3       |
 | Woodlands (assumed low)          |    0.01    |       5       |
 
-The NVIS layer classifies the Falls Creek township area as “unclassified
-native vegetation”, although the area highly suitable according to
-Williams, Hahs, & Morgan (2008 - Figure 4). We will thus increase the
-establishment probability of the township area to 0.99. A raster
-defining the township area can be downloaded from
-[here](https://github.com/cebra-analytics/bsspread/tree/main/data) and
-copied into a *data* directory.
+We assign a suitability value of 0.5 to the NVIS “unclassified native
+vegetation”, which includes the Falls Creek township area.
 
 ``` r
 # Establishment probability via mapping to NVIS MVG 
@@ -430,12 +425,9 @@ establish_pr_rast <- terra::classify(
     21, mean(c(0.01, 0.50, 0.30, 0.90)), # Other Grasslands, Herblands, Sedgelands and Rushlands
     24, 0.00, # Inland Aquatic - freshwater, salt lakes, lagoons
     25, 0.99, # Cleared, non-native vegetation, buildings
-    26, 0.10, # Unclassified native vegetation
-    27, 0.01 # Naturally bare - sand, rock, claypan, mudflat
+    26, 0.50, # Unclassified native vegetation
+    27, 0.01  # Naturally bare - sand, rock, claypan, mudflat
   ), ncol = 2, byrow = TRUE))
-# Set Falls Creek township area to 0.99
-town_rast <- terra::rast("data/falls_creek_town.tif")
-establish_pr_rast <- establish_pr_rast*(town_rast == 0) + town_rast*0.99
 terra::plot(establish_pr_rast, colNA = "grey",
             main = "Hawkweed establishment probability")
 ```
@@ -454,13 +446,14 @@ population_model <- bsspread::PresencePopulation(
 ### Step 3: Initialization
 
 Each spread model simulation is initialized with Hawkweed presence at a
-random location (grid-cell) within the Falls Creek township area. A
-raster defining the township area can be downloaded from
-[here](https://github.com/cebra-analytics/bsspread/tree/main/data) and
-copied into a *data* directory.
+randomly selected location within the Falls Creek township area where it
+was detected and eradicated during 1998-2000 (Williams, Hahs, & Morgan,
+2008 - Figure 3). A raster defining the township area can be downloaded
+from [here](https://github.com/cebra-analytics/bsspread/tree/main/data)
+and copied into a *data* directory.
 
 ``` r
-# Initialise Hawkweed presence within the Falls Creek township area
+# Initial Hawkweed presence within the Falls Creek township area
 initial_rast <- terra::rast("data/falls_creek_town.tif")
 incursions <- bsspread::Incursions(initial_rast,
                                    region = region,
@@ -469,7 +462,7 @@ initializer <- bsspread::Initializer(incursions,
                                      region = region,
                                      population_model = population_model)
 terra::plot(initial_rast, colNA = "grey",
-            main = "Initial Hawkweed location within Falls Creek township")
+            main = "Initial Hawkweed within Falls Creek township")
 ```
 
 <img src="man/figures/README-example_3-1.png" width="100%" style="display: block; margin: auto;" />
@@ -642,7 +635,7 @@ result_rast
 #>               occupancy_t2_mean.tif  
 #> names       :     0,     1,     2 
 #> min values  : 0.000, 0.000, 0.000 
-#> max values  : 0.033, 0.251, 0.898
+#> max values  : 0.037, 0.338, 0.847
 # Plot the mean occupancy for time steps 1 and 2
 label <- attr(result_rast$occupancy_mean, "metadata")$label
 for (i in 2:3) {
@@ -666,15 +659,15 @@ results$save_csv()
 total_occupancy <- read.csv("total_occupancy.csv")
 colnames(total_occupancy)[1] <- "Total occupancy"
 print(total_occupancy)
-#>   Total occupancy t0        t1       t2
-#> 1            mean  1 24.150000 430.5870
-#> 2              sd  0  5.308265 101.6852
+#>   Total occupancy t0        t1        t2
+#> 1            mean  1 19.459000 378.09400
+#> 2              sd  0  4.292639  91.19404
 total_area_occupied <- read.csv("total_area_occupied.csv")
 colnames(total_area_occupied)[1] <- "Total area occupied"
 print(total_area_occupied)
-#>   Total area occupied    t0        t1      t2
-#> 1                mean 10000 241500.00 4305870
-#> 2                  sd     0  53082.65 1016852
+#>   Total area occupied    t0        t1        t2
+#> 1                mean 10000 194590.00 3780940.0
+#> 2                  sd     0  42926.39  911940.4
 ```
 
 Time-series plots of total occupancy and total area occupied may also be

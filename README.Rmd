@@ -337,19 +337,13 @@ dispersal_model <- bsspread::Dispersal(region,
 We can now build and run our population spread model simulations via a *Simulator* class object, with links to our population model, initializer, and dispersal model. We will run 1000 replicate stochastic model simulations each having two 1-year time steps.
 
 ```{r example_5, message = FALSE, fig.align = "center"}
-
-removals <- bsmanage::ManageRemovals(region,
-                                     population_model,
-                                     removal_pr = initial_rast[region$get_indices()][,]*0.9,
-                                     schedule = 1)
-
 progress_function <- function(n, r, tm) {
   if (r %% 100 == 0 && tm == 2) {
     print(paste("replicate", r))
   }
   return(n)
 }
-simulator <- bsmanage::ManageSimulator(region,
+simulator <- bsspread::Simulator(region,
                                  time_steps = 2,
                                  step_duration = 1,
                                  step_units = "years",
@@ -358,7 +352,6 @@ simulator <- bsmanage::ManageSimulator(region,
                                  initializer = initializer,
                                  population_model = population_model,
                                  dispersal_models = list(dispersal_model),
-                                 actions = list(), #removals),
                                  user_function = progress_function)
 results <- simulator$run()
 ```
