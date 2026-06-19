@@ -1,4 +1,4 @@
-set.seed(42)
+#set.seed(42)
 
 # --- Profiling (script-side profvis; no Dispersal.R hooks) ---
 profile_timestep <- FALSE
@@ -26,9 +26,9 @@ checkpoint_stop <- identical(Sys.getenv("CHECKPOINT_STOP"), "1")
 benchmark_reseed_per_replicate <- identical(
     Sys.getenv("BENCHMARK_RESEED_PER_REPLICATE"), "1")
 # Run replicates in parallel (mclapply); inner region/dispersal stay serial:
-#   BENCHMARK_PARALLEL_REPLICATES=1 TASK_CPUS=4
-benchmark_parallel_replicates <- identical(
-    Sys.getenv("BENCHMARK_PARALLEL_REPLICATES"), "1")
+#   PARALLEL_REPLICATES=1 TASK_CPUS=4
+parallel_replicates <- identical(Sys.getenv("PARALLEL_REPLICATES"), "1") ||
+    identical(Sys.getenv("BENCHMARK_PARALLEL_REPLICATES"), "1")
 # Skip results$finalize() and save_rasters/csv/plots (timing-only benchmark runs):
 #   BENCHMARK_SKIP_SAVE=1
 benchmark_skip_save <- identical(Sys.getenv("BENCHMARK_SKIP_SAVE"), "1")
@@ -2055,9 +2055,10 @@ progress_function <- function(n, r, tm) {
 # Use serial (not parallel) when there is a random seed (unless benchmark override)
 if (is.numeric(input.params$random_seed)) {
     set.seed(input.params$random_seed)
-    if (identical(Sys.getenv("BENCHMARK_ALLOW_PARALLEL"), "1")) {
+    if (identical(Sys.getenv("PARALLEL_WITH_SEED"), "1") ||
+            identical(Sys.getenv("BENCHMARK_ALLOW_PARALLEL"), "1")) {
         message(
-            "random_seed set but BENCHMARK_ALLOW_PARALLEL=1: using TASK_CPUS/DEFAULT_CPUS"
+            "random_seed set but PARALLEL_WITH_SEED=1: using TASK_CPUS/DEFAULT_CPUS"
         )
     } else {
         cpus <- 1
@@ -2171,7 +2172,7 @@ if (nzchar(benchmark_replicate)) {
         "Checkpoint resume: running replicate %d only (set BENCHMARK_REPLICATE to override)",
         checkpoint_data$r
     ))
-} else if (benchmark_parallel_replicates) {
+} else if (parallel_replicates) {
     replicate_seq <- if (nzchar(benchmark_replicate)) {
         as.integer(benchmark_replicate)
     } else {
@@ -2212,6 +2213,78 @@ force_serial_inner_parallel <- function() {
             dispersal_models[[i]]$set_cores(1)
         }
     }
+}
+
+n_size_label <- function(n) {
+    sz <- prettyunits::pretty_bytes(as.numeric(object.size(n)))
+    if (is.matrix(n)) {
+        sprintf(
+            "n: %s×%s matrix, %s",
+            format(nrow(n), big.mark = ",", scientific = FALSE),
+            format(ncol(n), big.mark = ",", scientific = FALSE),
+            sz
+        )
+    } else {
+        sprintf(
+            "n: %s cells, %s",
+            format(length(n), big.mark = ",", scientific = FALSE),
+            sz
+        )
+    }
+}
+
+collations_size_label <- function(collations) {
+    sprintf(
+        "collations: %s steps, %s",
+        format(length(collations), big.mark = ",", scientific = FALSE),
+        prettyunits::pretty_bytes(as.numeric(object.size(collations)))
+    )
+}
+
+parent_mem_message <- function(
+    phase,
+    reps_merged = NA_integer_,
+    reps_total = NA_integer_,
+    rep_outputs = NULL
+) {
+    mem_info <- ps::ps_system_memory()
+    proc_mem <- ps::ps_memory_info(ps::ps_handle(Sys.getpid()))
+    reps_merged_str <- if (is.na(reps_merged)) {
+        "—"
+    } else {
+        format(reps_merged, big.mark = ",", scientific = FALSE)
+    }
+    reps_total_str <- if (is.na(reps_total)) {
+        "—"
+    } else {
+        format(reps_total, big.mark = ",", scientific = FALSE)
+    }
+    rep_outputs_label <- if (is.null(rep_outputs)) {
+        "—"
+    } else {
+        prettyunits::pretty_bytes(as.numeric(object.size(rep_outputs)))
+    }
+    results_label <- if (exists("results", envir = .GlobalEnv, inherits = FALSE)) {
+        prettyunits::pretty_bytes(
+            as.numeric(object.size(get("results", envir = .GlobalEnv)))
+        )
+    } else {
+        "—"
+    }
+    message(sprintf(
+        paste0(
+            "PARALLEL_REPLICATES parent: %s | reps_merged=%s/%s | ",
+            "rep_outputs=%s | results=%s | %s sys avail | %s rss | pid %d"
+        ),
+        phase,
+        reps_merged_str,
+        reps_total_str,
+        rep_outputs_label,
+        results_label,
+        prettyunits::pretty_bytes(mem_info$avail),
+        prettyunits::pretty_bytes(proc_mem["rss"]),
+        Sys.getpid()
+    ))
 }
 
 run_one_replicate_parallel <- function(r) {
@@ -2359,7 +2432,7 @@ run_one_replicate_parallel <- function(r) {
             paste0(
                 "tm=%s r=%s | grow=%.2fs  dispersal=%.2fs  ",
                 "impacts=%.2fs  actions=%.2fs  other=%.2fs | total=%.2fs | ",
-                "%s sys avail | %s rss | gc=%.3fs | rng state=%s | pid %d"
+                "%s sys avail | %s rss | %s | %s | gc=%.3fs | rng state=%s | pid %d"
             ),
             tm, r,
             elapsed(t0, t1),
@@ -2370,6 +2443,8 @@ run_one_replicate_parallel <- function(r) {
             elapsed(t0, t5),
             prettyunits::pretty_bytes(mem_info$avail),
             prettyunits::pretty_bytes(proc_mem["rss"]),
+            n_size_label(n),
+            collations_size_label(collations),
             gc_step_s,
             rng_check,
             Sys.getpid()
@@ -2378,31 +2453,31 @@ run_one_replicate_parallel <- function(r) {
     list(r = r, collations = collations)
 }
 
-if (benchmark_parallel_replicates) {
+if (parallel_replicates) {
     if (.Platform$OS.type != "unix") {
-        stop("BENCHMARK_PARALLEL_REPLICATES requires Unix (mclapply)",
+        stop("PARALLEL_REPLICATES requires Unix (mclapply)",
             call. = FALSE)
     }
     if (checkpoint_resume || checkpoint_tm > 0L || nzchar(checkpoint_warmup_reps)) {
         stop(
-            "BENCHMARK_PARALLEL_REPLICATES is incompatible with checkpoint ",
+            "PARALLEL_REPLICATES is incompatible with checkpoint ",
             "resume/create (use serial replicate loop)",
             call. = FALSE)
     }
     if (as.integer(Sys.getenv("BENCHMARK_SCALING_REPS", unset = "0")) > 0L) {
         stop(
-            "BENCHMARK_PARALLEL_REPLICATES is incompatible with ",
+            "PARALLEL_REPLICATES is incompatible with ",
             "BENCHMARK_SCALING_REPS",
             call. = FALSE)
     }
     if (isTRUE(profile_timestep)) {
         stop(
-            "BENCHMARK_PARALLEL_REPLICATES is incompatible with profile_timestep",
+            "PARALLEL_REPLICATES is incompatible with profile_timestep",
             call. = FALSE)
     }
     if (eq_enabled) {
         message(
-            "BENCHMARK_PARALLEL_REPLICATES: equivalence capture disabled ",
+            "PARALLEL_REPLICATES: equivalence capture disabled ",
             "(per-worker merge not implemented)")
         eq_enabled <- FALSE
     }
@@ -2410,10 +2485,12 @@ if (benchmark_parallel_replicates) {
     parallel_rep_cores <- min(as.integer(cpus), length(replicate_seq))
     message(sprintf(
         paste0(
-            "BENCHMARK_PARALLEL_REPLICATES: %d replicate(s), ",
+            "PARALLEL_REPLICATES: %d replicate(s), ",
             "mc.cores=%d, inner dispersal/paths serial"
         ),
         length(replicate_seq), parallel_rep_cores))
+    reps_total <- length(replicate_seq)
+    parent_mem_message("before_mclapply", reps_merged = 0L, reps_total = reps_total)
     rep_wall_start <- Sys.time()
     rep_outputs <- parallel::mclapply(
         replicate_seq,
@@ -2425,27 +2502,47 @@ if (benchmark_parallel_replicates) {
     if (length(failed_reps) > 0L) {
         for (fi in failed_reps) {
             message(sprintf(
-                "BENCHMARK_PARALLEL_REPLICATES: replicate %d FAILED:\n%s",
+                "PARALLEL_REPLICATES: replicate %d FAILED:\n%s",
                 replicate_seq[fi],
                 as.character(rep_outputs[[fi]])))
         }
         stop(sprintf(
-            "BENCHMARK_PARALLEL_REPLICATES: %d replicate(s) failed: r=%s",
+            "PARALLEL_REPLICATES: %d replicate(s) failed: r=%s",
             length(failed_reps),
             paste(replicate_seq[failed_reps], collapse = ", ")))
     }
 
-    for (out in rep_outputs) {
+    parent_mem_message(
+        "after_mclapply",
+        reps_merged = 0L,
+        reps_total = reps_total,
+        rep_outputs = rep_outputs
+    )
+    for (i in seq_along(rep_outputs)) {
+        out <- rep_outputs[[i]]
         for (col in out$collations) {
             results$collate(col$r, col$tm, col$n, col$calc_impacts)
         }
+        rep_outputs[[i]] <- NULL
+        parent_mem_message(
+            sprintf("merged r=%d", out$r),
+            reps_merged = i,
+            reps_total = reps_total,
+            rep_outputs = rep_outputs
+        )
     }
+    rm(rep_outputs)
+    parent_mem_message(
+        "after_merge",
+        reps_merged = reps_total,
+        reps_total = reps_total
+    )
     message(sprintf(
-        "BENCHMARK_PARALLEL_REPLICATES complete: wall=%.2fs (%d reps, mc.cores=%d)",
+        "PARALLEL_REPLICATES complete: wall=%.2fs (%d reps, mc.cores=%d)",
         rep_wall_s, length(replicate_seq), parallel_rep_cores))
 }
 
-if (!benchmark_parallel_replicates) {
+if (!parallel_replicates) {
 for (r in replicate_seq) {
     if (identical(Sys.getenv("PATHS_EQ_DUMP", unset = ""), "1")) {
         Sys.setenv(PATHS_EQ_REPLICATE = as.character(r))
@@ -2752,7 +2849,7 @@ for (r in replicate_seq) {
                 paste0(
                     "%stm=%s r=%s | grow=%.2fs  dispersal=%.2fs  ",
                     "impacts=%.2fs  actions=%.2fs  other=%.2fs | total=%.2fs | ",
-                    "%s sys avail | %s rss | gc=%.3fs | rng state=%s"
+                    "%s sys avail | %s rss | %s | gc=%.3fs | rng state=%s"
                 ),
                 bench_rep_prefix, tm, r,
                 elapsed(t0, t1),
@@ -2763,6 +2860,7 @@ for (r in replicate_seq) {
                 elapsed(t0, t5),
                 prettyunits::pretty_bytes(mem_info$avail),
                 prettyunits::pretty_bytes(proc_mem["rss"]),
+                n_size_label(n),
                 gc_step_s,
                 rng_check
             ))
@@ -2786,7 +2884,7 @@ for (r in replicate_seq) {
         }
     } # end scaling_rep_i
 }
-} # !benchmark_parallel_replicates
+} # !parallel_replicates
 
 benchmark_scaling_reps_done <- as.integer(Sys.getenv(
     "BENCHMARK_SCALING_REPS", unset = "0"))
