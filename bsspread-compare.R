@@ -2339,14 +2339,14 @@ run_one_replicate_parallel <- function(r) {
                 }
             }
         }
+        collations[[length(collations) + 1L]] <- list(
+            r = r, tm = tm, n = n, calc_impacts = calc_impacts)
+
         if (is.function(continued_incursions)) {
             n <- continued_incursions(tm, n)
         }
         rng_probe("other", tm, r)
         t5 <- Sys.time()
-
-        collations[[length(collations) + 1L]] <- list(
-            r = r, tm = tm, n = n, calc_impacts = calc_impacts)
 
         elapsed <- function(a, b) as.numeric(b - a, units = "secs")
         mem_info <- ps::ps_system_memory()
