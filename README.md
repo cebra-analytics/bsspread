@@ -343,9 +343,10 @@ remotes::install_github("cebra-analytics/bsspread")
 
 The following example assembles and runs a population spread simulation
 model for Orange Hawkweed (*Hieracium aurantiacum*), an exotic weed for
-Australia, which approximately reproduces the spread model described in
-Williams, Hahs, & Morgan (2008). In the following steps we build the
-workflow components, run the assembled simulation model, and examine the
+Australia, which approximately reproduces the spread distribution of the
+“dispersal-constrained habitat suitability” model described in Williams,
+Hahs, & Morgan (2008). In the following steps we build the workflow
+components, run the assembled simulation model, and examine the
 simulated results.
 
 ### Step 1: Region
@@ -557,15 +558,15 @@ subsequent years. These delayed seed establishment dynamics may be
 modelled with complex stage-based population models over longer
 time-spans. However, for our simple presence-only model we only consider
 seed arrivals that establish new colonies in their first year. To
-approximately reproduce the simulated the dispersal-constrained habitat
-suitability from Williams et al. (2008 - Figure 6) and Hauser & McCarthy
-(2009 - Figure 2a), we estimate that up to 10% of seed arrivals
-establish within suitable locations in their first year, thus a mean
-number of dispersal *events* of 80 was chosen for our model.
-Alternatively, we could have scaled our establishment probability
-estimated in step 2 by 10% to model the single-year establishment of all
-(up to 800) seeds dispersing, but this would be more computationally
-demanding to simulate.
+approximately reproduce the spread distribution of the
+“dispersal-constrained habitat suitability” model from Williams et
+al. (2008 - Figure 6) and Hauser & McCarthy (2009 - Figure 2a), we
+estimate that up to 10% of seed arrivals establish within suitable
+locations in their first year, thus a mean number of dispersal *events*
+of 80 was chosen for our model. Alternatively, we could have scaled our
+establishment probability estimated in step 2 by 10% to model the
+single-year establishment of all (up to 800) seeds dispersing, but this
+would be more computationally demanding to simulate.
 
 ``` r
 dispersal_model <- bsspread::Dispersal(region,
@@ -635,7 +636,7 @@ result_rast
 #>               occupancy_t2_mean.tif  
 #> names       :     0,     1,     2 
 #> min values  : 0.000, 0.000, 0.000 
-#> max values  : 0.037, 0.338, 0.847
+#> max values  : 0.038, 0.307, 0.817
 # Plot the mean occupancy for time steps 1 and 2
 label <- attr(result_rast$occupancy_mean, "metadata")$label
 for (i in 2:3) {
@@ -660,14 +661,14 @@ total_occupancy <- read.csv("total_occupancy.csv")
 colnames(total_occupancy)[1] <- "Total occupancy"
 print(total_occupancy)
 #>   Total occupancy t0        t1        t2
-#> 1            mean  1 19.459000 378.09400
-#> 2              sd  0  4.292639  91.19404
+#> 1            mean  1 19.491000 378.28800
+#> 2              sd  0  4.464062  94.85626
 total_area_occupied <- read.csv("total_area_occupied.csv")
 colnames(total_area_occupied)[1] <- "Total area occupied"
 print(total_area_occupied)
 #>   Total area occupied    t0        t1        t2
-#> 1                mean 10000 194590.00 3780940.0
-#> 2                  sd     0  42926.39  911940.4
+#> 1                mean 10000 194910.00 3782880.0
+#> 2                  sd     0  44640.62  948562.6
 ```
 
 Time-series plots of total occupancy and total area occupied may also be
