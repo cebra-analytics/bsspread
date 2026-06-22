@@ -1,20 +1,5 @@
 #set.seed(42)
 
-# --- Checkpoint (warm path cache for profiling later timesteps) ---
-# Save at end of tm N (writes CHECKPOINT_FILE_OUT or <outputdir>/checkpoint_tm{N}_r{r}.rds):
-#   CHECKPOINT_TM=24 CHECKPOINT_STOP=1 Rscript bsspread-compare.R
-# Resume from tm N+1 (reads CHECKPOINT_FILE_IN or legacy CHECKPOINT_FILE):
-#   CHECKPOINT_RESUME=1 CHECKPOINT_FILE_IN=/path/checkpoint_tm24_r1.rds Rscript ...
-# Example: tm=24 in, run tm=25 on main, save baseline tm=25 out:
-#   CHECKPOINT_RESUME=1 CHECKPOINT_FILE_IN=.../checkpoint_tm24_r1.rds \
-#     CHECKPOINT_TM=25 CHECKPOINT_FILE_OUT=.../checkpoint_tm25_r1.rds CHECKPOINT_STOP=1 \
-#     Rscript bsspread-compare.R
-checkpoint_tm <- as.integer(Sys.getenv("CHECKPOINT_TM", unset = "0"))
-checkpoint_replicate <- as.integer(Sys.getenv(
-    "CHECKPOINT_REPLICATE",
-    unset = "2"))
-checkpoint_resume <- identical(Sys.getenv("CHECKPOINT_RESUME"), "1")
-checkpoint_stop <- identical(Sys.getenv("CHECKPOINT_STOP"), "1")
 # Run replicates in parallel; inner region/dispersal stay serial in workers:
 #   PARALLEL_REPLICATES=1 TASK_CPUS=16
 # Default: persistent worker pool + incremental collate on Unix (FORK inherits terra;
@@ -1786,97 +1771,6 @@ generate_result_animations <- function(region, population_model, result_layers) 
   }
 }
 
-# Checkpoint helpers (paths live in Region's closure, not on the region list)
-get_region_paths <- function(region) {
-    environment(region$calculate_paths)$paths
-}
-
-set_region_paths <- function(region, paths) {
-    environment(region$calculate_paths)$paths <- paths
-}
-
-# Terra/permeability pointers in paths do not survive saveRDS; drop before save.
-prepare_paths_for_checkpoint <- function(paths) {
-    paths$perms <- NULL
-    if (is.list(paths$graphs) && !is.null(paths$graphs$poly)) {
-        paths$graphs$poly <- NULL
-    }
-    paths
-}
-
-restore_region_paths <- function(region, saved_paths) {
-    env <- environment(region$calculate_paths)
-    live_perms <- env$paths$perms
-    set_region_paths(region, saved_paths)
-    if (!is.null(live_perms)) {
-        environment(region$calculate_paths)$paths$perms <- live_perms
-    }
-}
-
-default_checkpoint_file <- function(tm, r, outputdir) {
-    file.path(outputdir, sprintf("checkpoint_tm%d_r%d.rds", tm, r))
-}
-
-checkpoint_file_in <- function() {
-    explicit <- Sys.getenv("CHECKPOINT_FILE_IN", unset = "")
-    if (nzchar(explicit)) {
-        return(explicit)
-    }
-    Sys.getenv("CHECKPOINT_FILE", unset = "")
-}
-
-checkpoint_file_out <- function(tm, r, outputdir) {
-    explicit <- Sys.getenv("CHECKPOINT_FILE_OUT", unset = "")
-    if (nzchar(explicit)) {
-        return(explicit)
-    }
-    default_checkpoint_file(tm, r, outputdir)
-}
-
-save_simulation_checkpoint <- function(file, tm, r, n, region,
-                                       calc_impacts = NULL) {
-    dir.create(dirname(file), recursive = TRUE, showWarnings = FALSE)
-    payload <- list(
-        rng = .Random.seed,
-        n = n,
-        paths = prepare_paths_for_checkpoint(get_region_paths(region)),
-        tm_saved = tm,
-        tm_next = tm + 1L,
-        r = r,
-        calc_impacts = calc_impacts
-    )
-    saveRDS(payload, file)
-    message(sprintf(
-        "Wrote checkpoint (tm_next=%d, r=%d, %d path origins) -> %s",
-        payload$tm_next,
-        r,
-        length(payload$paths$idx),
-        file
-    ))
-}
-
-load_simulation_checkpoint <- function(file) {
-    if (!file.exists(file)) {
-        stop("Checkpoint file not found: ", file, call. = FALSE)
-    }
-    bench <- readRDS(file)
-    required <- c("rng", "n", "paths", "tm_next", "r")
-    missing <- setdiff(required, names(bench))
-    if (length(missing)) {
-        stop("Checkpoint missing fields: ", paste(missing, collapse = ", "),
-            call. = FALSE)
-    }
-    tm_saved_label <- if (is.null(bench$tm_saved)) "?" else bench$tm_saved
-    message(sprintf(
-        "Loaded checkpoint (saved tm=%s, resume tm_next=%d, r=%d, %d path origins)",
-        tm_saved_label,
-        bench$tm_next,
-        bench$r,
-        length(bench$paths$idx)
-    ))
-    bench
-}
-
 # Create objects
 if (!is.null(input.params$context) && !is.null(input.params$context$impacts) && input.params$context$impacts$include) {
     impact_types <- unlist(input.params$context$impacts[c("social", "economic", "ecological")])
@@ -2053,66 +1947,9 @@ results <<- ManageResults(region, population_model, impacts = impacts,
     step_units = step_units, collation_steps = collation_steps, 
     replicates = replicates, combine_stages = result_stages)
 
-checkpoint_data <- NULL
-if (checkpoint_resume) {
-    ckpt_path <- checkpoint_file_in()
-    if (!nzchar(ckpt_path)) {
-        stop(
-            "CHECKPOINT_RESUME=1 requires CHECKPOINT_FILE_IN or CHECKPOINT_FILE",
-            call. = FALSE
-        )
-    }
-    checkpoint_data <- load_simulation_checkpoint(ckpt_path)
-    .Random.seed <- checkpoint_data$rng
-    restore_region_paths(region, checkpoint_data$paths)
-    population_model$set_capacity_mult(checkpoint_data$n)
-    message("Checkpoint: region path cache restored (fresh permeability rasters)")
-}
-
 gc_time_prev <- sum(gc.time())
-
-checkpoint_warmup_reps <- Sys.getenv("CHECKPOINT_WARMUP_REPS", unset = "")
-if (nzchar(checkpoint_warmup_reps)) {
-    warmup_reps <- as.integer(strsplit(
-        checkpoint_warmup_reps, ",", fixed = TRUE)[[1]])
-    replicate_seq <- c(warmup_reps, checkpoint_replicate)
-    message(sprintf(
-        paste0(
-            "Checkpoint create: warmup replicate(s) %s (shared region path cache), ",
-            "then replicate %d"
-        ),
-        paste(warmup_reps, collapse = ", "),
-        checkpoint_replicate
-    ))
-} else if (checkpoint_resume && !is.null(checkpoint_data)) {
-    # Resume only the replicate stored in the checkpoint (e.g. tm=29 r=2 -> run r=2)
-    replicate_seq <- checkpoint_data$r
-    message(sprintf(
-        "Checkpoint resume: running replicate %d only",
-        checkpoint_data$r
-    ))
-} else {
-    replicate_seq <- seq_len(input.params$simulator$replicates)
-}
+replicate_seq <- seq_len(input.params$simulator$replicates)
 tm_run_end <- time_steps
-checkpoint_warmup_time_end <- Sys.getenv("CHECKPOINT_WARMUP_TIME_END", unset = "")
-warmup_tm_end <- if (nzchar(checkpoint_warmup_time_end)) {
-    as.integer(checkpoint_warmup_time_end)
-} else {
-    time_steps
-}
-warmup_reps_vec <- if (nzchar(checkpoint_warmup_reps)) {
-    as.integer(strsplit(checkpoint_warmup_reps, ",", fixed = TRUE)[[1]])
-} else {
-    integer(0)
-}
-if (length(warmup_reps_vec) && nzchar(checkpoint_warmup_reps)) {
-    message(sprintf(
-        "Checkpoint create: warmup replicate(s) run through tm=%d; checkpoint replicate through tm=%d",
-        warmup_tm_end,
-        tm_run_end
-    ))
-}
 
 force_serial_inner_parallel <- function() {
     region$set_cores(1)
@@ -2380,7 +2217,7 @@ parallel_cluster_export_vars <- function() {
     skip <- c(
         "results", "cl", "pending_reps", "active_rep", "reps_merged",
         "reps_total", "rep_wall_start", "rep_wall_s", "parallel_run_stats",
-        "checkpoint_data", "out", "res", "worker_i", "fi",
+        "out", "res", "worker_i", "fi",
         "failed_reps", "rep_outputs", "warmup_out",
         "params", "simulator",
         # terra-backed objects: rebuilt on each PSOCK worker
@@ -2648,13 +2485,6 @@ run_one_replicate_parallel <- function(r) {
 }
 
 if (parallel_replicates) {
-    if (checkpoint_resume || checkpoint_tm > 0L || nzchar(checkpoint_warmup_reps)) {
-        stop(
-            "PARALLEL_REPLICATES is incompatible with checkpoint ",
-            "resume/create (use serial replicate loop)",
-            call. = FALSE)
-    }
-
     parallel_rep_cores <- min(as.integer(cpus), length(replicate_seq))
     parallel_backend <- parallel_persistent_backend_label()
 
@@ -2693,16 +2523,6 @@ if (parallel_replicates) {
 
 if (!parallel_replicates) {
 for (r in replicate_seq) {
-    resume_this_r <- !is.null(checkpoint_data) && r == checkpoint_data$r
-    tm_start <- if (resume_this_r) checkpoint_data$tm_next else 1L
-
-    if (resume_this_r) {
-        n <- checkpoint_data$n
-        calc_impacts <- checkpoint_data$calc_impacts
-        message(sprintf(
-            "Checkpoint resume: replicate %d from tm=%d (skipping initialise and tm 0:%d)",
-            r, tm_start, tm_start - 1L))
-    } else {
     n <- initializer$initialize()
     if (region$spatially_implicit()) {
         if (any(sapply(dispersal_models, function(dm) inherits(dm, 
@@ -2743,15 +2563,8 @@ for (r in replicate_seq) {
         }
     }
     results$collate(r, 0, n, calc_impacts)
-    } # end !resume_this_r initialise block
 
-    tm_end_r <- if (length(warmup_reps_vec) && r %in% warmup_reps_vec) {
-        warmup_tm_end
-    } else {
-        tm_run_end
-    }
-
-    for (tm in tm_start:tm_end_r) {
+    for (tm in seq_len(tm_run_end)) {
         t0 <- Sys.time()
         n <- population_model$grow(n, tm)
         t1 <- Sys.time()
@@ -2818,23 +2631,6 @@ for (r in replicate_seq) {
             n = n,
             gc_time_prev = gc_time_prev
         )
-
-        if (checkpoint_tm > 0L && tm == checkpoint_tm && r == checkpoint_replicate) {
-            ckpt_out <- checkpoint_file_out(
-                checkpoint_tm, r, input.env$outputdir)
-            save_simulation_checkpoint(
-                file = ckpt_out,
-                tm = tm,
-                r = r,
-                n = n,
-                region = region,
-                calc_impacts = calc_impacts
-            )
-            if (checkpoint_stop) {
-                message("CHECKPOINT_STOP=1: exiting after checkpoint save")
-                quit(save = "no", status = 0)
-            }
-        }
     }
 }
 } # !parallel_replicates
