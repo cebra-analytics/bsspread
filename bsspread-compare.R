@@ -26,9 +26,6 @@ parallel_replicates <- identical(Sys.getenv("PARALLEL_REPLICATES"), "1")
 # Per-timestep timing/memory logging and parent merge memory logs (off in prod):
 #   TIMESTEP_VERBOSE=1
 timestep_verbose <- identical(Sys.getenv("TIMESTEP_VERBOSE"), "1")
-# Per-phase RNG stream probes (bsspread::rng_probe; digest(.Random.seed), non-mutating):
-#   RNG_PROBE=1 TASK_CPUS=1 Rscript bsspread-compare.R
-# Optional: RNG_PROBE_TM=3,4  RNG_PROBE_ORIGIN_MAX=50  RNG_PROBE_ORIGIN_DUMP=8
 
 # data_utils.R
 # Platform wrapper utils
@@ -156,8 +153,6 @@ get_df_col <- function(df, name, series = FALSE) {
 # -----------------------------------------------
 
 library(bsspread)
-rng_probe <- bsspread::rng_probe
-rng_state_digest <- bsspread::rng_state_digest
 library(data.table)
 
 INITIALIZER_CSV_COLNAME="population"
@@ -2288,13 +2283,12 @@ log_timestep <- function(tm, r, t0, t1, t2, t3, t4, t5,
     proc_mem <- ps::ps_memory_info(ps::ps_handle(Sys.getpid()))
     gc_time_now <- sum(gc.time())
     gc_step_s <- gc_time_now - gc_time_prev
-    rng_check <- rng_state_digest()
     if (!is.null(collations)) {
         message(sprintf(
             paste0(
                 "%stm=%s r=%s | grow=%.2fs  dispersal=%.2fs  ",
                 "impacts=%.2fs  actions=%.2fs  other=%.2fs | total=%.2fs | ",
-                "%s sys avail | %s rss | %s | %s | gc=%.3fs | rng state=%s | pid %d"
+                "%s sys avail | %s rss | %s | %s | gc=%.3fs | pid %d"
             ),
             prefix, tm, r,
             elapsed(t0, t1),
@@ -2308,7 +2302,6 @@ log_timestep <- function(tm, r, t0, t1, t2, t3, t4, t5,
             n_size_label(n),
             collations_size_label(collations),
             gc_step_s,
-            rng_check,
             Sys.getpid()
         ))
     } else {
@@ -2316,7 +2309,7 @@ log_timestep <- function(tm, r, t0, t1, t2, t3, t4, t5,
             paste0(
                 "%stm=%s r=%s | grow=%.2fs  dispersal=%.2fs  ",
                 "impacts=%.2fs  actions=%.2fs  other=%.2fs | total=%.2fs | ",
-                "%s sys avail | %s rss | %s | gc=%.3fs | rng state=%s"
+                "%s sys avail | %s rss | %s | gc=%.3fs"
             ),
             prefix, tm, r,
             elapsed(t0, t1),
@@ -2328,8 +2321,7 @@ log_timestep <- function(tm, r, t0, t1, t2, t3, t4, t5,
             prettyunits::pretty_bytes(mem_info$avail),
             prettyunits::pretty_bytes(proc_mem["rss"]),
             n_size_label(n),
-            gc_step_s,
-            rng_check
+            gc_step_s
         ))
     }
     invisible(gc_time_now)
@@ -2583,23 +2575,19 @@ run_one_replicate_parallel <- function(r) {
     gc_time_prev <- sum(gc.time())
     for (tm in seq_len(tm_run_end)) {
         t0 <- Sys.time()
-        rng_probe("start", tm, r)
         n <- population_model$grow(n, tm)
-        rng_probe("grow", tm, r)
         t1 <- Sys.time()
 
         if (length(dispersal_models)) {
             n <- dispersal_models[[1]]$pack(n)
             for (i in seq_along(dispersal_models)) {
                 t_dm <- Sys.time()
-                Sys.setenv(RNG_PROBE_LABEL = sprintf("dm%d", i))
                 n <- dispersal_models[[i]]$disperse(n, tm)
                 log_dispersal_model(
                     i,
                     as.numeric(Sys.time() - t_dm, units = "secs"),
                     r = r
                 )
-                rng_probe(sprintf("dispersal_model_%d", i), tm, r)
             }
             n <- dispersal_models[[1]]$unpack(n)
         }
@@ -2614,7 +2602,6 @@ run_one_replicate_parallel <- function(r) {
             attr(n, "impacts") <- NULL
             population_model$set_capacity_mult(n)
         }
-        rng_probe("impacts", tm, r)
         t3 <- Sys.time()
 
         if (length(actions)) {
@@ -2625,7 +2612,6 @@ run_one_replicate_parallel <- function(r) {
                 n <- actions[[i]]$apply(n, tm)
             }
         }
-        rng_probe("actions", tm, r)
         t4 <- Sys.time()
 
         if (is.function(user_function)) {
@@ -2649,7 +2635,6 @@ run_one_replicate_parallel <- function(r) {
         if (is.function(continued_incursions)) {
             n <- continued_incursions(tm, n)
         }
-        rng_probe("other", tm, r)
         t5 <- Sys.time()
 
         gc_time_prev <- log_timestep(
@@ -2768,16 +2753,13 @@ for (r in replicate_seq) {
 
     for (tm in tm_start:tm_end_r) {
         t0 <- Sys.time()
-        rng_probe("start", tm, r)
         n <- population_model$grow(n, tm)
-        rng_probe("grow", tm, r)
         t1 <- Sys.time()
 
         if (length(dispersal_models)) {
             n <- dispersal_models[[1]]$pack(n)
             for (i in seq_along(dispersal_models)) {
                 t_dm <- Sys.time()
-                Sys.setenv(RNG_PROBE_LABEL = sprintf("dm%d", i))
                 n <- dispersal_models[[i]]$disperse(n, tm)
                 aggr_n <- attr(n, "dispersal_aggr_n")
                 log_dispersal_model(
@@ -2785,7 +2767,6 @@ for (r in replicate_seq) {
                     as.numeric(Sys.time() - t_dm, units = "secs"),
                     aggr_n = aggr_n
                 )
-                rng_probe(sprintf("dispersal_model_%d", i), tm, r)
             }
             n <- dispersal_models[[1]]$unpack(n)
         }
@@ -2799,7 +2780,6 @@ for (r in replicate_seq) {
             attr(n, "impacts") <- NULL
             population_model$set_capacity_mult(n)
         }
-        rng_probe("impacts", tm, r)
         t3 <- Sys.time()
 
         if (length(actions)) {
@@ -2810,7 +2790,6 @@ for (r in replicate_seq) {
                 n <- actions[[i]]$apply(n, tm)
             }
         }
-        rng_probe("actions", tm, r)
         t4 <- Sys.time()
 
         if (is.function(user_function)) {
@@ -2832,7 +2811,6 @@ for (r in replicate_seq) {
         if (is.function(continued_incursions)) {
             n <- continued_incursions(tm, n)
         }
-        rng_probe("other", tm, r)
         t5 <- Sys.time()
 
         gc_time_prev <- log_timestep(

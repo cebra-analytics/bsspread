@@ -333,7 +333,6 @@ Dispersal.Region <- function(region, population_model,
 
     # Calculate paths
     region$calculate_paths(n$indices)
-    rng_probe_disperse("paths", tm)
 
     # Limit to dispersal-ready when presence-only with spread delay
     if (population_type == "presence_only" &&
@@ -422,17 +421,10 @@ Dispersal.Region <- function(region, population_model,
 
       n_cell <- length(paths$idx[[loc_char]]$cell)
       n_aggr <- length(paths$idx[[loc_char]]$aggr)
-      rng_probe_origin_dump(
-        "paths", tm, i, loc_i = loc_i,
-        n_cell = n_cell,
-        n_aggr = n_aggr,
-        n_unlist = length(unlist(paths$idx[[loc_char]])),
-        empty_cell_aggr = (n_cell == 0L && n_aggr == 0L))
 
       ## Check that dispersal paths are present
       if (n_cell == 0 &&
           n_aggr == 0) {
-        rng_probe_origin("skip_empty", tm, i)
         return(list(i = i, dispersals = FALSE))
       }
       aggr_paths_present <- region$two_tier()
@@ -627,15 +619,6 @@ Dispersal.Region <- function(region, population_model,
 
         # Ensure there are sufficient remaining (after other dispersals)
         dispersers <- pmin(dispersers, n$remaining[i, dispersal_stages])
-        rng_probe_origin("post_rbinom", tm, i)
-        rng_probe_origin_dump(
-          "post_rbinom", tm, i, loc_i = loc_i,
-          original = n$original[i, dispersal_stages],
-          remaining = n$remaining[i, dispersal_stages],
-          dispersers = dispersers,
-          proportion_i = proportion_i,
-          source_p = source_p,
-          events_i = if (is.numeric(events_i)) events_i else NA_real_)
       }
 
       ## Distribute dispersers across dispersal events
@@ -752,22 +735,8 @@ Dispersal.Region <- function(region, population_model,
             } else {
               destination_p$cell
             }
-            rng_probe_origin_dump(
-              "pre_sample", tm, i, loc_i = loc_i,
-              dispersals = dispersals,
-              n_dest = length(dest_p),
-              dest_p_sum = sum(dest_p),
-              dest_p_nz = sum(dest_p > 0),
-              dest_p_digest = digest::digest(dest_p, algo = "xxhash64"),
-              aggr_paths = aggr_paths_present,
-              events = is.numeric(events_i))
             destinations <- sample(seq_along(dest_p), size = dispersals,
                                   replace = TRUE, prob = dest_p)
-            rng_probe_origin_dump(
-              "post_sample", tm, i, loc_i = loc_i,
-              n_destinations = length(destinations),
-              destinations_digest = digest::digest(
-                destinations, algo = "xxhash64"))
           } else {
             dispersals <- FALSE
           }
@@ -832,7 +801,6 @@ Dispersal.Region <- function(region, population_model,
         } else {
           destinations <- paths$idx[[loc_char]]$cell[destinations]
         }
-        rng_probe_origin("post_dest", tm, i)
       }
 
       ## Perform dispersal to cell destinations
@@ -900,7 +868,6 @@ Dispersal.Region <- function(region, population_model,
                                      drop = FALSE]
             dispersals <- nrow(dispersers)
           }
-          rng_probe_origin("post_establish", tm, i)
         }
 
         # Return population relocation components (aggregated per destination).
@@ -981,7 +948,6 @@ Dispersal.Region <- function(region, population_model,
         dispersal_list[[length(dispersal_list) + 1]] <- calculate_dispersals(i)
       }
     }
-    rng_probe_disperse("origins", tm)
 
     # Perform dispersal to cell destinations
     total_aggr_n <- 0L
@@ -1004,7 +970,6 @@ Dispersal.Region <- function(region, population_model,
       }
     }
     attr(n, "dispersal_aggr_n") <- total_aggr_n
-    rng_probe_disperse("apply", tm)
     return(n)
   }
 

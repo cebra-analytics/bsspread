@@ -12,7 +12,6 @@ Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 Imports:
-    digest,
     doParallel (>= 1.0.16),
     foreach (>= 1.5.1),
     igraph (>= 1.2.8),
@@ -25,7 +24,6 @@ Suggests:
     testthat
 Collate: 
     'Region.R'
-    'RngProbe.R'
     'Dispersal.R'
     'AreaSpread.R'
     'Attractor.R'
