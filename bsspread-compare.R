@@ -25,16 +25,28 @@ checkpoint_stop <- identical(Sys.getenv("CHECKPOINT_STOP"), "1")
 #   BENCHMARK_RESEED_PER_REPLICATE=1  (uses params$random_seed)
 benchmark_reseed_per_replicate <- identical(
     Sys.getenv("BENCHMARK_RESEED_PER_REPLICATE"), "1")
-# Run replicates in parallel (mclapply); inner region/dispersal stay serial:
-#   PARALLEL_REPLICATES=1 TASK_CPUS=4
+# Run replicates in parallel; inner region/dispersal stay serial in workers:
+#   PARALLEL_REPLICATES=1 TASK_CPUS=16
+# Default: persistent worker pool + incremental collate on Unix (FORK inherits terra;
+# PSOCK rebuild via PARALLEL_CLUSTER_PSOCK=1). Legacy: PARALLEL_USE_MCLAPPLY=1.
 parallel_replicates <- identical(Sys.getenv("PARALLEL_REPLICATES"), "1") ||
     identical(Sys.getenv("BENCHMARK_PARALLEL_REPLICATES"), "1")
+parallel_use_mclapply <- identical(Sys.getenv("PARALLEL_USE_MCLAPPLY"), "1")
+# Force socket workers + per-worker factory rebuild (Windows, or terra/fork issues):
+#   PARALLEL_CLUSTER_PSOCK=1
+# Disable FORK on Unix (use PSOCK rebuild instead): PARALLEL_CLUSTER_FORK=0
+parallel_path_warmup <- identical(Sys.getenv("PARALLEL_PATH_WARMUP"), "1")
 # Skip results$finalize() and save_rasters/csv/plots (timing-only benchmark runs):
 #   BENCHMARK_SKIP_SAVE=1
 benchmark_skip_save <- identical(Sys.getenv("BENCHMARK_SKIP_SAVE"), "1")
 # Per-phase RNG stream probes (bsspread::rng_probe; digest(.Random.seed), non-mutating):
 #   RNG_PROBE=1 TASK_CPUS=1 Rscript bsspread-compare.R
 # Optional: RNG_PROBE_TM=3,4  RNG_PROBE_ORIGIN_MAX=50  RNG_PROBE_ORIGIN_DUMP=8
+# Optional parent path-cache warmup before worker pool (PARALLEL_PATH_WARMUP=1):
+#   PARALLEL_WARMUP_REP=1  PARALLEL_WARMUP_TM_MAX=0  PARALLEL_WARMUP_PLATEAU=1
+#   PARALLEL_WARMUP_PLATEAU_ORIGINS=50  PARALLEL_WARMUP_PLATEAU_STEPS=3
+# Legacy single mclapply driver (compare to earlier 96-rep logs):
+#   PARALLEL_USE_MCLAPPLY=1
 
 # data_utils.R
 # Platform wrapper utils
@@ -2215,6 +2227,114 @@ force_serial_inner_parallel <- function() {
     }
 }
 
+# PSOCK workers cannot use terra objects serialised from the parent (invalid
+# external pointers). Re-read rasters and rebuild simulation state on each worker.
+parallel_rebuild_worker_simulation <- function() {
+    if (!is.null(input.params$context) &&
+            !is.null(input.params$context$impacts) &&
+            input.params$context$impacts$include) {
+        impact_types <- unlist(input.params$context$impacts[
+            c("social", "economic", "ecological")])
+        if (any(impact_types)) {
+            impact_types <- names(impact_types[which(impact_types)])
+        } else {
+            impact_types <- "none"
+        }
+    } else {
+        impact_types <- "none"
+    }
+    if (!is.null(input.params$context) &&
+            !is.null(input.params$context$actions) &&
+            input.params$context$actions$include) {
+        action_types <- unlist(input.params$context$actions[
+            c("surveillance", "control", "removal")])
+        if (any(action_types)) {
+            action_types <- names(action_types[which(action_types)])
+        } else {
+            action_types <- "none"
+        }
+    } else {
+        action_types <- "none"
+    }
+
+    context <<- bsmanage::ManageContext(
+        species_names = "not available",
+        species_types = c("pest", "weed", "disease"),
+        impact_types = impact_types,
+        action_types = action_types,
+        manage_scope = "scenarios"
+    )
+    region <<- bsspread_region_factory(input.params$region)
+    population_model <<- bsspread_populaton_model_factory(
+        input.params$population_model,
+        region
+    )
+    initializer <<- bsspread_initializer_factory(
+        input.params$initializer,
+        region,
+        population_model,
+        input.env$outputdir
+    )
+    dispersal_models <<- bsspread_dispersal_models_factory(
+        input.params$dispersal_models,
+        region,
+        population_model,
+        impact_params = input.params$impacts
+    )
+    impacts <<- bsmanage_impacts_factory(
+        input.params$impacts,
+        region,
+        population_model,
+        context,
+        sim_params = input.params$simulator
+    )
+    actions <<- bsmanage_actions_factory(
+        input.params$actions,
+        region,
+        population_model,
+        context
+    )
+    simulator <<- bsmanage::ManageSimulator(
+        region = region,
+        time_steps = input.params$simulator$time_steps,
+        step_units = input.params$simulator$step_units,
+        step_duration = input.params$simulator$step_duration,
+        collation_steps = input.params$simulator$collation_steps,
+        replicates = input.params$simulator$replicates,
+        result_stages = unlist(input.params$simulator$result_stages),
+        parallel_cores = cpus,
+        initializer = initializer,
+        population_model = population_model,
+        dispersal_models = dispersal_models,
+        impacts = impacts,
+        actions = actions,
+        user_function = progress_function
+    )
+    list2env(as.list(environment(simulator$run)), envir = .GlobalEnv)
+    continued_incursions <<- initializer$continued_incursions()
+    force_serial_inner_parallel()
+    gc_time_prev <<- sum(gc.time())
+    invisible(NULL)
+}
+
+parallel_persistent_cluster_type <- function() {
+    if (identical(Sys.getenv("PARALLEL_CLUSTER_PSOCK"), "1")) {
+        return("PSOCK")
+    }
+    if (.Platform$OS.type == "unix" &&
+            !identical(Sys.getenv("PARALLEL_CLUSTER_FORK"), "0")) {
+        return("FORK")
+    }
+    "PSOCK"
+}
+
+parallel_persistent_backend_label <- function(cluster_type = NULL) {
+    if (is.null(cluster_type)) {
+        cluster_type <- parallel_persistent_cluster_type()
+    }
+    paste0(cluster_type, " persistent")
+}
+
 n_size_label <- function(n) {
     sz <- prettyunits::pretty_bytes(as.numeric(object.size(n)))
     if (is.matrix(n)) {
@@ -2287,7 +2407,215 @@ parent_mem_message <- function(
     ))
 }
 
-run_one_replicate_parallel <- function(r) {
+parallel_cluster_export_vars <- function() {
+    skip <- c(
+        "results", "cl", "pending_reps", "active_rep", "reps_merged",
+        "reps_total", "rep_wall_start", "rep_wall_s", "parallel_run_stats",
+        "checkpoint_data", "eq_state", "out", "res", "worker_i", "fi",
+        "failed_reps", "rep_outputs", "warmup_out", "plateau_after_tm",
+        "params", "simulator", "benchmark_scaling_reps_done",
+        # terra-backed objects: rebuilt on each PSOCK worker
+        "region", "population_model", "initializer", "dispersal_models",
+        "impacts", "actions", "context", "continued_incursions", "gc_time_prev"
+    )
+    setdiff(ls(envir = .GlobalEnv, all.names = FALSE), skip)
+}
+
+parallel_init_cluster <- function(n_workers,
+                                  cluster_type = parallel_persistent_cluster_type()) {
+    # outfile="" streams worker message()/cat() to parent during sendCall tasks.
+    cl <- parallel::makeCluster(n_workers, type = cluster_type, outfile = "")
+    if (cluster_type == "PSOCK") {
+        workdir <- input.env$workdir
+        vars <- parallel_cluster_export_vars()
+        parallel::clusterExport(cl, vars, envir = .GlobalEnv)
+        # workdir is local to this function, not .GlobalEnv
+        parallel::clusterExport(cl, "workdir", envir = environment())
+        parallel::clusterEvalQ(cl, {
+            setwd(workdir)
+            library(terra)
+            library(data.table)
+            library(bsspread)
+            library(bsmanage)
+            library(bsimpact)
+            library(ps)
+            library(prettyunits)
+            terra::terraOptions(tempdir = workdir)
+            parallel_rebuild_worker_simulation()
+        })
+    } else {
+        parallel::clusterEvalQ(cl, {
+            force_serial_inner_parallel()
+            gc_time_prev <<- sum(gc.time())
+        })
+    }
+    attr(cl, "cluster_type") <- cluster_type
+    cl
+}
+
+merge_replicate_output <- function(out, reps_merged, reps_total,
+                                   rep_outputs = NULL) {
+    for (col in out$collations) {
+        results$collate(col$r, col$tm, col$n, col$calc_impacts)
+    }
+    parent_mem_message(
+        sprintf("merged r=%d", out$r),
+        reps_merged = reps_merged,
+        reps_total = reps_total,
+        rep_outputs = rep_outputs
+    )
+}
+
+run_parallel_replicates_psock <- function(replicate_seq, n_workers) {
+    reps_total <- length(replicate_seq)
+    parent_mem_message(
+        "before_mclapply",
+        reps_merged = 0L,
+        reps_total = reps_total
+    )
+    cl <- parallel_init_cluster(n_workers)
+    cluster_type <- attr(cl, "cluster_type")
+    on.exit(parallel::stopCluster(cl), add = TRUE)
+
+    pending_reps <- as.list(replicate_seq)
+    active_rep <- rep(NA_integer_, length(cl))
+    reps_merged <- 0L
+    in_flight <- list()
+
+    for (i in seq_along(cl)) {
+        if (!length(pending_reps)) {
+            break
+        }
+        r <- pending_reps[[1L]]
+        pending_reps <- pending_reps[-1L]
+        active_rep[i] <- r
+        parallel:::sendCall(cl[[i]], run_one_replicate_parallel, list(r = r))
+    }
+
+    rep_wall_start <- Sys.time()
+    while (any(!is.na(active_rep))) {
+        res <- parallel:::recvOneResult(cl)
+        worker_i <- res$node
+        if (inherits(res$value, "try-error")) {
+            stop(sprintf(
+                "PARALLEL_REPLICATES: replicate %d FAILED on worker %d:\n%s",
+                active_rep[worker_i],
+                worker_i,
+                as.character(res$value)
+            ), call. = FALSE)
+        }
+        out <- res$value
+        in_flight <- list(out)
+        parent_mem_message(
+            sprintf("received r=%d", out$r),
+            reps_merged = reps_merged,
+            reps_total = reps_total,
+            rep_outputs = in_flight
+        )
+        reps_merged <- reps_merged + 1L
+        merge_replicate_output(
+            out,
+            reps_merged = reps_merged,
+            reps_total = reps_total,
+            rep_outputs = NULL
+        )
+        in_flight <- list()
+        active_rep[worker_i] <- NA_integer_
+
+        if (length(pending_reps)) {
+            r <- pending_reps[[1L]]
+            pending_reps <- pending_reps[-1L]
+            active_rep[worker_i] <- r
+            parallel:::sendCall(
+                cl[[worker_i]],
+                run_one_replicate_parallel,
+                list(r = r)
+            )
+        }
+    }
+    rep_wall_s <- as.numeric(Sys.time() - rep_wall_start, units = "secs")
+
+    parent_mem_message(
+        "after_merge",
+        reps_merged = reps_total,
+        reps_total = reps_total
+    )
+    list(
+        wall_s = rep_wall_s,
+        reps = reps_total,
+        cores = n_workers,
+        backend = parallel_persistent_backend_label(cluster_type)
+    )
+}
+
+make_path_warmup_after_tm <- function(min_new_origins, steps_required) {
+    state <- new.env(parent = emptyenv())
+    state$prev_origins <- length(get_region_paths(region)$idx)
+    state$low_steps <- 0L
+    function(tm, r, n, collations) {
+        curr <- length(get_region_paths(region)$idx)
+        delta <- curr - state$prev_origins
+        state$prev_origins <- curr
+        if (delta < min_new_origins) {
+            state$low_steps <- state$low_steps + 1L
+        } else {
+            state$low_steps <- 0L
+        }
+        if (state$low_steps >= steps_required) {
+            message(sprintf(
+                paste0(
+                    "PARALLEL_PATH_WARMUP: plateau at tm=%d ",
+                    "(<%d new origins for %d step(s)); %d path origins"
+                ),
+                tm, min_new_origins, steps_required, curr
+            ))
+            return(TRUE)
+        }
+        FALSE
+    }
+}
+
+run_parent_path_warmup <- function(warmup_r) {
+    tm_max <- as.integer(Sys.getenv("PARALLEL_WARMUP_TM_MAX", unset = "0"))
+    plateau_min <- as.integer(
+        Sys.getenv("PARALLEL_WARMUP_PLATEAU_ORIGINS", unset = "50"))
+    plateau_steps <- as.integer(
+        Sys.getenv("PARALLEL_WARMUP_PLATEAU_STEPS", unset = "3"))
+    use_plateau <- identical(
+        Sys.getenv("PARALLEL_WARMUP_PLATEAU"), "1")
+
+    region$set_cores(cpus)
+    if (length(dispersal_models)) {
+        for (i in seq_along(dispersal_models)) {
+            dispersal_models[[i]]$set_cores(cpus)
+        }
+    }
+
+    tm_end <- if (tm_max > 0L) tm_max else NULL
+    after_tm <- if (use_plateau) {
+        make_path_warmup_after_tm(plateau_min, plateau_steps)
+    } else {
+        NULL
+    }
+
+    message(sprintf(
+        "PARALLEL_PATH_WARMUP: parent replicate %d (inner parallel, cpus=%d)",
+        warmup_r, as.integer(cpus)
+    ))
+    out <- run_one_replicate_parallel(
+        warmup_r,
+        tm_end = tm_end,
+        after_tm = after_tm
+    )
+    n_origins <- length(get_region_paths(region)$idx)
+    message(sprintf(
+        "PARALLEL_PATH_WARMUP: finished r=%d, %d path origins",
+        warmup_r, n_origins
+    ))
+    out
+}
+
+run_one_replicate_parallel <- function(r, tm_end = NULL, after_tm = NULL) {
     collations <- list()
     if (is.numeric(input.params$random_seed)) {
         if (benchmark_reseed_per_replicate) {
@@ -2350,7 +2678,12 @@ run_one_replicate_parallel <- function(r) {
     collations[[1L]] <- list(r = r, tm = 0L, n = n, calc_impacts = calc_impacts)
 
     gc_time_prev <- sum(gc.time())
-    for (tm in seq_len(tm_run_end)) {
+    tm_limit <- if (is.null(tm_end)) {
+        tm_run_end
+    } else {
+        min(as.integer(tm_end), tm_run_end)
+    }
+    for (tm in seq_len(tm_limit)) {
         t0 <- Sys.time()
         rng_probe("start", tm, r)
         n <- population_model$grow(n, tm)
@@ -2449,15 +2782,16 @@ run_one_replicate_parallel <- function(r) {
             rng_check,
             Sys.getpid()
         ))
+        if (is.function(after_tm)) {
+            if (isTRUE(after_tm(tm, r, n, collations))) {
+                break
+            }
+        }
     }
     list(r = r, collations = collations)
 }
 
 if (parallel_replicates) {
-    if (.Platform$OS.type != "unix") {
-        stop("PARALLEL_REPLICATES requires Unix (mclapply)",
-            call. = FALSE)
-    }
     if (checkpoint_resume || checkpoint_tm > 0L || nzchar(checkpoint_warmup_reps)) {
         stop(
             "PARALLEL_REPLICATES is incompatible with checkpoint ",
@@ -2481,65 +2815,133 @@ if (parallel_replicates) {
             "(per-worker merge not implemented)")
         eq_enabled <- FALSE
     }
-    force_serial_inner_parallel()
-    parallel_rep_cores <- min(as.integer(cpus), length(replicate_seq))
-    message(sprintf(
-        paste0(
-            "PARALLEL_REPLICATES: %d replicate(s), ",
-            "mc.cores=%d, inner dispersal/paths serial"
-        ),
-        length(replicate_seq), parallel_rep_cores))
-    reps_total <- length(replicate_seq)
-    parent_mem_message("before_mclapply", reps_merged = 0L, reps_total = reps_total)
-    rep_wall_start <- Sys.time()
-    rep_outputs <- parallel::mclapply(
-        replicate_seq,
-        run_one_replicate_parallel,
-        mc.cores = parallel_rep_cores)
-    rep_wall_s <- as.numeric(Sys.time() - rep_wall_start, units = "secs")
 
-    failed_reps <- which(vapply(rep_outputs, inherits, logical(1), "try-error"))
-    if (length(failed_reps) > 0L) {
-        for (fi in failed_reps) {
-            message(sprintf(
-                "PARALLEL_REPLICATES: replicate %d FAILED:\n%s",
-                replicate_seq[fi],
-                as.character(rep_outputs[[fi]])))
-        }
-        stop(sprintf(
-            "PARALLEL_REPLICATES: %d replicate(s) failed: r=%s",
-            length(failed_reps),
-            paste(replicate_seq[failed_reps], collapse = ", ")))
+    parallel_rep_cores <- min(as.integer(cpus), length(replicate_seq))
+    parallel_backend <- if (parallel_use_mclapply) {
+        "mclapply"
+    } else {
+        parallel_persistent_backend_label()
     }
 
-    parent_mem_message(
-        "after_mclapply",
-        reps_merged = 0L,
-        reps_total = reps_total,
-        rep_outputs = rep_outputs
-    )
-    for (i in seq_along(rep_outputs)) {
-        out <- rep_outputs[[i]]
-        for (col in out$collations) {
+    if (parallel_path_warmup && length(replicate_seq)) {
+        warmup_r <- as.integer(Sys.getenv("PARALLEL_WARMUP_REP", unset = "1"))
+        if (!warmup_r %in% replicate_seq) {
+            stop(sprintf(
+                "PARALLEL_WARMUP_REP=%d is not in replicate_seq",
+                warmup_r
+            ), call. = FALSE)
+        }
+        warmup_out <- run_parent_path_warmup(warmup_r)
+        for (col in warmup_out$collations) {
             results$collate(col$r, col$tm, col$n, col$calc_impacts)
         }
-        rep_outputs[[i]] <- NULL
+        replicate_seq <- setdiff(replicate_seq, warmup_r)
+        force_serial_inner_parallel()
+    }
+
+    if (!length(replicate_seq)) {
+        message("PARALLEL_REPLICATES: no replicates left after warmup")
+        parallel_run_stats <- list(
+            wall_s = 0,
+            reps = 0L,
+            cores = parallel_rep_cores,
+            backend = parallel_backend
+        )
+    } else if (parallel_use_mclapply) {
+        if (.Platform$OS.type != "unix") {
+            stop("PARALLEL_USE_MCLAPPLY requires Unix (mclapply)",
+                call. = FALSE)
+        }
+        force_serial_inner_parallel()
+        message(sprintf(
+            paste0(
+                "PARALLEL_REPLICATES: %d replicate(s), ",
+                "mc.cores=%d, inner dispersal/paths serial, backend=mclapply"
+            ),
+            length(replicate_seq), parallel_rep_cores))
+        reps_total <- length(replicate_seq)
         parent_mem_message(
-            sprintf("merged r=%d", out$r),
-            reps_merged = i,
+            "before_mclapply",
+            reps_merged = 0L,
+            reps_total = reps_total
+        )
+        rep_wall_start <- Sys.time()
+        rep_outputs <- parallel::mclapply(
+            replicate_seq,
+            run_one_replicate_parallel,
+            mc.cores = parallel_rep_cores)
+        rep_wall_s <- as.numeric(Sys.time() - rep_wall_start, units = "secs")
+
+        failed_reps <- which(vapply(
+            rep_outputs, inherits, logical(1), "try-error"))
+        if (length(failed_reps) > 0L) {
+            for (fi in failed_reps) {
+                message(sprintf(
+                    "PARALLEL_REPLICATES: replicate %d FAILED:\n%s",
+                    replicate_seq[fi],
+                    as.character(rep_outputs[[fi]])))
+            }
+            stop(sprintf(
+                "PARALLEL_REPLICATES: %d replicate(s) failed: r=%s",
+                length(failed_reps),
+                paste(replicate_seq[failed_reps], collapse = ", ")))
+        }
+
+        parent_mem_message(
+            "after_mclapply",
+            reps_merged = 0L,
             reps_total = reps_total,
             rep_outputs = rep_outputs
         )
+        for (i in seq_along(rep_outputs)) {
+            out <- rep_outputs[[i]]
+            merge_replicate_output(
+                out,
+                reps_merged = i,
+                reps_total = reps_total,
+                rep_outputs = rep_outputs
+            )
+            rep_outputs[[i]] <- NULL
+        }
+        rm(rep_outputs)
+        parent_mem_message(
+            "after_merge",
+            reps_merged = reps_total,
+            reps_total = reps_total
+        )
+        parallel_run_stats <- list(
+            wall_s = rep_wall_s,
+            reps = length(replicate_seq),
+            cores = parallel_rep_cores,
+            backend = "mclapply"
+        )
+        message(sprintf(
+            "PARALLEL_REPLICATES complete: wall=%.2fs (%d reps, mc.cores=%d, backend=mclapply)",
+            rep_wall_s, length(replicate_seq), parallel_rep_cores))
+    } else {
+        force_serial_inner_parallel()
+        message(sprintf(
+            paste0(
+                "PARALLEL_REPLICATES: %d replicate(s), ",
+                "mc.cores=%d, inner dispersal/paths serial, ",
+                "backend=%s"
+            ),
+            length(replicate_seq), parallel_rep_cores, parallel_backend))
+        parallel_run_stats <- run_parallel_replicates_psock(
+            replicate_seq,
+            parallel_rep_cores
+        )
+        message(sprintf(
+            paste0(
+                "PARALLEL_REPLICATES complete: wall=%.2fs ",
+                "(%d reps, mc.cores=%d, backend=%s)"
+            ),
+            parallel_run_stats$wall_s,
+            parallel_run_stats$reps,
+            parallel_run_stats$cores,
+            parallel_run_stats$backend
+        ))
     }
-    rm(rep_outputs)
-    parent_mem_message(
-        "after_merge",
-        reps_merged = reps_total,
-        reps_total = reps_total
-    )
-    message(sprintf(
-        "PARALLEL_REPLICATES complete: wall=%.2fs (%d reps, mc.cores=%d)",
-        rep_wall_s, length(replicate_seq), parallel_rep_cores))
 }
 
 if (!parallel_replicates) {
