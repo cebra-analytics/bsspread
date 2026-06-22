@@ -1,11 +1,5 @@
 #set.seed(42)
 
-# --- Profiling (script-side profvis; no Dispersal.R hooks) ---
-profile_timestep <- FALSE
-profile_replicate <- 1L
-profile_timestep_n <- 25L
-profile_output <- ""  # empty -> <outputdir>/profvis_timestep_r{r}_tm{tm}.html
-
 # --- Checkpoint (warm path cache for profiling later timesteps) ---
 # Save at end of tm N (writes CHECKPOINT_FILE_OUT or <outputdir>/checkpoint_tm{N}_r{r}.rds):
 #   CHECKPOINT_TM=24 CHECKPOINT_STOP=1 Rscript bsspread-compare.R
@@ -21,32 +15,20 @@ checkpoint_replicate <- as.integer(Sys.getenv(
     unset = "2"))
 checkpoint_resume <- identical(Sys.getenv("CHECKPOINT_RESUME"), "1")
 checkpoint_stop <- identical(Sys.getenv("CHECKPOINT_STOP"), "1")
-# Re-seed before each replicate's initialise (same session, warm path cache):
-#   BENCHMARK_RESEED_PER_REPLICATE=1  (uses params$random_seed)
-benchmark_reseed_per_replicate <- identical(
-    Sys.getenv("BENCHMARK_RESEED_PER_REPLICATE"), "1")
 # Run replicates in parallel; inner region/dispersal stay serial in workers:
 #   PARALLEL_REPLICATES=1 TASK_CPUS=16
 # Default: persistent worker pool + incremental collate on Unix (FORK inherits terra;
-# PSOCK rebuild via PARALLEL_CLUSTER_PSOCK=1). Legacy: PARALLEL_USE_MCLAPPLY=1.
-parallel_replicates <- identical(Sys.getenv("PARALLEL_REPLICATES"), "1") ||
-    identical(Sys.getenv("BENCHMARK_PARALLEL_REPLICATES"), "1")
-parallel_use_mclapply <- identical(Sys.getenv("PARALLEL_USE_MCLAPPLY"), "1")
+# PSOCK rebuild via PARALLEL_CLUSTER_PSOCK=1).
+parallel_replicates <- identical(Sys.getenv("PARALLEL_REPLICATES"), "1")
 # Force socket workers + per-worker factory rebuild (Windows, or terra/fork issues):
 #   PARALLEL_CLUSTER_PSOCK=1
 # Disable FORK on Unix (use PSOCK rebuild instead): PARALLEL_CLUSTER_FORK=0
-parallel_path_warmup <- identical(Sys.getenv("PARALLEL_PATH_WARMUP"), "1")
-# Skip results$finalize() and save_rasters/csv/plots (timing-only benchmark runs):
-#   BENCHMARK_SKIP_SAVE=1
-benchmark_skip_save <- identical(Sys.getenv("BENCHMARK_SKIP_SAVE"), "1")
+# Per-timestep timing/memory logging and parent merge memory logs (off in prod):
+#   TIMESTEP_VERBOSE=1
+timestep_verbose <- identical(Sys.getenv("TIMESTEP_VERBOSE"), "1")
 # Per-phase RNG stream probes (bsspread::rng_probe; digest(.Random.seed), non-mutating):
 #   RNG_PROBE=1 TASK_CPUS=1 Rscript bsspread-compare.R
 # Optional: RNG_PROBE_TM=3,4  RNG_PROBE_ORIGIN_MAX=50  RNG_PROBE_ORIGIN_DUMP=8
-# Optional parent path-cache warmup before worker pool (PARALLEL_PATH_WARMUP=1):
-#   PARALLEL_WARMUP_REP=1  PARALLEL_WARMUP_TM_MAX=0  PARALLEL_WARMUP_PLATEAU=1
-#   PARALLEL_WARMUP_PLATEAU_ORIGINS=50  PARALLEL_WARMUP_PLATEAU_STEPS=3
-# Legacy single mclapply driver (compare to earlier 96-rep logs):
-#   PARALLEL_USE_MCLAPPLY=1
 
 # data_utils.R
 # Platform wrapper utils
@@ -1066,8 +1048,6 @@ paste("bsspread:", packageVersion("bsspread"))
 paste("bsmanage:", packageVersion("bsmanage"))
 paste("terra:", packageVersion("terra"))
 paste("data.table:", packageVersion("data.table"))
-paste("profvis:", packageVersion("profvis"))
-paste("htmlwidgets:", packageVersion("htmlwidgets"))
 
 
 # Load parameters
@@ -1083,21 +1063,6 @@ terra::terraOptions(tempdir = input.env$workdir)
 
 # Set working directory
 setwd(input.env$workdir)
-
-# Optional behavioural equivalence collector (manual workflow helper)
-eq_enabled <- FALSE
-eq_state <- NULL
-eq_helper_paths <- c(
-    "tools/equivalence_metrics.R",
-    "/workdir/script/tools/equivalence_metrics.R",
-    "/workdir/tools/equivalence_metrics.R"
-)
-eq_helper <- eq_helper_paths[file.exists(eq_helper_paths)][1]
-if (!is.na(eq_helper)) {
-    source(eq_helper)
-    eq_enabled <- exists("eq_init") && exists("eq_capture_step") &&
-        exists("eq_write_outputs")
-}
 
 # Common get parameter method
 get_param <- function(params, name, region, use_aggr_fun = "mean", layers = "multiple", na_strategy = "zero") {
@@ -1917,24 +1882,6 @@ load_simulation_checkpoint <- function(file) {
     bench
 }
 
-# Deep copy for repeated benchmark reps without re-readRDS (serialize round-trip).
-duplicate_simulation_checkpoint <- function(bench) {
-    unserialize(serialize(bench, NULL))
-}
-
-duplicate_checkpoint_paths <- function(paths) {
-    unserialize(serialize(paths, NULL))
-}
-
-# Reset state from an immutable scaling master (paths deep-copied; n/rng from master).
-apply_scaling_checkpoint_restore <- function(region, population_model, master) {
-    .Random.seed <- master$rng
-    restore_region_paths(region, duplicate_checkpoint_paths(master$paths))
-    population_model$set_capacity_mult(master$n)
-    n <<- master$n
-    master$calc_impacts
-}
-
 # Create objects
 if (!is.null(input.params$context) && !is.null(input.params$context$impacts) && input.params$context$impacts$include) {
     impact_types <- unlist(input.params$context$impacts[c("social", "economic", "ecological")])
@@ -2111,35 +2058,6 @@ results <<- ManageResults(region, population_model, impacts = impacts,
     step_units = step_units, collation_steps = collation_steps, 
     replicates = replicates, combine_stages = result_stages)
 
-if (eq_enabled) {
-    eq_run_label <- Sys.getenv("EQ_RUN_LABEL")
-    if (!nzchar(eq_run_label)) {
-        eq_run_label <- paste0(
-            "run_",
-            if (!is.null(input.params$job_uuid)) input.params$job_uuid else
-                format(Sys.time(), "%Y%m%d_%H%M%S")
-        )
-    }
-    eq_git_sha <- Sys.getenv("EQ_GIT_SHA")
-    if (!nzchar(eq_git_sha)) eq_git_sha <- NA_character_
-    eq_branch <- Sys.getenv("EQ_BRANCH")
-    if (!nzchar(eq_branch)) eq_branch <- NA_character_
-    eq_scenario <- Sys.getenv("EQ_SCENARIO")
-    if (!nzchar(eq_scenario)) eq_scenario <- "manual_docker_run"
-    eq_out_dir <- Sys.getenv("EQ_OUT_DIR")
-    if (!nzchar(eq_out_dir)) {
-        eq_out_dir <- file.path(input.env$outputdir, "equivalence")
-    }
-    eq_state <- eq_init(
-        run_label = eq_run_label,
-        git_sha = eq_git_sha,
-        branch = eq_branch,
-        scenario = eq_scenario,
-        out_dir = eq_out_dir,
-        save_occupancy = TRUE
-    )
-}
-
 checkpoint_data <- NULL
 if (checkpoint_resume) {
     ckpt_path <- checkpoint_file_in()
@@ -2150,9 +2068,6 @@ if (checkpoint_resume) {
         )
     }
     checkpoint_data <- load_simulation_checkpoint(ckpt_path)
-    if (as.integer(Sys.getenv("BENCHMARK_SCALING_REPS", unset = "0")) > 0L) {
-        checkpoint_data <- duplicate_simulation_checkpoint(checkpoint_data)
-    }
     .Random.seed <- checkpoint_data$rng
     restore_region_paths(region, checkpoint_data$paths)
     population_model$set_capacity_mult(checkpoint_data$n)
@@ -2161,11 +2076,8 @@ if (checkpoint_resume) {
 
 gc_time_prev <- sum(gc.time())
 
-benchmark_replicate <- Sys.getenv("BENCHMARK_REPLICATE", unset = "")
 checkpoint_warmup_reps <- Sys.getenv("CHECKPOINT_WARMUP_REPS", unset = "")
-if (nzchar(benchmark_replicate)) {
-    replicate_seq <- as.integer(benchmark_replicate)
-} else if (nzchar(checkpoint_warmup_reps)) {
+if (nzchar(checkpoint_warmup_reps)) {
     warmup_reps <- as.integer(strsplit(
         checkpoint_warmup_reps, ",", fixed = TRUE)[[1]])
     replicate_seq <- c(warmup_reps, checkpoint_replicate)
@@ -2181,24 +2093,13 @@ if (nzchar(benchmark_replicate)) {
     # Resume only the replicate stored in the checkpoint (e.g. tm=29 r=2 -> run r=2)
     replicate_seq <- checkpoint_data$r
     message(sprintf(
-        "Checkpoint resume: running replicate %d only (set BENCHMARK_REPLICATE to override)",
+        "Checkpoint resume: running replicate %d only",
         checkpoint_data$r
     ))
-} else if (parallel_replicates) {
-    replicate_seq <- if (nzchar(benchmark_replicate)) {
-        as.integer(benchmark_replicate)
-    } else {
-        seq_len(input.params$simulator$replicates)
-    }
 } else {
     replicate_seq <- seq_len(input.params$simulator$replicates)
 }
-benchmark_time_end <- Sys.getenv("BENCHMARK_TIME_END", unset = "")
-tm_run_end <- if (nzchar(benchmark_time_end)) {
-    as.integer(benchmark_time_end)
-} else {
-    time_steps
-}
+tm_run_end <- time_steps
 checkpoint_warmup_time_end <- Sys.getenv("CHECKPOINT_WARMUP_TIME_END", unset = "")
 warmup_tm_end <- if (nzchar(checkpoint_warmup_time_end)) {
     as.integer(checkpoint_warmup_time_end)
@@ -2361,12 +2262,88 @@ collations_size_label <- function(collations) {
     )
 }
 
+log_dispersal_model <- function(i, elapsed_s, r = NA_integer_, aggr_n = NULL) {
+    if (!timestep_verbose) {
+        return(invisible(NULL))
+    }
+    extra <- if (!is.null(aggr_n) && aggr_n > 0L) {
+        sprintf(" (aggr_dest=%d)", aggr_n)
+    } else if (!is.na(r)) {
+        sprintf(" (r=%d pid %d)", r, Sys.getpid())
+    } else {
+        ""
+    }
+    message(sprintf("    dispersal model %d: %.2fs%s", i, elapsed_s, extra))
+}
+
+log_timestep <- function(tm, r, t0, t1, t2, t3, t4, t5,
+                         n, gc_time_prev,
+                         collations = NULL,
+                         prefix = "") {
+    if (!timestep_verbose) {
+        return(invisible(gc_time_prev))
+    }
+    elapsed <- function(a, b) as.numeric(b - a, units = "secs")
+    mem_info <- ps::ps_system_memory()
+    proc_mem <- ps::ps_memory_info(ps::ps_handle(Sys.getpid()))
+    gc_time_now <- sum(gc.time())
+    gc_step_s <- gc_time_now - gc_time_prev
+    rng_check <- rng_state_digest()
+    if (!is.null(collations)) {
+        message(sprintf(
+            paste0(
+                "%stm=%s r=%s | grow=%.2fs  dispersal=%.2fs  ",
+                "impacts=%.2fs  actions=%.2fs  other=%.2fs | total=%.2fs | ",
+                "%s sys avail | %s rss | %s | %s | gc=%.3fs | rng state=%s | pid %d"
+            ),
+            prefix, tm, r,
+            elapsed(t0, t1),
+            elapsed(t1, t2),
+            elapsed(t2, t3),
+            elapsed(t3, t4),
+            elapsed(t4, t5),
+            elapsed(t0, t5),
+            prettyunits::pretty_bytes(mem_info$avail),
+            prettyunits::pretty_bytes(proc_mem["rss"]),
+            n_size_label(n),
+            collations_size_label(collations),
+            gc_step_s,
+            rng_check,
+            Sys.getpid()
+        ))
+    } else {
+        message(sprintf(
+            paste0(
+                "%stm=%s r=%s | grow=%.2fs  dispersal=%.2fs  ",
+                "impacts=%.2fs  actions=%.2fs  other=%.2fs | total=%.2fs | ",
+                "%s sys avail | %s rss | %s | gc=%.3fs | rng state=%s"
+            ),
+            prefix, tm, r,
+            elapsed(t0, t1),
+            elapsed(t1, t2),
+            elapsed(t2, t3),
+            elapsed(t3, t4),
+            elapsed(t4, t5),
+            elapsed(t0, t5),
+            prettyunits::pretty_bytes(mem_info$avail),
+            prettyunits::pretty_bytes(proc_mem["rss"]),
+            n_size_label(n),
+            gc_step_s,
+            rng_check
+        ))
+    }
+    invisible(gc_time_now)
+}
+
 parent_mem_message <- function(
     phase,
     reps_merged = NA_integer_,
     reps_total = NA_integer_,
     rep_outputs = NULL
 ) {
+    if (!timestep_verbose) {
+        return(invisible(NULL))
+    }
     mem_info <- ps::ps_system_memory()
     proc_mem <- ps::ps_memory_info(ps::ps_handle(Sys.getpid()))
     reps_merged_str <- if (is.na(reps_merged)) {
@@ -2411,9 +2388,9 @@ parallel_cluster_export_vars <- function() {
     skip <- c(
         "results", "cl", "pending_reps", "active_rep", "reps_merged",
         "reps_total", "rep_wall_start", "rep_wall_s", "parallel_run_stats",
-        "checkpoint_data", "eq_state", "out", "res", "worker_i", "fi",
-        "failed_reps", "rep_outputs", "warmup_out", "plateau_after_tm",
-        "params", "simulator", "benchmark_scaling_reps_done",
+        "checkpoint_data", "out", "res", "worker_i", "fi",
+        "failed_reps", "rep_outputs", "warmup_out",
+        "params", "simulator",
         # terra-backed objects: rebuilt on each PSOCK worker
         "region", "population_model", "initializer", "dispersal_models",
         "impacts", "actions", "context", "continued_incursions", "gc_time_prev"
@@ -2466,10 +2443,10 @@ merge_replicate_output <- function(out, reps_merged, reps_total,
     )
 }
 
-run_parallel_replicates_psock <- function(replicate_seq, n_workers) {
+run_parallel_replicates_persistent <- function(replicate_seq, n_workers) {
     reps_total <- length(replicate_seq)
     parent_mem_message(
-        "before_mclapply",
+        "before_pool",
         reps_merged = 0L,
         reps_total = reps_total
     )
@@ -2548,89 +2525,15 @@ run_parallel_replicates_psock <- function(replicate_seq, n_workers) {
     )
 }
 
-make_path_warmup_after_tm <- function(min_new_origins, steps_required) {
-    state <- new.env(parent = emptyenv())
-    state$prev_origins <- length(get_region_paths(region)$idx)
-    state$low_steps <- 0L
-    function(tm, r, n, collations) {
-        curr <- length(get_region_paths(region)$idx)
-        delta <- curr - state$prev_origins
-        state$prev_origins <- curr
-        if (delta < min_new_origins) {
-            state$low_steps <- state$low_steps + 1L
-        } else {
-            state$low_steps <- 0L
-        }
-        if (state$low_steps >= steps_required) {
-            message(sprintf(
-                paste0(
-                    "PARALLEL_PATH_WARMUP: plateau at tm=%d ",
-                    "(<%d new origins for %d step(s)); %d path origins"
-                ),
-                tm, min_new_origins, steps_required, curr
-            ))
-            return(TRUE)
-        }
-        FALSE
-    }
-}
-
-run_parent_path_warmup <- function(warmup_r) {
-    tm_max <- as.integer(Sys.getenv("PARALLEL_WARMUP_TM_MAX", unset = "0"))
-    plateau_min <- as.integer(
-        Sys.getenv("PARALLEL_WARMUP_PLATEAU_ORIGINS", unset = "50"))
-    plateau_steps <- as.integer(
-        Sys.getenv("PARALLEL_WARMUP_PLATEAU_STEPS", unset = "3"))
-    use_plateau <- identical(
-        Sys.getenv("PARALLEL_WARMUP_PLATEAU"), "1")
-
-    region$set_cores(cpus)
-    if (length(dispersal_models)) {
-        for (i in seq_along(dispersal_models)) {
-            dispersal_models[[i]]$set_cores(cpus)
-        }
-    }
-
-    tm_end <- if (tm_max > 0L) tm_max else NULL
-    after_tm <- if (use_plateau) {
-        make_path_warmup_after_tm(plateau_min, plateau_steps)
-    } else {
-        NULL
-    }
-
-    message(sprintf(
-        "PARALLEL_PATH_WARMUP: parent replicate %d (inner parallel, cpus=%d)",
-        warmup_r, as.integer(cpus)
-    ))
-    out <- run_one_replicate_parallel(
-        warmup_r,
-        tm_end = tm_end,
-        after_tm = after_tm
-    )
-    n_origins <- length(get_region_paths(region)$idx)
-    message(sprintf(
-        "PARALLEL_PATH_WARMUP: finished r=%d, %d path origins",
-        warmup_r, n_origins
-    ))
-    out
-}
-
-run_one_replicate_parallel <- function(r, tm_end = NULL, after_tm = NULL) {
+run_one_replicate_parallel <- function(r) {
     collations <- list()
     if (is.numeric(input.params$random_seed)) {
-        if (benchmark_reseed_per_replicate) {
-            set.seed(input.params$random_seed)
-            message(sprintf(
-                "BENCHMARK_RESEED_PER_REPLICATE: set.seed for replicate %d (pid %d)",
-                r, Sys.getpid()))
-        } else {
-            # Forked workers inherit identical RNG; per-rep seed (not serial chaining).
-            rep_seed <- input.params$random_seed + as.integer(r) - 1L
-            set.seed(rep_seed)
-            message(sprintf(
-                "Parallel replicate %d: set.seed(%d) (pid %d)",
-                r, rep_seed, Sys.getpid()))
-        }
+        # Forked workers inherit identical RNG; per-rep seed (not serial chaining).
+        rep_seed <- input.params$random_seed + as.integer(r) - 1L
+        set.seed(rep_seed)
+        message(sprintf(
+            "Parallel replicate %d: set.seed(%d) (pid %d)",
+            r, rep_seed, Sys.getpid()))
     }
     force_serial_inner_parallel()
 
@@ -2678,12 +2581,7 @@ run_one_replicate_parallel <- function(r, tm_end = NULL, after_tm = NULL) {
     collations[[1L]] <- list(r = r, tm = 0L, n = n, calc_impacts = calc_impacts)
 
     gc_time_prev <- sum(gc.time())
-    tm_limit <- if (is.null(tm_end)) {
-        tm_run_end
-    } else {
-        min(as.integer(tm_end), tm_run_end)
-    }
-    for (tm in seq_len(tm_limit)) {
+    for (tm in seq_len(tm_run_end)) {
         t0 <- Sys.time()
         rng_probe("start", tm, r)
         n <- population_model$grow(n, tm)
@@ -2696,11 +2594,11 @@ run_one_replicate_parallel <- function(r, tm_end = NULL, after_tm = NULL) {
                 t_dm <- Sys.time()
                 Sys.setenv(RNG_PROBE_LABEL = sprintf("dm%d", i))
                 n <- dispersal_models[[i]]$disperse(n, tm)
-                message(sprintf(
-                    "    dispersal model %d: %.2fs (r=%d pid %d)",
+                log_dispersal_model(
                     i,
                     as.numeric(Sys.time() - t_dm, units = "secs"),
-                    r, Sys.getpid()))
+                    r = r
+                )
                 rng_probe(sprintf("dispersal_model_%d", i), tm, r)
             }
             n <- dispersal_models[[1]]$unpack(n)
@@ -2754,39 +2652,12 @@ run_one_replicate_parallel <- function(r, tm_end = NULL, after_tm = NULL) {
         rng_probe("other", tm, r)
         t5 <- Sys.time()
 
-        elapsed <- function(a, b) as.numeric(b - a, units = "secs")
-        mem_info <- ps::ps_system_memory()
-        proc_mem <- ps::ps_memory_info(ps::ps_handle(Sys.getpid()))
-        gc_time_now <- sum(gc.time())
-        gc_step_s <- gc_time_now - gc_time_prev
-        gc_time_prev <- gc_time_now
-        rng_check <- rng_state_digest()
-        message(sprintf(
-            paste0(
-                "tm=%s r=%s | grow=%.2fs  dispersal=%.2fs  ",
-                "impacts=%.2fs  actions=%.2fs  other=%.2fs | total=%.2fs | ",
-                "%s sys avail | %s rss | %s | %s | gc=%.3fs | rng state=%s | pid %d"
-            ),
-            tm, r,
-            elapsed(t0, t1),
-            elapsed(t1, t2),
-            elapsed(t2, t3),
-            elapsed(t3, t4),
-            elapsed(t4, t5),
-            elapsed(t0, t5),
-            prettyunits::pretty_bytes(mem_info$avail),
-            prettyunits::pretty_bytes(proc_mem["rss"]),
-            n_size_label(n),
-            collations_size_label(collations),
-            gc_step_s,
-            rng_check,
-            Sys.getpid()
-        ))
-        if (is.function(after_tm)) {
-            if (isTRUE(after_tm(tm, r, n, collations))) {
-                break
-            }
-        }
+        gc_time_prev <- log_timestep(
+            tm, r, t0, t1, t2, t3, t4, t5,
+            n = n,
+            gc_time_prev = gc_time_prev,
+            collations = collations
+        )
     }
     list(r = r, collations = collations)
 }
@@ -2798,126 +2669,17 @@ if (parallel_replicates) {
             "resume/create (use serial replicate loop)",
             call. = FALSE)
     }
-    if (as.integer(Sys.getenv("BENCHMARK_SCALING_REPS", unset = "0")) > 0L) {
-        stop(
-            "PARALLEL_REPLICATES is incompatible with ",
-            "BENCHMARK_SCALING_REPS",
-            call. = FALSE)
-    }
-    if (isTRUE(profile_timestep)) {
-        stop(
-            "PARALLEL_REPLICATES is incompatible with profile_timestep",
-            call. = FALSE)
-    }
-    if (eq_enabled) {
-        message(
-            "PARALLEL_REPLICATES: equivalence capture disabled ",
-            "(per-worker merge not implemented)")
-        eq_enabled <- FALSE
-    }
 
     parallel_rep_cores <- min(as.integer(cpus), length(replicate_seq))
-    parallel_backend <- if (parallel_use_mclapply) {
-        "mclapply"
-    } else {
-        parallel_persistent_backend_label()
-    }
-
-    if (parallel_path_warmup && length(replicate_seq)) {
-        warmup_r <- as.integer(Sys.getenv("PARALLEL_WARMUP_REP", unset = "1"))
-        if (!warmup_r %in% replicate_seq) {
-            stop(sprintf(
-                "PARALLEL_WARMUP_REP=%d is not in replicate_seq",
-                warmup_r
-            ), call. = FALSE)
-        }
-        warmup_out <- run_parent_path_warmup(warmup_r)
-        for (col in warmup_out$collations) {
-            results$collate(col$r, col$tm, col$n, col$calc_impacts)
-        }
-        replicate_seq <- setdiff(replicate_seq, warmup_r)
-        force_serial_inner_parallel()
-    }
+    parallel_backend <- parallel_persistent_backend_label()
 
     if (!length(replicate_seq)) {
-        message("PARALLEL_REPLICATES: no replicates left after warmup")
         parallel_run_stats <- list(
             wall_s = 0,
             reps = 0L,
             cores = parallel_rep_cores,
             backend = parallel_backend
         )
-    } else if (parallel_use_mclapply) {
-        if (.Platform$OS.type != "unix") {
-            stop("PARALLEL_USE_MCLAPPLY requires Unix (mclapply)",
-                call. = FALSE)
-        }
-        force_serial_inner_parallel()
-        message(sprintf(
-            paste0(
-                "PARALLEL_REPLICATES: %d replicate(s), ",
-                "mc.cores=%d, inner dispersal/paths serial, backend=mclapply"
-            ),
-            length(replicate_seq), parallel_rep_cores))
-        reps_total <- length(replicate_seq)
-        parent_mem_message(
-            "before_mclapply",
-            reps_merged = 0L,
-            reps_total = reps_total
-        )
-        rep_wall_start <- Sys.time()
-        rep_outputs <- parallel::mclapply(
-            replicate_seq,
-            run_one_replicate_parallel,
-            mc.cores = parallel_rep_cores)
-        rep_wall_s <- as.numeric(Sys.time() - rep_wall_start, units = "secs")
-
-        failed_reps <- which(vapply(
-            rep_outputs, inherits, logical(1), "try-error"))
-        if (length(failed_reps) > 0L) {
-            for (fi in failed_reps) {
-                message(sprintf(
-                    "PARALLEL_REPLICATES: replicate %d FAILED:\n%s",
-                    replicate_seq[fi],
-                    as.character(rep_outputs[[fi]])))
-            }
-            stop(sprintf(
-                "PARALLEL_REPLICATES: %d replicate(s) failed: r=%s",
-                length(failed_reps),
-                paste(replicate_seq[failed_reps], collapse = ", ")))
-        }
-
-        parent_mem_message(
-            "after_mclapply",
-            reps_merged = 0L,
-            reps_total = reps_total,
-            rep_outputs = rep_outputs
-        )
-        for (i in seq_along(rep_outputs)) {
-            out <- rep_outputs[[i]]
-            merge_replicate_output(
-                out,
-                reps_merged = i,
-                reps_total = reps_total,
-                rep_outputs = rep_outputs
-            )
-            rep_outputs[[i]] <- NULL
-        }
-        rm(rep_outputs)
-        parent_mem_message(
-            "after_merge",
-            reps_merged = reps_total,
-            reps_total = reps_total
-        )
-        parallel_run_stats <- list(
-            wall_s = rep_wall_s,
-            reps = length(replicate_seq),
-            cores = parallel_rep_cores,
-            backend = "mclapply"
-        )
-        message(sprintf(
-            "PARALLEL_REPLICATES complete: wall=%.2fs (%d reps, mc.cores=%d, backend=mclapply)",
-            rep_wall_s, length(replicate_seq), parallel_rep_cores))
     } else {
         force_serial_inner_parallel()
         message(sprintf(
@@ -2927,7 +2689,7 @@ if (parallel_replicates) {
                 "backend=%s"
             ),
             length(replicate_seq), parallel_rep_cores, parallel_backend))
-        parallel_run_stats <- run_parallel_replicates_psock(
+        parallel_run_stats <- run_parallel_replicates_persistent(
             replicate_seq,
             parallel_rep_cores
         )
@@ -2946,10 +2708,6 @@ if (parallel_replicates) {
 
 if (!parallel_replicates) {
 for (r in replicate_seq) {
-    if (identical(Sys.getenv("PATHS_EQ_DUMP", unset = ""), "1")) {
-        Sys.setenv(PATHS_EQ_REPLICATE = as.character(r))
-    }
-
     resume_this_r <- !is.null(checkpoint_data) && r == checkpoint_data$r
     tm_start <- if (resume_this_r) checkpoint_data$tm_next else 1L
 
@@ -2960,13 +2718,6 @@ for (r in replicate_seq) {
             "Checkpoint resume: replicate %d from tm=%d (skipping initialise and tm 0:%d)",
             r, tm_start, tm_start - 1L))
     } else {
-    if (benchmark_reseed_per_replicate &&
-        is.numeric(input.params$random_seed)) {
-        set.seed(input.params$random_seed)
-        message(sprintf(
-            "BENCHMARK_RESEED_PER_REPLICATE: set.seed for replicate %d",
-            r))
-    }
     n <- initializer$initialize()
     if (region$spatially_implicit()) {
         if (any(sapply(dispersal_models, function(dm) inherits(dm, 
@@ -3007,14 +2758,6 @@ for (r in replicate_seq) {
         }
     }
     results$collate(r, 0, n, calc_impacts)
-    if (eq_enabled) {
-        eq_state <- eq_capture_step(
-            state = eq_state,
-            n = n,
-            timestep = 0,
-            replicate = r
-        )
-    }
     } # end !resume_this_r initialise block
 
     tm_end_r <- if (length(warmup_reps_vec) && r %in% warmup_reps_vec) {
@@ -3023,325 +2766,135 @@ for (r in replicate_seq) {
         tm_run_end
     }
 
-    benchmark_scaling_reps <- as.integer(Sys.getenv(
-        "BENCHMARK_SCALING_REPS", unset = "0"))
-    scaling_ckpt_master <- NULL
-    if (benchmark_scaling_reps > 0L) {
-        if (is.null(checkpoint_data) || !resume_this_r) {
-            stop(
-                "BENCHMARK_SCALING_REPS requires CHECKPOINT_RESUME for the checkpoint replicate",
-                call. = FALSE)
-        }
-        scaling_ckpt_master <- checkpoint_data
-        message(sprintf(
-            paste0(
-                "BENCHMARK_SCALING_REPS=%d: one process, scenario built once; ",
-                "frozen checkpoint + paths copy per rep (no readRDS)"
-            ),
-            benchmark_scaling_reps))
-    }
-    scaling_rep_count <- if (benchmark_scaling_reps > 0L) {
-        benchmark_scaling_reps
-    } else {
-        1L
-    }
+    for (tm in tm_start:tm_end_r) {
+        t0 <- Sys.time()
+        rng_probe("start", tm, r)
+        n <- population_model$grow(n, tm)
+        rng_probe("grow", tm, r)
+        t1 <- Sys.time()
 
-    for (scaling_rep_i in seq_len(scaling_rep_count)) {
-        if (!is.null(scaling_ckpt_master)) {
-            calc_impacts <- apply_scaling_checkpoint_restore(
-                region, population_model, scaling_ckpt_master)
-            # n assigned in parent via <<- inside apply_scaling_checkpoint_restore
-            message(sprintf(
-                "BENCHMARK scaling rep %d/%d (paths copy from frozen checkpoint)",
-                scaling_rep_i, scaling_rep_count))
-            if (identical(Sys.getenv("BENCHMARK_SCALING_GC"), "1") &&
-                scaling_rep_i < scaling_rep_count) {
-                gc(FALSE)
-            }
-        }
-
-        for (tm in tm_start:tm_end_r) {
-            t0 <- Sys.time()
-            rng_probe("start", tm, r)
-            profile_this <- isTRUE(profile_timestep) &&
-                r == profile_replicate &&
-                tm == profile_timestep_n
-
-            if (length(dispersal_models)) {
-                run_dispersal <- function() {
-                    n <<- dispersal_models[[1]]$pack(n)
-                    for (i in seq_along(dispersal_models)) {
-                        t_dm <- Sys.time()
-                        Sys.setenv(RNG_PROBE_LABEL = sprintf("dm%d", i))
-                        n <<- dispersal_models[[i]]$disperse(n, tm)
-                        aggr_n <- attr(n, "dispersal_aggr_n")
-                        message(sprintf(
-                            "    dispersal model %d: %.2fs%s",
-                            i,
-                            as.numeric(Sys.time() - t_dm, units = "secs"),
-                            if (!is.null(aggr_n) && aggr_n > 0)
-                                sprintf(" (aggr_dest=%d)", aggr_n)
-                            else ""))
-                        rng_probe(sprintf("dispersal_model_%d", i), tm, r)
-                    }
-                    n <<- dispersal_models[[1]]$unpack(n)
-                }
-            }
-
-            if (profile_this &&
-                requireNamespace("profvis", quietly = TRUE) &&
-                requireNamespace("htmlwidgets", quietly = TRUE)) {
-                profvis_out <- profile_output
-                if (!nzchar(profvis_out)) {
-                    profvis_out <- file.path(
-                        input.env$outputdir,
-                        sprintf("profvis_timestep_r%d_tm%d.html", r, tm))
-                }
-                prof_dir <- dirname(profvis_out)
-                if (nzchar(prof_dir)) {
-                    dir.create(prof_dir, recursive = TRUE, showWarnings = FALSE)
-                }
-                message(sprintf(
-                    "Profiling timestep at r=%d tm=%d -> %s",
-                    r, tm, profvis_out))
-                prof_obj <- profvis::profvis({
-                    n <<- population_model$grow(n, tm)
-                    rng_probe("grow", tm, r)
-                    t1 <<- Sys.time()
-                    if (length(dispersal_models)) {
-                        run_dispersal()
-                    }
-                    t2 <<- Sys.time()
-                    if (length(impacts)) {
-                        calc_impacts <<- lapply(impacts, function(impacts_i) {
-                            n <<- impacts_i$calculate(n, tm)
-                            attr(n, "impacts")
-                        })
-                        attr(n, "impacts") <- NULL
-                        population_model$set_capacity_mult(n)
-                    }
-                    rng_probe("impacts", tm, r)
-                    t3 <<- Sys.time()
-                    if (length(actions)) {
-                        for (i in 1:length(actions)) {
-                            n <<- actions[[i]]$clear_attributes(n)
-                        }
-                        for (i in 1:length(actions)) {
-                            n <<- actions[[i]]$apply(n, tm)
-                        }
-                    }
-                    rng_probe("actions", tm, r)
-                    t4 <<- Sys.time()
-                    if (is.function(user_function)) {
-                        n_attr <- attributes(n)
-                        if (length(formals(user_function)) == 3) {
-                            n <<- user_function(n, r, tm)
-                        } else {
-                            n <<- user_function(n)
-                        }
-                        if (length(n_attr)) {
-                            for (i in 1:length(n_attr)) {
-                                if (!names(n_attr[i]) %in% names(attributes(n))) {
-                                    attr(n, names(n_attr[i])) <- n_attr[[i]]
-                                }
-                            }
-                        }
-                    }
-                    results$collate(r, tm, n, calc_impacts)
-                    if (is.function(continued_incursions)) {
-                        n <<- continued_incursions(tm, n)
-                    }
-                    rng_probe("other", tm, r)
-                })
-                prof_ok <- tryCatch({
-                    htmlwidgets::saveWidget(prof_obj, profvis_out, selfcontained = TRUE)
-                    TRUE
-                }, error = function(e) {
-                    message("profvis saveWidget failed: ", conditionMessage(e))
-                    FALSE
-                })
-                if (prof_ok && file.exists(profvis_out)) {
-                    message("Wrote profvis output to ", profvis_out)
-                } else {
-                    message("Profvis output not found at ", profvis_out)
-                }
-            } else {
-                n <- population_model$grow(n, tm)
-                rng_probe("grow", tm, r)
-                t1 <- Sys.time()
-
-                if (length(dispersal_models)) {
-                    run_dispersal()
-                }
-                t2 <- Sys.time()
-
-                if (length(impacts)) {
-                    calc_impacts <- lapply(impacts, function(impacts_i) {
-                        n <<- impacts_i$calculate(n, tm)
-                        attr(n, "impacts")
-                    })
-                    attr(n, "impacts") <- NULL
-                    population_model$set_capacity_mult(n)
-                }
-                rng_probe("impacts", tm, r)
-                t3 <- Sys.time()
-
-                if (length(actions)) {
-                    for (i in 1:length(actions)) {
-                        n <- actions[[i]]$clear_attributes(n)
-                    }
-                    for (i in 1:length(actions)) {
-                        n <- actions[[i]]$apply(n, tm)
-                    }
-                }
-                rng_probe("actions", tm, r)
-                t4 <- Sys.time()
-
-                if (is.function(user_function)) {
-                    n_attr <- attributes(n)
-                    if (length(formals(user_function)) == 3) {
-                        n <- user_function(n, r, tm)
-                    } else {
-                        n <- user_function(n)
-                    }
-                    if (length(n_attr)) {
-                        for (i in 1:length(n_attr)) {
-                            if (!names(n_attr[i]) %in% names(attributes(n))) {
-                                attr(n, names(n_attr[i])) <- n_attr[[i]]
-                            }
-                        }
-                    }
-                }
-                results$collate(r, tm, n, calc_impacts)
-                if (is.function(continued_incursions)) {
-                    n <- continued_incursions(tm, n)
-                }
-                rng_probe("other", tm, r)
-            }
-            t5 <- Sys.time()
-
-            elapsed <- function(a, b) as.numeric(b - a, units = "secs")
-            mem_info <- ps::ps_system_memory()
-            proc_mem <- ps::ps_memory_info(ps::ps_handle(Sys.getpid()))
-            gc_time_now <- sum(gc.time())
-            gc_step_s <- gc_time_now - gc_time_prev
-            gc_time_prev <- gc_time_now
-            rng_check <- rng_state_digest()
-            if (eq_enabled) {
-                eq_state <- eq_capture_step(
-                    state = eq_state,
-                    n = n,
-                    timestep = tm,
-                    replicate = r,
-                    grow_s = elapsed(t0, t1),
-                    dispersal_s = elapsed(t1, t2),
-                    impacts_s = elapsed(t2, t3),
-                    actions_s = elapsed(t3, t4),
-                    other_s = elapsed(t4, t5),
-                    total_s = elapsed(t0, t5),
-                    rng_check = rng_check
+        if (length(dispersal_models)) {
+            n <- dispersal_models[[1]]$pack(n)
+            for (i in seq_along(dispersal_models)) {
+                t_dm <- Sys.time()
+                Sys.setenv(RNG_PROBE_LABEL = sprintf("dm%d", i))
+                n <- dispersal_models[[i]]$disperse(n, tm)
+                aggr_n <- attr(n, "dispersal_aggr_n")
+                log_dispersal_model(
+                    i,
+                    as.numeric(Sys.time() - t_dm, units = "secs"),
+                    aggr_n = aggr_n
                 )
+                rng_probe(sprintf("dispersal_model_%d", i), tm, r)
             }
-            bench_rep_prefix <- if (benchmark_scaling_reps > 0L) {
-                sprintf("BENCHMARK_REP=%d ", scaling_rep_i)
-            } else {
-                ""
-            }
-            message(sprintf(
-                paste0(
-                    "%stm=%s r=%s | grow=%.2fs  dispersal=%.2fs  ",
-                    "impacts=%.2fs  actions=%.2fs  other=%.2fs | total=%.2fs | ",
-                    "%s sys avail | %s rss | %s | gc=%.3fs | rng state=%s"
-                ),
-                bench_rep_prefix, tm, r,
-                elapsed(t0, t1),
-                elapsed(t1, t2),
-                elapsed(t2, t3),
-                elapsed(t3, t4),
-                elapsed(t4, t5),
-                elapsed(t0, t5),
-                prettyunits::pretty_bytes(mem_info$avail),
-                prettyunits::pretty_bytes(proc_mem["rss"]),
-                n_size_label(n),
-                gc_step_s,
-                rng_check
-            ))
+            n <- dispersal_models[[1]]$unpack(n)
+        }
+        t2 <- Sys.time()
 
-            if (checkpoint_tm > 0L && tm == checkpoint_tm && r == checkpoint_replicate) {
-                ckpt_out <- checkpoint_file_out(
-                    checkpoint_tm, r, input.env$outputdir)
-                save_simulation_checkpoint(
-                    file = ckpt_out,
-                    tm = tm,
-                    r = r,
-                    n = n,
-                    region = region,
-                    calc_impacts = calc_impacts
-                )
-                if (checkpoint_stop) {
-                    message("CHECKPOINT_STOP=1: exiting after checkpoint save")
-                    quit(save = "no", status = 0)
+        if (length(impacts)) {
+            calc_impacts <- lapply(impacts, function(impacts_i) {
+                n <<- impacts_i$calculate(n, tm)
+                attr(n, "impacts")
+            })
+            attr(n, "impacts") <- NULL
+            population_model$set_capacity_mult(n)
+        }
+        rng_probe("impacts", tm, r)
+        t3 <- Sys.time()
+
+        if (length(actions)) {
+            for (i in 1:length(actions)) {
+                n <- actions[[i]]$clear_attributes(n)
+            }
+            for (i in 1:length(actions)) {
+                n <- actions[[i]]$apply(n, tm)
+            }
+        }
+        rng_probe("actions", tm, r)
+        t4 <- Sys.time()
+
+        if (is.function(user_function)) {
+            n_attr <- attributes(n)
+            if (length(formals(user_function)) == 3) {
+                n <- user_function(n, r, tm)
+            } else {
+                n <- user_function(n)
+            }
+            if (length(n_attr)) {
+                for (i in 1:length(n_attr)) {
+                    if (!names(n_attr[i]) %in% names(attributes(n))) {
+                        attr(n, names(n_attr[i])) <- n_attr[[i]]
+                    }
                 }
             }
         }
-    } # end scaling_rep_i
+        results$collate(r, tm, n, calc_impacts)
+        if (is.function(continued_incursions)) {
+            n <- continued_incursions(tm, n)
+        }
+        rng_probe("other", tm, r)
+        t5 <- Sys.time()
+
+        gc_time_prev <- log_timestep(
+            tm, r, t0, t1, t2, t3, t4, t5,
+            n = n,
+            gc_time_prev = gc_time_prev
+        )
+
+        if (checkpoint_tm > 0L && tm == checkpoint_tm && r == checkpoint_replicate) {
+            ckpt_out <- checkpoint_file_out(
+                checkpoint_tm, r, input.env$outputdir)
+            save_simulation_checkpoint(
+                file = ckpt_out,
+                tm = tm,
+                r = r,
+                n = n,
+                region = region,
+                calc_impacts = calc_impacts
+            )
+            if (checkpoint_stop) {
+                message("CHECKPOINT_STOP=1: exiting after checkpoint save")
+                quit(save = "no", status = 0)
+            }
+        }
+    }
 }
 } # !parallel_replicates
 
-benchmark_scaling_reps_done <- as.integer(Sys.getenv(
-    "BENCHMARK_SCALING_REPS", unset = "0"))
-if (benchmark_scaling_reps_done > 0L) {
-    message("BENCHMARK_SCALING_REPS complete")
-    quit(save = "no", status = 0)
+results$finalize()
+rate_limited_weblog(sprintf(
+    "Completed timestep %s of replicate %s (100%%)",
+    input.params$simulator$time_steps,
+    input.params$simulator$replicates
+))
+message("Simulation complete. Saving outputs..")
+
+setwd(input.env$outputdir)
+
+result_layers <- NULL
+if (region$get_type() == "grid") {
+    result_layers <- results$save_rasters(
+        gdal = c("COMPRESS=LZW", "TILED=YES"),
+        overwrite = TRUE
+    )
 }
 
-if (eq_enabled) {
-    eq_files <- eq_write_outputs(eq_state)
-    message(sprintf(
-        "Equivalence outputs saved: metrics=%s occupancy=%s",
-        eq_files$metrics_path,
-        eq_files$occupancy_path
-    ))
-}
-
-if (benchmark_skip_save) {
-    message("BENCHMARK_SKIP_SAVE=1: skipping results finalize and output writes")
-} else {
-    results$finalize()
-    rate_limited_weblog(sprintf(
-        "Completed timestep %s of replicate %s (100%%)",
-        input.params$simulator$time_steps,
-        input.params$simulator$replicates
-    ))
-    message("Simulation complete. Saving outputs..")
-
-    setwd(input.env$outputdir)
-
-    result_layers <- NULL
-    if (region$get_type() == "grid") {
-        result_layers <- results$save_rasters(
-            gdal = c("COMPRESS=LZW", "TILED=YES"),
-            overwrite = TRUE
-        )
+results$save_csv()
+tryCatch(
+    results$save_plots(width = 1000, height = 500),
+    error = function(e) {
+        print(e)
     }
+)
 
-    results$save_csv()
+if (region$get_type() == "grid" && !is.null(result_layers)) {
     tryCatch(
-        results$save_plots(width = 1000, height = 500),
+        generate_result_animations(region, population_model, result_layers),
         error = function(e) {
-            print(e)
+            warning(
+                sprintf("Animation generation failed: %s.", e$message),
+                call. = FALSE
+            )
         }
     )
-
-    if (region$get_type() == "grid" && !is.null(result_layers)) {
-        tryCatch(
-            generate_result_animations(region, population_model, result_layers),
-            error = function(e) {
-                warning(
-                    sprintf("Animation generation failed: %s.", e$message),
-                    call. = FALSE
-                )
-            }
-        )
-    }
 }
