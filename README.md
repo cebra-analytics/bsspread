@@ -385,9 +385,24 @@ terra::plot(region$get_rast(1), colNA = "grey",
 
 For our Hawkweed example we will utilise a presence-only population
 model. We will configure the establishment probability for the
-population via an approximate mapping of habitat suitability values for
-vegetation/landscape types provided in Williams, Hahs, & Morgan (2008 -
-Table 1), to NVIS (2025) major vegetation group (MVG) classes:
+population by approximately reproducing the habitat suitability index
+(HSI) provided in Williams, Hahs, & Morgan (2008 - Figure 4).
+
+#### Habitat suitability
+
+The habitat suitability index (HSI) provided by Williams, Hahs, & Morgan
+(2008) combined three components:
+
+- Vegetation type
+- Soil moisture
+- Level of disturbance
+
+via $HCI = (vegetation\cdot moisture\cdot disturbance)^{1/3}$.
+
+For the vegetation component of our habitat suitability we approximately
+map habitat suitability values for vegetation/landscape types provided
+in Williams, Hahs, & Morgan (2008 - Table 1) to NVIS (2025) major
+vegetation group (MVG) classes:
 
 | Vegetation type                  | Est. prob. | Mapped to MVG |
 |:---------------------------------|:----------:|:-------------:|
@@ -413,8 +428,8 @@ We assign a suitability value of 0.5 to the NVIS “unclassified native
 vegetation”, which includes the Falls Creek township area.
 
 ``` r
-# Establishment probability via mapping to NVIS MVG 
-establish_pr_rast <- terra::classify(
+# Vegetation suitability via mapping to NVIS MVG 
+vegetation_suit_rast <- terra::classify(
   region_nvis_rast,
   matrix(c(
     3,  0.01, # Eucalypt Open Forests
@@ -429,11 +444,99 @@ establish_pr_rast <- terra::classify(
     26, 0.50, # Unclassified native vegetation
     27, 0.01  # Naturally bare - sand, rock, claypan, mudflat
   ), ncol = 2, byrow = TRUE))
-terra::plot(establish_pr_rast, colNA = "grey",
-            main = "Hawkweed establishment probability")
+terra::plot(vegetation_suit_rast, colNA = "grey",
+            main = "Hawkweed vegetation suitability")
 ```
 
 <img src="man/figures/README-example_2_1-1.png" width="100%" style="display: block; margin: auto;" />
+
+For the soil moisture component of our habitat suitability we firstly
+examined soil moisture distributions via
+[tern](https://portal.tern.org.au/metadata/d1995ee8-53f0-4a7d-91c2-ad5e4a23e5e0)
+(Stenson et al., 2021), and found that medium levels of soil moisture
+were evident across our region at a 1km resolution. Williams, Hahs, &
+Morgan (2008 - Figure 1) classifies medium soil moisture (wetness index)
+values as suitable (1) and lower and upper values as unsuitable (0).
+They estimated localised moisture values (at a 20 metre resolution)
+based on calculated total upslope catchment areas derived from a digital
+elevation model. Here we utilise a simpler approach to identify
+localised low lying areas with potential high soil moisture based on
+localised upslope via a digital elevation model (DEM) from Geoscience
+Australia (Gallant et al., 2009). Users may download the [Geoscience
+Australia DEM layer](https://pid.geoscience.gov.au/dataset/ga/69888) and
+place it in a suitable directory (e.g. *downloaded_data*).
+
+``` r
+# Soil moisture suitability via localised low lying areas utilising DEM
+dem_rast <- terra::rast(paste0("../downloaded_data/3secSRTM_DEM/",
+                               "DEM_ESRI_GRID_16bit_Integer/dem3s_int"))
+region_dem_rast <- terra::crop(dem_rast, terra::project(region_nvis_rast,
+                                                        terra::crs(dem_rast)))
+moisture_suit_rast <- region_dem_rast*0
+terra::values(moisture_suit_rast) <-
+  sapply(1:terra::ncell(region_dem_rast), function(i) {
+    # Examine neighbouring elevations
+    nh_elev <- region_dem_rast[terra::adjacent(region_dem_rast, i,
+                                               directions = "rook")[1,]][,1]
+    if (sum(nh_elev >= region_dem_rast[i][,1]) == 4) { # local low
+      return(0) # all surrounding cells are upslope or level
+    } else {
+      return(1)
+    }
+  })
+# Project to Albers via bilinear interpolation
+moisture_suit_rast <- terra::project(moisture_suit_rast, region_nvis_rast)
+terra::plot(moisture_suit_rast, colNA = "grey",
+            main = "Hawkweed moisture suitability")
+```
+
+<img src="man/figures/README-example_2_2-1.png" width="100%" style="display: block; margin: auto;" />
+
+For the level of disturbance component of our habitat suitability we
+utilise (one minus) habitat condition via the [CSIRO HCAS
+layer](https://data.csiro.au/collection/csiro:63571) (Valavi et al.,
+2025) as an approximation to the more complex disturbance component
+described in Williams, Hahs, & Morgan (2008). Lower values of habitat
+condition correspond to higher levels of disturbance, thus we utilise
+1 - HCAS. Users may download the [CSIRO HCAS
+layer](https://data.csiro.au/collection/csiro:63571) and place it in a
+suitable directory (e.g. *downloaded_data*).
+
+``` r
+# Habitat disturbance via 1 - HCAS
+hcas_rast <- terra::rast("../downloaded_data/HCAS33_HCB_1988_2024.tif")
+habitat_disturb_rast <- 1 - terra::resample(
+  terra::project(terra::crop(hcas_rast,
+                             c(1354000, 1372000, -4120000, -4103000)),
+                 region_nvis_rast), region_nvis_rast)
+terra::plot(habitat_disturb_rast, colNA = "grey",
+            main = "Habitat disturbance (1 - HCAS)")
+```
+
+<img src="man/figures/README-example_2_3-1.png" width="100%" style="display: block; margin: auto;" />
+
+We can now combine our layers for our approximate habitat suitability
+via $HCI = (vegetation\cdot moisture\cdot disturbance)^{1/3}$. We will
+limit the values having low vegetation suitability to 0.01 to avoid
+increasing the suitability of forests and woodlands, particularly those
+surrounding the area encapsulated by the Williams, Hahs, & Morgan (2008)
+HSI model.
+
+``` r
+# Combined vegetation suitability, soil moisture level, and habitat disturbance
+habitat_suit_rast <- (vegetation_suit_rast*moisture_suit_rast*
+                        habitat_disturb_rast)^(1/3)
+# Limit to 0.01 where vegetation suitability is low
+limit_rast <- (habitat_suit_rast > 0.01 & vegetation_suit_rast <= 0.01)
+habitat_suit_rast <- (habitat_suit_rast*(!limit_rast) +
+                        vegetation_suit_rast*limit_rast)
+terra::plot(habitat_suit_rast, colNA = "grey",
+            main = "Hawkweed habitat suitability")
+```
+
+<img src="man/figures/README-example_2_4-1.png" width="100%" style="display: block; margin: auto;" />
+
+#### Presence-only population model
 
 We can now build our presence-only population model.
 
@@ -441,7 +544,7 @@ We can now build our presence-only population model.
 # Presence-only population model
 population_model <- bsspread::PresencePopulation(
   region,
-  establish_pr = establish_pr_rast[][,1])
+  establish_pr = habitat_suit_rast[][,1])
 ```
 
 ### Step 3: Initialization
@@ -636,7 +739,7 @@ result_rast
 #>               occupancy_t2_mean.tif  
 #> names       :     0,     1,     2 
 #> min values  : 0.000, 0.000, 0.000 
-#> max values  : 0.038, 0.307, 0.817
+#> max values  : 0.037, 0.269, 0.831
 # Plot the mean occupancy for time steps 1 and 2
 label <- attr(result_rast$occupancy_mean, "metadata")$label
 for (i in 2:3) {
@@ -660,15 +763,15 @@ results$save_csv()
 total_occupancy <- read.csv("total_occupancy.csv")
 colnames(total_occupancy)[1] <- "Total occupancy"
 print(total_occupancy)
-#>   Total occupancy t0        t1        t2
-#> 1            mean  1 19.491000 378.28800
-#> 2              sd  0  4.464062  94.85626
+#>   Total occupancy t0        t1       t2
+#> 1            mean  1 22.025000 435.6660
+#> 2              sd  0  5.078796 103.7741
 total_area_occupied <- read.csv("total_area_occupied.csv")
 colnames(total_area_occupied)[1] <- "Total area occupied"
 print(total_area_occupied)
-#>   Total area occupied    t0        t1        t2
-#> 1                mean 10000 194910.00 3782880.0
-#> 2                  sd     0  44640.62  948562.6
+#>   Total area occupied    t0        t1      t2
+#> 1                mean 10000 220250.00 4356660
+#> 2                  sd     0  50787.96 1037741
 ```
 
 Time-series plots of total occupancy and total area occupied may also be
@@ -749,6 +852,11 @@ Fisher, R. A. (1937). ‘The wave of advance of advantageous genes’. *Ann.
 Eugenics* 7, 355–369.
 [doi:10.1111/j.1469-1809.1937.tb02153.x](https://doi.org/10.1111/j.1469-1809.1937.tb02153.x)
 
+Gallant, J., Wilson, N., Tickle, P.K., Dowling, T., Read, A. (2009),
+‘2009 3 second SRTM Derived Digital Elevation Model (DEM) Version 1.0’.
+*Geoscience Australia*, Canberra.
+<https://pid.geoscience.gov.au/dataset/ga/69888>
+
 García Adeva, J. J., Botha, J. H., & Reynolds, M. (2012). ‘A simulation
 modelling approach to forecast establishment and spread of Bactrocera
 fruit flies’. *Ecological Modelling*, 227, 93–108.
@@ -825,6 +933,21 @@ Exponentially with Distance’. *Proceedings B: Biological Sciences*,
 Skellam, J. G. (1951). ‘Random Dispersal in Theoretical Populations’.
 *Biometrika*, 38(1/2), 196–218.
 [doi:10.2307/2332328](https://doi.org/10.2307/2332328)
+
+Stenson, M., Searle, R., Malone, B., Sommer, A., Renzullo, L. & Di, H.
+(2021). Australia wide daily volumetric soil moisture estimates. Version
+1.0. Terrestrial Ecosystem Research Network. Dataset.
+[doi:10.25901/b020-nm39](https://dx.doi.org/10.25901/b020-nm39).
+Viewable access via <https://shiny.esoil.io/SMIPS/>
+
+Valavi R, Levick SR, Lehmann EA, Liu N, Giljohann KM, Williams KJ,
+Collings S, Johnson S, Botha EJ, Munroe SEM, Van Niel TG, Newnham G,
+Paget M, Malley C, Carlile P, Gunawardana D, Lyon P, Richards AE,
+Tetreault Campbell S and Ferrier S (2025) ‘HCAS 3.3 (1988-2024) base
+model estimate of habitat condition (90m grid), National Connectivity
+Index 2.0 (NCI) and annual time series for continental Australia’. Data
+collection 65549. *CSIRO*, Canberra, Australia. DOI:
+<https://data.csiro.au/collection/csiro:65549>.
 
 Williams, N. S. G., Hahs, A. K., & Morgan, J. W. (2008). ‘A
 Dispersal-Constrained Habitat Suitability Model for Predicting Invasion
