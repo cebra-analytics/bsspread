@@ -1,5 +1,3 @@
-#set.seed(42)
-
 # Run replicates in parallel; inner region/dispersal stay serial in workers:
 #   PARALLEL_REPLICATES=1 TASK_CPUS=16
 # Default: persistent worker pool + incremental collate on Unix (FORK inherits terra;
@@ -138,7 +136,6 @@ get_df_col <- function(df, name, series = FALSE) {
 # -----------------------------------------------
 
 library(bsspread)
-library(data.table)
 
 INITIALIZER_CSV_COLNAME="population"
 INITIALIZER_RANDOM_CSV_COLNAME="weights"
@@ -1027,7 +1024,6 @@ paste("bsimpact:", packageVersion("bsimpact"))
 paste("bsspread:", packageVersion("bsspread"))
 paste("bsmanage:", packageVersion("bsmanage"))
 paste("terra:", packageVersion("terra"))
-paste("data.table:", packageVersion("data.table"))
 
 
 # Load parameters
@@ -2240,7 +2236,6 @@ parallel_init_cluster <- function(n_workers,
         parallel::clusterEvalQ(cl, {
             setwd(workdir)
             library(terra)
-            library(data.table)
             library(bsspread)
             library(bsmanage)
             library(bsimpact)
