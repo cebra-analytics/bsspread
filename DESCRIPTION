@@ -1,6 +1,6 @@
 Package: bsspread
-Title: Biosecurity Spread Modelling
-Version: 0.2.22
+Title: Biosecurity Population Spread Modelling
+Version: 0.3.0
 Authors@R: c(person("Sean", "Haythorne", 
                     email = "sean.haythorne@unimelb.edu.au", 
                     role = c("aut", "cre")))
@@ -17,6 +17,8 @@ Imports:
     igraph (>= 1.2.8),
     raster (>= 3.5.2),
     terra (>= 1.6.47)
+Remotes:
+    cebra-analytics/bsimpact
 Suggests:
     fmsb,
     knitr,
@@ -30,6 +32,7 @@ Collate:
     'Diffusion.R'
     'DirectionKernel.R'
     'Gravity.R'
+    'Impacts.R'
     'Incursions.R'
     'Initializer.R'
     'Kernels.R'
