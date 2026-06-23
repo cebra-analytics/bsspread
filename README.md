@@ -397,7 +397,7 @@ The habitat suitability index (HSI) provided by Williams, Hahs, & Morgan
 - Soil moisture
 - Level of disturbance
 
-via $HCI = (vegetation\cdot moisture\cdot disturbance)^{1/3}$.
+via $HSI = (vegetation\cdot moisture\cdot disturbance)^{1/3}$.
 
 For the vegetation component of our habitat suitability we approximately
 map habitat suitability values for vegetation/landscape types provided
@@ -516,7 +516,7 @@ terra::plot(habitat_disturb_rast, colNA = "grey",
 <img src="man/figures/README-example_2_3-1.png" width="100%" style="display: block; margin: auto;" />
 
 We can now combine our layers for our approximate habitat suitability
-via $HCI = (vegetation\cdot moisture\cdot disturbance)^{1/3}$. We will
+via $HSI = (vegetation\cdot moisture\cdot disturbance)^{1/3}$. We will
 limit the values having low vegetation suitability to 0.01 to avoid
 increasing the suitability of forests and woodlands, particularly those
 surrounding the area encapsulated by the Williams, Hahs, & Morgan (2008)
