@@ -1,106 +1,191 @@
 #' Impacts class builder
 #'
 #' Builds a class for calculating incursion impacts during population spread
-#' model simulations. Encapsulates \code{bsimpact} impact analysis objects.
+#' model simulations. Impact values may be monetary, non-monetary, or dynamic.
+#' Monetary value impacts specify periodic assets (e.g. crop yields) that loose
+#' value at each simulated time step (e.g. crop season) whilst a threat is
+#' present or until recovered. Non-monetary value impacts specify ongoing
+#' assets (e.g. habitat condition) that reduce in value by a fixed amount
+#' whilst a threat is present or until recovered. Dynamic value impacts also
+#' specify ongoing assets or resources (e.g. plantation biomass) that
+#' increasingly loose value whilst a threat is present and optionally remain
+#' impacted until recovered. Dynamic losses in asset value may optionally be
+#' linked to apply (proportional) dynamic losses to threat suitability
+#' (establishment likelihood), carrying capacity, and/or dispersal attraction
+#' when applicable, such as when a threat utilises a resource or asset (e.g.
+#' as a food source).
 #'
-#' @param impacts A \code{bsimpact::ImpactAnalysis} or inherited class object
-#'   specifying how environment, social, and/or economic impacts are
-#'   calculated, classified, and/or combined based on asset values,
-#'   classifications, and/or incursion loss rates.
+#' @param region A \code{Region} or inherited class object representing the
+#'   spatial region (template) for the population spread model simulations.
 #' @param population_model A \code{Population} or inherited class object
 #'   defining the population representation for the population spread model
 #'   simulations.
-#' @param impact_stages Numeric vector of population stages (indices) that
-#'   contribute to impacts. Default is all stages (when set to \code{NULL}).
-#' @param calc_total Logical indicator for whether or not total impacts may
-#'   be (sensibly) calculated by summing across region locations. Default is
-#'   \code{NULL}, whereby totals are only calculated when the impact (context)
-#'   valuation type is \code{"monetary"}. Set to \code{TRUE} if it makes sense
-#'   to sum total \code{"non-monetary"} or \code{"ranking"} impact valuations
-#'   across region locations (providing multiple aspects can be combined).
-#' @param dynamic_links Dynamic impacts (when \code{impacts} is a
-#'   \code{bsimpact::ValueImpacts} object with \code{is_dynamic = TRUE}) may
-#'   optionally be linked to apply (proportional) dynamic losses to threat
-#'   suitability, carrying capacity, and/or dispersal attraction when
-#'   applicable, such as when a threat utilises a resource or asset (e.g. as a
-#'   food source). Configure dynamic links via a vector of one or more strings
-#'   from \code{"suitability"}, \code{"capacity"}, and/or \code{"attractors"}.
-#'   Default \code{NULL} assumes no dynamic links or impacts are not dynamic.
+#' @param impact_type One of \code{"presence"} (default), \code{"density"}, or
+#'   \code{"area"}, to indicate if the impact of a threat incursion is
+#'   calculated based on presence, density, or area of occupancy respectively.
+#'   Density-based impacts may only be used when the threat is modelled via
+#'   unstructured or staged-based populations with carrying capacity specified.
+#'   Area-based impacts are only applicable to spatially implicit models.
+#' @param valuation_type One of \code{"monetary"} (default),
+#'   \code{"non-monetary"}, or \code{"dynamic"} to indicate the type of
+#'   valuation associated with the impacted asset or resource.
+#' @param asset_name A descriptive name of the asset or resource impacted by
+#'   the threat incursion.
+#' @param asset_value The periodic monetary value per simulation time step
+#'   (e.g. crop yield), or the non-monetary value (e.g. habitat condition),
+#'   of the asset or resource impacted by a threat incursion. This may be a
+#'   spatial layer (\code{terra::SpatRaster} or \code{raster::RasterLayer}),
+#'   or a vector of location values, for a grid or network-based model region.
+#'   For spatially implicit models, asset value should be expressed as value
+#'   per metres squared. Asset value for dynamic value impacts (e.g. plantation
+#'   biomass) represents the total value or asset quantity prior to threat
+#'   presence, which increasingly looses value when impacted by the threat,
+#'   and may be implicitly monetary (with ongoing not periodic value)
+#'   or non-monetary, as indicated by the \code{value_unit}.
+#' @param value_unit A descriptive unit for asset value quantities. Default is
+#'   \code{NULL}, which is changed to "$" for monetary assets.
+#' @param loss_rate A fractional loss of asset or resource value resulting from
+#'   a threat incursion or presence. For monetary value impacts the fractional
+#'   loss is applied to the periodic asset value at every time step that the
+#'   threat is present or until recovered. For non-monetary value impacts the
+#'   fractional loss to the asset value is maintained during threat presence or
+#'   until recovered. For dynamic value impacts the fractional loss is
+#'   repeatedly applied to the asset value or resource quantity, thus
+#'   increasingly reducing it, whilst the threat is present.
+#' @param discount_rate An optional discount rate (per time interval) for
+#'   monetary asset values to estimate future values that account
+#'   for inflation. Typically the discounting uses market interest rates.
+#'   Discounted impact values are calculated by dividing the asset values by
+#'   \code{(1 + discount_rate)^time_int} for a specified time interval.
+#'   Default is \code{NULL}.
+#' @param stages Numeric vector of population stages (indices) that
+#'   contribute to impacts when applicable. Default is all stages (when set to
+#'   \code{NULL}).
 #' @param recovery_delay Number of simulation time steps that incursion impacts
 #'   continue to be in effect at previously occupied locations before the
 #'   asset value at the locations recover. Only available for spatially
 #'   explicit grid or network models. Default \code{NULL} assumes no delay.
+#' @param dynamic_links Dynamic value impacts may optionally be linked to apply
+#'   (proportional) dynamic losses to threat suitability, carrying capacity,
+#'   and/or dispersal attraction when applicable, such as when a threat
+#'   utilises a resource or asset (e.g. as a food source). Configure dynamic
+#'   links via a vector of one or more strings from \code{"suitability"},
+#'   \code{"capacity"}, and/or \code{"attractors"}. Default \code{NULL}
+#'   assumes no dynamic links or that impact values are not dynamic.
 #' @param ... Additional parameters.
 #' @return A \code{Impacts} class object (list) containing functions for
-#'   getting the impact context and performing impact calculations:
+#'   performing impact calculations:
 #'   \describe{
-#'     \item{\code{get_impacts()}}{Get \code{bsimpact::ImpactAnalysis} or
-#'       inherited class object.}
-#'     \item{\code{get_context()}}{Get \code{bsimpact::Context} object.}
-#'     \item{\code{get_calc_total()}}{Get calculate total indicator.}
-#'     \item{\code{includes_combined()}}{Logical indicator for when impacts are
-#'       combined.}
+#'     \item{\code{get_id()}}{Get the impacts numeric identifier.}
+#'     \item{\code{set_id(id)}}{Set the impacts numeric identifier.}
+
 #'     \item{\code{update_recovery_delay(n)}}{Update the recovery delay
 #'       attribute attached to the population vector.}
 #'     \item{\code{calculate(n, tm)}}{Perform impact calculations resulting
 #'       from incursion population vector or matrix \code{n} at time step
-#'       \code{tm}, and return \code{n} with a list of impact values attached,
-#'       including combined impacts when applicable.}
+#'       \code{tm}, and return \code{n} with a list of impact values
+#'       attached.}
 #'   }
 #' @export
-Impacts <- function(impacts, population_model,
-                          impact_stages = NULL,
-                          calc_total = NULL,
-                          dynamic_links = NULL,
-                          recovery_delay = NULL, ...) {
+Impacts <- function(region, population_model,
+                    impact_type = c("presence", "density", "area"),
+                    valuation_type = c("monetary", "non-monetary", "dynamic"),
+                    asset_name,
+                    asset_value,
+                    value_unit = NULL,
+                    loss_rate,
+                    discount_rate = NULL,
+                    stages = NULL,
+                    recovery_delay = NULL,
+                    dynamic_links = NULL, ...) {
 
-  # Check the impacts object
-  if (!is.null(impacts) && !inherits(impacts, "ImpactAnalysis")) {
-    stop("Impacts must be a 'ImpactAnalysis' or inherited class object.",
+  # Check region and population model objects
+  if (!inherits(region, "Region")) {
+    stop("Region model must be a 'Region' or inherited class object.",
          call. = FALSE)
   }
-
-  # Check the population model
   if (!is.null(population_model) &&
       !inherits(population_model, "Population")) {
     stop("Population model must be a 'Population' or inherited class object.",
          call. = FALSE)
   }
 
-  # Check the impact stages
-  population_type <- population_model$get_type()
-  if (population_type == "presence_only" ||
-      population_type == "unstructured") {
-    impact_stages <- 1
-  } else if (population_type == "stage_structured") {
-    if (is.null(impact_stages)) {
-      impact_stages <- 1:population_model$get_stages()
-    } else if (!is.numeric(impact_stages) ||
-               !all(impact_stages %in% 1:population_model$get_stages())) {
-      stop("Impact stages must be a vector of stage indices consistent ",
-           "with the population model.", call. = FALSE)
+  # Match and check/process impact and valuation types
+  impact_type <- match.arg(impact_type)
+  if (impact_type == "area" && !region$spatially_implicit()) {
+    stop(paste("Area-based impacts are only applicable for spatially implicit",
+               "regions."), call. = FALSE)
+  }
+  if (impact_type == "density" &&
+      (population_model$get_type() == "presence_only" ||
+       is.null(population_model$get_capacity()))) {
+    stop(paste("Density-based impacts are only available for unstructured or",
+               "stage-based populations with carrying capacity."),
+         call. = FALSE)
+  }
+  valuation_type <- match.arg(valuation_type)
+
+  # Check asset name, value and unit
+  if (!is.character(asset_name)) {
+    stop("Asset name should be a character string.", call. = FALSE)
+  }
+  if (!(class(asset_value) %in% c("SpatRaster", "RasterLayer") ||
+        is.numeric(asset_value)) ||
+      (class(asset_value) %in% c("SpatRaster", "RasterLayer") &&
+       (region$get_type() != "grid" ||
+        region$get_type() == "grid" && !region$is_compatible(asset_value))) ||
+      (is.numeric(asset_value) &&
+       region$get_locations() != length(asset_value))) {
+    stop(paste("Asset value should be either a spatial layer or numeric",
+               "vector compatible with the defined region."), call. = FALSE)
+  }
+  if (!is.null(value_unit)) {
+    if (!is.character(value_unit)) {
+      stop("Asset name should be a character string.", call. = FALSE)
+    }
+  } else if (valuation_type == "monetary") {
+    value_unit <- "$"
+  }
+
+  # Check loss and discount rates
+  if (!is.numeric(loss_rate) ||
+      (is.numeric() && (loss_rate < 0 || loss_rate > 1))) {
+    stop("Loss rate should be numeric, >= 0, and <= 1.", call. = FALSE)
+  }
+  if (!is.null(discount_rate)) {
+    if (!is.numeric(loss_rate) ||
+        (is.numeric() && (loss_rate < 0 || loss_rate > 1))) {
+      stop("Discount rate should be numeric, >= 0, and <= 1.", call. = FALSE)
+    }
+    if (valuation_type != "monetary") {
+      stop("Discount rate is only applicable for monetary value impacts.",
+           call. = FALSE)
     }
   }
 
-  # Check and resolve the calculate total indicator
-  if (is.null(calc_total)) {
-    calc_total <- (impacts$get_context()$get_valuation_type() == "monetary")
-  } else if (!is.logical(calc_total)) {
-    stop("Calculate total indicator should be logical.", call. = FALSE)
+  # Check the impact stages
+  if (population_model$get_type() %in% c("presence_only", "unstructured")) {
+    stages <- 1
+  } else if (population_model$get_type() == "stage_structured") {
+    if (is.null(stages)) {
+      stages <- 1:population_model$get_stages()
+    } else if (!is.numeric(stages) ||
+               !all(stages %in% 1:population_model$get_stages())) {
+      stop(paste("Impact stages must be a vector of stage indices consistent",
+                 "with the population model."), call. = FALSE)
+    }
   }
 
-  # Check population capacity is available to calculate density
-  if (impacts$get_incursion()$get_type() == "density" &&
-      is.null(population_model$get_capacity())) {
-    stop("Population capacity is required for density-based impacts.",
-         call. = FALSE)
+  # Check recovery delay
+  if (!is.null(recovery_delay) &&
+      (!is.numeric(recovery_delay) || recovery_delay < 0)) {
+    stop("Recover delay should a number >= 0.", call. = FALSE)
   }
 
   # Check dynamic links
   if (!is.null(dynamic_links)) {
-    if (!is.function(impacts$get_is_dynamic) || !impacts$get_is_dynamic()) {
-      stop(paste("Dynamic links are only applicable for dynamic impacts (i.e.",
-                 "a bsimpact::ValueImpacts object with is_dynamic = TRUE)."),
+    if (valuation_type != "dynamic") {
+      stop("Dynamic links are only applicable for dynamic value impacts.",
            call. = FALSE)
     }
     if (!is.vector(dynamic_links) ||
@@ -111,38 +196,27 @@ Impacts <- function(impacts, population_model,
     }
   }
 
-  # Check recovery delay
-  if (!is.null(recovery_delay) &&
-      (!is.numeric(recovery_delay) || recovery_delay < 0)) {
-    stop("Recover delay should a number >= 0.", call. = FALSE)
-  }
-
   # Create a class structure
   self <- structure(list(), class = "Impacts")
 
-  # Get impacts object
-  self$get_impacts <- function() {
-    return(impacts)
+  # Id for tracking multiple impacts
+  id <- 1
+
+  # Get the impacts id
+  self$get_id <- function() {
+    return(id)
   }
 
-  # Get context
-  self$get_context <- function() {
-    return(impacts$get_context())
+  # Set the impacts id
+  self$set_id <- function(id) {
+    id <<- id
   }
 
-  # Get calculate total indicator
-  self$get_calc_total <- function() {
-    return(calc_total)
-  }
-
-  # Impacts combined?
-  self$includes_combined <- function() {
-    return("combined_impacts" %in% names(impacts))
-  }
+  ### HERE ####
 
   # Calculate density-based incursion (internal)
   calculate_density_incursion <- function(n, tm = NULL) {
-    n <- rowSums(as.matrix(n)[,impact_stages, drop = FALSE])
+    n <- rowSums(as.matrix(n)[,stages, drop = FALSE])
     n_density <- n*0
     idx <- which(population_model$get_capacity() > 0)
     n_density[idx] <-
@@ -164,27 +238,25 @@ Impacts <- function(impacts, population_model,
     }
 
     # Return total area occupied when population is present, else zero
-    return((sum(n[impact_stages]) > 0)*total_area)
+    return((sum(n[stages]) > 0)*total_area)
   }
 
   # Update recovery delay
   self$update_recovery_delay <- function(n) {
     if (is.numeric(recovery_delay)) {
-      id <- impacts$get_id()
       if (is.list(attr(n, "recovery_delay")) &&
           length(attr(n, "recovery_delay")) >= id &&
           is.numeric(attr(n, "recovery_delay")[[id]])) {
 
-        # Update for presence incursions
-        if (impacts$get_incursion()$get_type() == "presence" ||
-            (impacts$get_is_dynamic() &&
-             impacts$get_incursion()$get_type() == "density")) { # decremented
+        # Update dependent on impact and asset types
+        if (impact_type == "presence" ||
+            (valuation_type == "dynamic" && impact_type == "density")) {
 
           # Occurrence and recovery delay locations
-          if (impacts$get_incursion()$get_type() == "density") {
+          if (impact_type == "density") {
             x <- calculate_density_incursion(n)
           } else { # presence
-            x <- rowSums(as.matrix(n)[,impact_stages, drop = FALSE])
+            x <- rowSums(as.matrix(n)[,stages, drop = FALSE])
           }
           idx <- which(x > 0)
           delay_idx <- which(attr(n, "recovery_delay")[[id]] > 0)
@@ -202,7 +274,7 @@ Impacts <- function(impacts, population_model,
             attr(n, "recovery_delay")[[id]][new_idx] <- recovery_delay
           }
 
-        } else if (impacts$get_incursion()$get_type() == "density") {
+        } else if (impact_type == "density") {
 
           # Push current density to front of list for first impact only
           if (attr(attr(n, "recovery_delay"), "first") == id) {
@@ -214,8 +286,7 @@ Impacts <- function(impacts, population_model,
                   attr(attr(n, "recovery_delay"), "max"))
           }
 
-        } else if (population_model$get_region()$spatially_implicit() &&
-                   impacts$get_incursion()$get_type() == "area") {
+        } else if (region$spatially_implicit() && impact_type == "area") {
 
           # Add current area to front of list for first impact only
           if (attr(attr(n, "recovery_delay"), "first") == id) {
@@ -225,12 +296,12 @@ Impacts <- function(impacts, population_model,
           }
 
           # Add dynamic multipliers to front of each existing list
-          if (impacts$get_is_dynamic() && is.list(attr(n, "dynamic_mult")) &&
+          if (valuation_type == "dynamic" && is.list(attr(n, "dynamic_mult")) &&
               length(attr(n, "dynamic_mult")) >= id &&
               is.list(attr(n, "dynamic_mult")[[id]]) &&
               is.list(attr(attr(n, "recovery_delay")[[id]], "dynamic_mult")) &&
               (length(attr(attr(n, "recovery_delay")[[id]],
-                          "dynamic_mult")) ==
+                           "dynamic_mult")) ==
                length(attr(n, "dynamic_mult")[[id]]))) {
             for (i in 1:length(attr(n, "dynamic_mult")[[id]])){
               attr(attr(n, "recovery_delay")[[id]], "dynamic_mult")[[i]] <-
@@ -246,13 +317,12 @@ Impacts <- function(impacts, population_model,
         if (!is.list(attr(n, "recovery_delay"))) {
           attr(n, "recovery_delay") <- list()
         }
-        if (impacts$get_incursion()$get_type() == "presence" ||
-            (impacts$get_is_dynamic() &&
-             impacts$get_incursion()$get_type() == "density")) { # decremented
-          if (impacts$get_incursion()$get_type() == "density") {
+        if (impact_type == "presence" ||
+            (valuation_type == "dynamic" && impact_type == "density")) {
+          if (impact_type == "density") {
             x <- calculate_density_incursion(n)
           } else { # presence
-            x <- rowSums(as.matrix(n)[,impact_stages, drop = FALSE])
+            x <- rowSums(as.matrix(n)[,stages, drop = FALSE])
           }
           attr(n, "recovery_delay")[[id]] <- (x > 0)*recovery_delay
         } else { # constant
@@ -261,18 +331,16 @@ Impacts <- function(impacts, population_model,
             max(attr(attr(n, "recovery_delay"), "max"), recovery_delay)
           if (is.null(attr(attr(n, "recovery_delay"), "first"))) {
             attr(attr(n, "recovery_delay"), "first") <- id
-            if (impacts$get_incursion()$get_type() == "density") {
+            if (impact_type == "density") {
               attr(attr(n, "recovery_delay"), "incursions") <-
                 list(calculate_density_incursion(n))
-            } else if (population_model$get_region()$spatially_implicit() &&
-                       impacts$get_incursion()$get_type() == "area") {
+            } else if (region$spatially_implicit() && impact_type == "area") {
               attr(attr(n, "recovery_delay"), "incursions") <-
                 calculate_area_incursion(n)
             }
           }
-          if (population_model$get_region()$spatially_implicit() &&
-              impacts$get_incursion()$get_type() == "area" &&
-              impacts$get_is_dynamic() && is.list(attr(n, "dynamic_mult")) &&
+          if (region$spatially_implicit() && impact_type == "area" &&
+              valuation_type == "dynamic" && is.list(attr(n, "dynamic_mult")) &&
               length(attr(n, "dynamic_mult")) >= id &&
               is.list(attr(n, "dynamic_mult")[[id]])) {
             attr(attr(n, "recovery_delay")[[id]], "dynamic_mult") <-
@@ -292,48 +360,134 @@ Impacts <- function(impacts, population_model,
   self$calculate <- function(n, tm) {
 
     # Calculate incursion values
-    if (impacts$get_incursion()$get_type() == "density") {
+    if (impact_type == "density") {
       x <- calculate_density_incursion(n, tm = tm)
-    } else if (population_model$get_region()$spatially_implicit() &&
-               impacts$get_incursion()$get_type() == "area") {
+    } else if (region$spatially_implicit() && impact_type == "area") {
       x <- calculate_area_incursion(n)
     } else if (population_model$get_type() == "stage_structured") {
-      x <- rowSums(n[,impact_stages, drop = FALSE])
+      x <- rowSums(n[,stages, drop = FALSE])
     } else {
       x <- as.numeric(n)
     }
 
-    # Attach recovery delay and dynamic multipliers
-    attr(x, "recovery_delay") <- attr(n, "recovery_delay")
-    attr(x, "dynamic_mult") <- attr(n, "dynamic_mult")
-
-    # Set incursion values within impact object
-    impacts$get_incursion()$set_values(x)
-
-    # Get incursion impacts
-    impact_list <- impacts$incursion_impacts(raw = TRUE, time_int = tm)
-
-    # Append combined impacts when present
-    if ("combined_impacts" %in% names(impacts)) {
-      impact_list$combined <- impacts$combined_impacts(raw = TRUE)
+    # Truncate to 1 unless area
+    if (type %in% c("presence", "density", "prob")) {
+      x[which(x > 1)] <- 1
     }
 
-    # Move attached dynamic multipliers
-    if (impacts$get_is_dynamic() &&
-        is.list(attr(impact_list, "dynamic_mult"))) {
-      if (!is.list(attr(n, "dynamic_mult"))) {
-        attr(n, "dynamic_mult") <- list()
+    # Calculate dynamic multipliers
+    if (valuation_type == "dynamic") {
+      if (is.list(attr(n, "dynamic_mult")) &&
+          length(attr(n, "dynamic_mult")) >= id &&
+          is.numeric(attr(n, "dynamic_mult")[[id]])) {
+        dynamic_mult <- attr(n, "dynamic_mult")[[id]]
+      } else {
+        dynamic_mult <- 1
       }
-      id <- impacts$get_id()
-      attr(n, "dynamic_mult")[[id]] <- attr(impact_list, "dynamic_mult")
+      if (impact_type == "area") {
+        prev_area <- attr(dynamic_mult, "incursion")
+        if (x > 0) {
+          if (is.numeric(prev_area) && prev_area < x) {
+            prev_loss <- prev_area*(1 - dynamic_mult)
+            dynamic_mult <- (x - prev_loss)*(1 - loss_rate)/x
+          } else {
+            dynamic_mult <- dynamic_mult*(1 - loss_rate)
+          }
+        }
+        attr(dynamic_mult, "incursion") <- x
+      } else {
+        dynamic_mult <- dynamic_mult*(1 - x*loss_rate)
+      }
+      dynamic_mult <- unname(dynamic_mult)
+    }
+
+    # Recovery delays prolong impacts
+    if (impact_type %in% c("presence", "density", "area") &&
+        is.list(attr(n, "recovery_delay"))) {
+      if (length(attr(n, "recovery_delay")) >= id &&
+          is.numeric(attr(n, "recovery_delay")[[id]])) {
+        if (impact_type %in% c("presence", "density") &&
+            valuation_type == "dynamic") { # decremented delays
+          delay <- attr(n, "recovery_delay")[[id]]
+          dynamic_mult <- ((x > 0 | delay > 0)*dynamic_mult +
+                             (x == 0 & delay == 0))
+        } else if (impact_type == "presence") { # decremented delays
+          x <- +(x > 0 | attr(n, "recovery_delay")[[id]] > 0)
+        } else if (impact_type == "density") {
+          delay <- attr(n, "recovery_delay")[[id]]
+          prev_incursions <- attr(attr(n, "recovery_delay"), "incursions")
+          if (delay > 0 && length(prev_incursions) > 0) {
+            for (i in 1:min(length(prev_incursions), delay)) {
+              x <- pmax(x, prev_incursions[[i]])
+            }
+          }
+        } else if (impact_type == "area") {
+          delay <- attr(n, "recovery_delay")[[id]]
+          prev_incursions <- attr(attr(n, "recovery_delay"), "incursions")
+          x <- as.numeric(x)
+          if (valuation_type == "dynamic" &&
+              is.numeric(attr(delay, "dynamic_mult"))) {
+            dynamic_incursion <- (1 - (x > 0)*dynamic_mult + (x == 0))*x
+            if (delay > 0 && length(prev_incursions) > 0) {
+              prev_mult <- attr(delay, "dynamic_mult")
+              dynamic_incursion <- ((1 - prev_mult)*prev_incursions)[1:delay]
+              if (dynamic_incursion == 0) {
+                dynamic_mult <- 1
+              }
+            }
+          } else if (delay > 0 && length(prev_incursions) > 0) {
+            x <- max(x, prev_incursions[1:delay], na.rm = TRUE)
+          }
+        }
+      } else {
+        x <- as.numeric(x)
+        if (impact_type == "presence") {
+          x <- +(x > 0)
+        }
+      }
+    } else if (valuation_type == "dynamic" && # no delay on recovery
+               is.null(attr(n, "recovery_delay"))) {
+      dynamic_mult <- unname((x > 0)*dynamic_mult + (x == 0))
+      if (impact_type == "area") {
+        dynamic_incursion <- (1 - dynamic_mult)*x
+      }
+    }
+
+    # Extract spatial raster asset layer values
+    if (class(asset_value) %in% c("SpatRaster", "RasterLayer")) {
+      asset_value <- asset_value[region$get_indices()][,1]
+    }
+
+    # Calculate discount multiplier
+    disc_mult <- 1
+    if (is.numeric(discount_rate) && is.numeric(tm)) {
+      disc_mult <- 1/(1 + discount_rate)^tm
+    }
+
+    # Calculate incursion impact
+    if (valuation_type == "dynamic") {
+      if (impact_type == "area") {
+        incursion_impacts <- asset_value*disc_mult*dynamic_incursion
+      } else {
+        incursion_impacts <- asset_value*disc_mult*(1 - dynamic_mult)
+      }
+    } else {
+      incursion_impacts <- asset_value*loss_rate*x*disc_mult
+    }
+
+    # Attach dynamic multipliers
+    if (valuation_type == "dynamic") {
+      if (valuation_type == "dynamic" && impact_type == "area") {
+        attr(dynamic_mult, "incursion") <- x
+      }
+      attr(n, "dynamic_mult")[[id]] <- dynamic_mult
       if (!is.null(dynamic_links)) {
         attr(attr(n, "dynamic_mult")[[id]], "links") <- dynamic_links
       }
-      attr(impact_list, "dynamic_mult") <- NULL
     }
 
     # Attach calculated impacts to population
-    attr(n, "impacts") <- impact_list
+    attr(n, "impacts") <- incursion_impacts
 
     # Update recovery delay
     n <- self$update_recovery_delay(n)
