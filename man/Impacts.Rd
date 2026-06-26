@@ -5,70 +5,123 @@
 \title{Impacts class builder}
 \usage{
 Impacts(
-  impacts,
+  region,
   population_model,
-  impact_stages = NULL,
-  calc_total = NULL,
-  dynamic_links = NULL,
+  impact_type = c("presence", "density", "area"),
+  valuation_type = c("monetary", "non-monetary", "dynamic"),
+  asset_name,
+  asset_value,
+  value_unit = NULL,
+  loss_rate,
+  discount_rate = NULL,
+  stages = NULL,
   recovery_delay = NULL,
+  dynamic_links = NULL,
   ...
 )
 }
 \arguments{
-\item{impacts}{A \code{bsimpact::ImpactAnalysis} or inherited class object
-specifying how environment, social, and/or economic impacts are
-calculated, classified, and/or combined based on asset values,
-classifications, and/or incursion loss rates.}
+\item{region}{A \code{Region} or inherited class object representing the
+spatial region (template) for the population spread model simulations.}
 
 \item{population_model}{A \code{Population} or inherited class object
 defining the population representation for the population spread model
 simulations.}
 
-\item{impact_stages}{Numeric vector of population stages (indices) that
-contribute to impacts. Default is all stages (when set to \code{NULL}).}
+\item{impact_type}{One of \code{"presence"} (default), \code{"density"}, or
+\code{"area"}, to indicate if the impact of a threat incursion is
+calculated based on presence, density, or area of occupancy respectively.
+Density-based impacts may only be used when the threat is modelled via
+unstructured or staged-based populations with carrying capacity specified.
+Area-based impacts are only applicable to spatially implicit models.}
 
-\item{calc_total}{Logical indicator for whether or not total impacts may
-be (sensibly) calculated by summing across region locations. Default is
-\code{NULL}, whereby totals are only calculated when the impact (context)
-valuation type is \code{"monetary"}. Set to \code{TRUE} if it makes sense
-to sum total \code{"non-monetary"} or \code{"ranking"} impact valuations
-across region locations (providing multiple aspects can be combined).}
+\item{valuation_type}{One of \code{"monetary"} (default),
+\code{"non-monetary"}, or \code{"dynamic"} to indicate the type of
+valuation associated with the impacted asset or resource.}
 
-\item{dynamic_links}{Dynamic impacts (when \code{impacts} is a
-\code{bsimpact::ValueImpacts} object with \code{is_dynamic = TRUE}) may
-optionally be linked to apply (proportional) dynamic losses to threat
-suitability, carrying capacity, and/or dispersal attraction when
-applicable, such as when a threat utilises a resource or asset (e.g. as a
-food source). Configure dynamic links via a vector of one or more strings
-from \code{"suitability"}, \code{"capacity"}, and/or \code{"attractors"}.
-Default \code{NULL} assumes no dynamic links or impacts are not dynamic.}
+\item{asset_name}{A descriptive name of the asset or resource impacted by
+the threat incursion.}
+
+\item{asset_value}{The periodic monetary value per simulation time step
+(e.g. crop yield), or the non-monetary value (e.g. habitat condition),
+of the asset or resource impacted by a threat incursion. This may be a
+spatial layer (\code{terra::SpatRaster} or \code{raster::RasterLayer}),
+or a vector of location values, for a grid or network-based model region.
+For spatially implicit models, asset value should be expressed as value
+per metres squared. Asset value for dynamic value impacts (e.g. plantation
+biomass) represents the total value or asset quantity prior to threat
+presence, which increasingly looses value when impacted by the threat,
+and may be implicitly monetary (with ongoing not periodic value)
+or non-monetary, as indicated by the \code{value_unit}.}
+
+\item{value_unit}{A descriptive unit for asset value quantities. Default is
+\code{NULL}, which is changed to "$" for monetary assets.}
+
+\item{loss_rate}{A fractional loss of asset or resource value resulting from
+a threat incursion or presence. For monetary value impacts the fractional
+loss is applied to the periodic asset value at every time step that the
+threat is present or until recovered. For non-monetary value impacts the
+fractional loss to the asset value is maintained during threat presence or
+until recovered. For dynamic value impacts the fractional loss is
+repeatedly applied to the asset value or resource quantity, thus
+increasingly reducing it, whilst the threat is present.}
+
+\item{discount_rate}{An optional discount rate (per time interval) for
+monetary asset values to estimate future values that account
+for inflation. Typically the discounting uses market interest rates.
+Discounted impact values are calculated by dividing the asset values by
+\code{(1 + discount_rate)^time_int} for a specified time interval.
+Default is \code{NULL}.}
+
+\item{stages}{Numeric vector of population stages (indices) that
+contribute to impacts when applicable. Default is all stages (when set to
+\code{NULL}).}
 
 \item{recovery_delay}{Number of simulation time steps that incursion impacts
 continue to be in effect at previously occupied locations before the
 asset value at the locations recover. Only available for spatially
 explicit grid or network models. Default \code{NULL} assumes no delay.}
 
+\item{dynamic_links}{Dynamic value impacts may optionally be linked to apply
+(proportional) dynamic losses to threat suitability, carrying capacity,
+and/or dispersal attraction when applicable, such as when a threat
+utilises a resource or asset (e.g. as a food source). Configure dynamic
+links via a vector of one or more strings from \code{"suitability"},
+\code{"capacity"}, and/or \code{"attractors"}. Default \code{NULL}
+assumes no dynamic links or that impact values are not dynamic.}
+
 \item{...}{Additional parameters.}
 }
 \value{
 A \code{Impacts} class object (list) containing functions for
-getting the impact context and performing impact calculations:
+performing impact calculations:
 \describe{
-\item{\code{get_impacts()}}{Get \code{bsimpact::ImpactAnalysis} or
-inherited class object.}
-\item{\code{get_context()}}{Get \code{bsimpact::Context} object.}
-\item{\code{get_calc_total()}}{Get calculate total indicator.}
-\item{\code{includes_combined()}}{Logical indicator for when impacts are
-combined.}
+\item{\code{get_id()}}{Get the impacts numeric identifier.}
+\item{\code{set_id(id)}}{Set the impacts numeric identifier. Should be
+an integer >= 1).}
+\item{\code{get_impact_type()}}{Get the impact type.}
+\item{\code{get_valuation_type()}}{Get the valuation type.}
+\item{\code{get_value_unit()}}{Get the asset value unit.}
 \item{\code{update_recovery_delay(n)}}{Update the recovery delay
-attribute attached to the population vector.}
+attribute attached to the population vector or matrix \code{n}.}
 \item{\code{calculate(n, tm)}}{Perform impact calculations resulting
 from incursion population vector or matrix \code{n} at time step
-\code{tm}, and return \code{n} with a list of impact values attached,
-including combined impacts when applicable.}
+\code{tm}, and return \code{n} with impact values attached.}
 }
 }
 \description{
 Builds a class for calculating incursion impacts during population spread
-model simulations. Encapsulates \code{bsimpact} impact analysis objects.
+model simulations. Impact values may be monetary, non-monetary, or dynamic.
+Monetary value impacts specify periodic assets (e.g. crop yields) that loose
+value at each simulated time step (e.g. crop season) whilst a threat is
+present or until recovered. Non-monetary value impacts specify ongoing
+assets (e.g. habitat condition) that reduce in value by a fixed amount
+whilst a threat is present or until recovered. Dynamic value impacts also
+specify ongoing assets or resources (e.g. plantation biomass) that
+increasingly loose value whilst a threat is present and optionally remain
+impacted until recovered. Dynamic losses in asset value may optionally be
+linked to apply (proportional) dynamic losses to threat suitability
+(establishment likelihood), carrying capacity, and/or dispersal attraction
+when applicable, such as when a threat utilises a resource or asset (e.g.
+as a food source).
 }

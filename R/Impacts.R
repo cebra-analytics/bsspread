@@ -77,14 +77,16 @@
 #'   performing impact calculations:
 #'   \describe{
 #'     \item{\code{get_id()}}{Get the impacts numeric identifier.}
-#'     \item{\code{set_id(id)}}{Set the impacts numeric identifier.}
-
+#'     \item{\code{set_id(id)}}{Set the impacts numeric identifier. Should be
+#'       an integer >= 1).}
+#'     \item{\code{get_impact_type()}}{Get the impact type.}
+#'     \item{\code{get_valuation_type()}}{Get the valuation type.}
+#'     \item{\code{get_value_unit()}}{Get the asset value unit.}
 #'     \item{\code{update_recovery_delay(n)}}{Update the recovery delay
-#'       attribute attached to the population vector.}
+#'       attribute attached to the population vector or matrix \code{n}.}
 #'     \item{\code{calculate(n, tm)}}{Perform impact calculations resulting
 #'       from incursion population vector or matrix \code{n} at time step
-#'       \code{tm}, and return \code{n} with a list of impact values
-#'       attached.}
+#'       \code{tm}, and return \code{n} with impact values attached.}
 #'   }
 #' @export
 Impacts <- function(region, population_model,
@@ -141,7 +143,7 @@ Impacts <- function(region, population_model,
   }
   if (!is.null(value_unit)) {
     if (!is.character(value_unit)) {
-      stop("Asset name should be a character string.", call. = FALSE)
+      stop("Asset value unit should be a character string.", call. = FALSE)
     }
   } else if (valuation_type == "monetary") {
     value_unit <- "$"
@@ -149,12 +151,13 @@ Impacts <- function(region, population_model,
 
   # Check loss and discount rates
   if (!is.numeric(loss_rate) ||
-      (is.numeric() && (loss_rate < 0 || loss_rate > 1))) {
+      (is.numeric(loss_rate) && (loss_rate < 0 || loss_rate > 1))) {
     stop("Loss rate should be numeric, >= 0, and <= 1.", call. = FALSE)
   }
   if (!is.null(discount_rate)) {
-    if (!is.numeric(loss_rate) ||
-        (is.numeric() && (loss_rate < 0 || loss_rate > 1))) {
+    if (!is.numeric(discount_rate) ||
+        (is.numeric(discount_rate) &&
+         (discount_rate < 0 || discount_rate > 1))) {
       stop("Discount rate should be numeric, >= 0, and <= 1.", call. = FALSE)
     }
     if (valuation_type != "monetary") {
@@ -209,10 +212,26 @@ Impacts <- function(region, population_model,
 
   # Set the impacts id
   self$set_id <- function(id) {
+    if (!is.numeric(id) || trunc(id) != id || id < 1) {
+      stop("Impacts id should be an integer >= 1.", call. = FALSE)
+    }
     id <<- id
   }
 
-  ### HERE ####
+  # Get the impact type
+  self$get_impact_type <- function() {
+    return(impact_type)
+  }
+
+  # Get the valuation type
+  self$get_valuation_type <- function() {
+    return(valuation_type)
+  }
+
+  # Get the asset value unit
+  self$get_value_unit <- function() {
+    return(value_unit)
+  }
 
   # Calculate density-based incursion (internal)
   calculate_density_incursion <- function(n, tm = NULL) {
@@ -296,18 +315,15 @@ Impacts <- function(region, population_model,
           }
 
           # Add dynamic multipliers to front of each existing list
-          if (valuation_type == "dynamic" && is.list(attr(n, "dynamic_mult")) &&
+          if (valuation_type == "dynamic" &&
+              is.list(attr(n, "dynamic_mult")) &&
               length(attr(n, "dynamic_mult")) >= id &&
-              is.list(attr(n, "dynamic_mult")[[id]]) &&
-              is.list(attr(attr(n, "recovery_delay")[[id]], "dynamic_mult")) &&
-              (length(attr(attr(n, "recovery_delay")[[id]],
-                           "dynamic_mult")) ==
-               length(attr(n, "dynamic_mult")[[id]]))) {
-            for (i in 1:length(attr(n, "dynamic_mult")[[id]])){
-              attr(attr(n, "recovery_delay")[[id]], "dynamic_mult")[[i]] <-
-                c(attr(n, "dynamic_mult")[[id]][[i]],
-                  attr(attr(n, "recovery_delay")[[id]], "dynamic_mult")[[i]])
-            }
+              is.numeric(attr(n, "dynamic_mult")[[id]]) &&
+              is.numeric(attr(attr(n, "recovery_delay")[[id]],
+                              "dynamic_mult"))) {
+            attr(attr(n, "recovery_delay")[[id]], "dynamic_mult") <-
+              c(attr(n, "dynamic_mult")[[id]],
+                attr(attr(n, "recovery_delay")[[id]], "dynamic_mult"))
           }
         }
 
@@ -342,7 +358,7 @@ Impacts <- function(region, population_model,
           if (region$spatially_implicit() && impact_type == "area" &&
               valuation_type == "dynamic" && is.list(attr(n, "dynamic_mult")) &&
               length(attr(n, "dynamic_mult")) >= id &&
-              is.list(attr(n, "dynamic_mult")[[id]])) {
+              is.numeric(attr(n, "dynamic_mult")[[id]])) {
             attr(attr(n, "recovery_delay")[[id]], "dynamic_mult") <-
               attr(n, "dynamic_mult")[[id]]
             attr(attr(attr(n, "recovery_delay")[[id]], "dynamic_mult"),
@@ -371,7 +387,7 @@ Impacts <- function(region, population_model,
     }
 
     # Truncate to 1 unless area
-    if (type %in% c("presence", "density", "prob")) {
+    if (impact_type %in% c("presence", "density")) {
       x[which(x > 1)] <- 1
     }
 
@@ -487,7 +503,10 @@ Impacts <- function(region, population_model,
     }
 
     # Attach calculated impacts to population
-    attr(n, "impacts") <- incursion_impacts
+    if (!is.list(attr(n, "impacts"))) {
+      attr(n, "impacts") <- list()
+    }
+    attr(n, "impacts")[[id]] <- incursion_impacts
 
     # Update recovery delay
     n <- self$update_recovery_delay(n)
