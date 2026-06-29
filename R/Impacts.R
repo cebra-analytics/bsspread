@@ -356,7 +356,8 @@ Impacts <- function(region, population_model,
             }
           }
           if (region$spatially_implicit() && impact_type == "area" &&
-              valuation_type == "dynamic" && is.list(attr(n, "dynamic_mult")) &&
+              valuation_type == "dynamic" &&
+              is.list(attr(n, "dynamic_mult")) &&
               length(attr(n, "dynamic_mult")) >= id &&
               is.numeric(attr(n, "dynamic_mult")[[id]])) {
             attr(attr(n, "recovery_delay")[[id]], "dynamic_mult") <-
@@ -507,9 +508,6 @@ Impacts <- function(region, population_model,
       attr(n, "impacts") <- list()
     }
     attr(n, "impacts")[[id]] <- incursion_impacts
-
-    # Update recovery delay
-    n <- self$update_recovery_delay(n)
 
     return(n)
   }
