@@ -1899,8 +1899,7 @@ progress_function <- function(n, r, tm) {
 # Use serial (not parallel) when there is a random seed (unless benchmark override)
 if (is.numeric(input.params$random_seed)) {
     set.seed(input.params$random_seed)
-    if (identical(Sys.getenv("PARALLEL_WITH_SEED"), "1") ||
-            identical(Sys.getenv("BENCHMARK_ALLOW_PARALLEL"), "1")) {
+    if (identical(Sys.getenv("PARALLEL_WITH_SEED"), "1")) {
         message(
             "random_seed set but PARALLEL_WITH_SEED=1: using TASK_CPUS/DEFAULT_CPUS"
         )
@@ -2256,8 +2255,9 @@ parallel_init_cluster <- function(n_workers,
 
 merge_replicate_output <- function(out, reps_merged, reps_total,
                                    rep_outputs = NULL) {
+    # reps_merged is already incremented before this call; Welford count, not r.
     for (col in out$collations) {
-        results$collate(col$r, col$tm, col$n, col$calc_impacts)
+        results$collate(reps_merged, col$tm, col$n, col$calc_impacts)
     }
     parent_mem_message(
         sprintf("merged r=%d", out$r),
