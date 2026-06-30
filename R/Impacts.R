@@ -415,7 +415,7 @@ Impacts <- function(region, population_model,
       } else {
         dynamic_mult <- dynamic_mult*(1 - x*loss_rate)
       }
-      dynamic_mult <- unname(dynamic_mult)
+      dynamic_mult <- as.numeric(unname(dynamic_mult))
     }
 
     # Recovery delays prolong impacts
