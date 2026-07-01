@@ -557,6 +557,142 @@ test_that("applies dynamic presence-based impacts", {
 
 test_that("applies dynamic density-based impacts with recovery", {
   TEST_DIRECTORY <- test_path("test_inputs")
+  template <- terra::rast(file.path(TEST_DIRECTORY, "greater_melb.tif"))
+  region <- Region(template*0)
+  template_vect <- template[region$get_indices()][,1]
+  idx <- 5901:6000
+  population_model <- UnstructPopulation(region, growth = 1.2, capacity = template_vect*50)
+  asset_values <- list(100*(template > 0.1 & template < 0.4),
+                       200*(template > 0.3))
+  expect_silent(impacts_1 <- Impacts(region, population_model,
+                       impact_type = "density",
+                       valuation_type = "dynamic",
+                       asset_name = "impact1",
+                       asset_value = asset_values[[1]],
+                       loss_rate = 0.3,
+                       recovery_delay = 2,
+                       dynamic_links = c("suitability", "capacity")))
+  expect_silent(impacts_1$set_id(1))
+  expect_silent(impacts_2 <- Impacts(region, population_model,
+                       impact_type = "density",
+                       valuation_type = "dynamic",
+                       asset_name = "impact2",
+                       asset_value = asset_values[[2]],
+                       loss_rate = 0.4,
+                       recovery_delay = 3,
+                       dynamic_links = c("suitability", "attractors")))
+  expect_silent(impacts_2$set_id(2))
+  n_density <- n <- rep(0, region$get_locations())
+  n[idx[1:90]] <- round(runif(90, 1, 10))
+  dens_idx <- idx[which(template_vect[idx] > 0)]
+  n_density[dens_idx] <- pmin(n[dens_idx]/(template_vect[dens_idx]*50), 1)
+
+  expected_impacts <- list(
+    n_density*asset_values[[1]][region$get_indices()][,1]*0.3,
+    n_density*asset_values[[2]][region$get_indices()][,1]*0.4)
+  expected_dynamic_mult <- list(1 - 0.3*n_density, 1 - 0.4*n_density)
+  attr(expected_dynamic_mult[[1]], "links") <- c("suitability", "capacity")
+  attr(expected_dynamic_mult[[2]], "links") <- c("suitability", "attractors")
+  expected_recovery_delay <- list((n_density > 0)*2, (n_density > 0)*3)
+
+  expect_silent(n <- impacts_1$calculate(n, 0))
+  expect_silent(n <- impacts_2$calculate(n, 0))
+  expect_equal(attr(n, "impacts"), expected_impacts)
+  expect_equal(attr(n, "dynamic_mult"), expected_dynamic_mult)
+  expect_silent(n <- impacts_1$update_recovery_delay(n))
+  expect_silent(n <- impacts_2$update_recovery_delay(n))
+  expect_equal(attr(n, "recovery_delay"), expected_recovery_delay)
+
+  id1 <- c(1:10, 51:55); id2 <- c(11:20, 56:60)
+  n[idx[id1]] <- 0
+  idx_1 <- idx[id2][which(n_density[idx[id2]] < 1)]
+  n[idx_1] <- round(n[idx_1]*0.6)
+  n_density[dens_idx] <- pmin(n[dens_idx]/population_model$get_capacity()[dens_idx], 1)
+  expected_dynamic_mult <- list(expected_dynamic_mult[[1]]*(1 - 0.3*n_density),
+                                expected_dynamic_mult[[2]]*(1 - 0.4*n_density))
+  expected_impacts <- lapply(1:2, function(i) {
+    impact <- (asset_values[[i]][region$get_indices()][,1]*
+                 (1 - expected_dynamic_mult[[i]]))
+    attr(impact, "links") <- NULL
+    impact
+  })
+  expected_recovery_delay[[1]][idx[id1]] <- 1
+  expected_recovery_delay[[2]][idx[id1]] <- 2
+  expect_silent(n <- impacts_1$calculate(n, 1))
+  expect_silent(n <- impacts_2$calculate(n, 1))
+  expect_equal(attr(n, "impacts"), expected_impacts)
+  expect_equal(attr(n, "dynamic_mult"), expected_dynamic_mult)
+  expect_silent(n <- impacts_1$update_recovery_delay(n))
+  expect_silent(n <- impacts_2$update_recovery_delay(n))
+  expect_equal(attr(n, "recovery_delay"), expected_recovery_delay)
+
+  id3 <- c(21:30, 61:65)
+  n[idx[c(id2, id3)]] <- 0
+  n_density[dens_idx] <- pmin(n[dens_idx]/population_model$get_capacity()[dens_idx], 1)
+  expected_dynamic_mult <- list(expected_dynamic_mult[[1]]*(1 - 0.3*n_density),
+                                expected_dynamic_mult[[2]]*(1 - 0.4*n_density))
+  expected_impacts <- lapply(1:2, function(i) {
+    impact <- (asset_values[[i]][region$get_indices()][,1]*
+                 (1 - expected_dynamic_mult[[i]]))
+    attr(impact, "links") <- NULL
+    impact
+  })
+  expected_recovery_delay <- lapply(expected_recovery_delay, function(delay) {
+    delay[idx[c(id1, id2, id3)]] <- pmax(delay[idx[c(id1, id2, id3)]] - 1, 0)
+    delay
+  })
+  expect_silent(n <- impacts_1$calculate(n, 2))
+  expect_silent(n <- impacts_2$calculate(n, 2))
+  expect_equal(attr(n, "impacts"), expected_impacts)
+  expect_equal(attr(n, "dynamic_mult"), expected_dynamic_mult)
+  expect_silent(n <- impacts_1$update_recovery_delay(n))
+  expect_silent(n <- impacts_2$update_recovery_delay(n))
+  expect_equal(attr(n, "recovery_delay"), expected_recovery_delay)
+
+  expected_dynamic_mult <- list(expected_dynamic_mult[[1]]*(1 - 0.3*n_density),
+                                expected_dynamic_mult[[2]]*(1 - 0.4*n_density))
+  expected_dynamic_mult[[1]][idx[id1]] <- 1
+  expected_impacts <- lapply(1:2, function(i) {
+    impact <- (asset_values[[i]][region$get_indices()][,1]*
+                 (1 - expected_dynamic_mult[[i]]))
+    attr(impact, "links") <- NULL
+    impact
+  })
+  expected_recovery_delay <- lapply(expected_recovery_delay, function(delay) {
+    delay[idx[c(id1, id2, id3)]] <- pmax(delay[idx[c(id1, id2, id3)]] - 1, 0)
+    delay
+  })
+  expect_silent(n <- impacts_1$calculate(n, 3))
+  expect_silent(n <- impacts_2$calculate(n, 3))
+  expect_equal(attr(n, "impacts"), expected_impacts)
+  expect_equal(attr(n, "dynamic_mult"), expected_dynamic_mult)
+  expect_silent(n <- impacts_1$update_recovery_delay(n))
+  expect_silent(n <- impacts_2$update_recovery_delay(n))
+  expect_equal(attr(n, "recovery_delay"), expected_recovery_delay)
+
+  n[idx[id3]] <- round(runif(15, 1, 10))
+  n_density[dens_idx] <- pmin(n[dens_idx]/population_model$get_capacity()[dens_idx], 1)
+
+  expected_dynamic_mult <- list(expected_dynamic_mult[[1]]*(1 - 0.3*n_density),
+                                expected_dynamic_mult[[2]]*(1 - 0.4*n_density))
+  expected_dynamic_mult[[1]][idx[id2]] <- 1
+  expected_dynamic_mult[[2]][idx[id1]] <- 1
+  expected_impacts <- lapply(1:2, function(i) {
+    impact <- (asset_values[[i]][region$get_indices()][,1]*
+                 (1 - expected_dynamic_mult[[i]]))
+    attr(impact, "links") <- NULL
+    impact
+  })
+  expected_recovery_delay[[1]][idx[id3]] <- 2*(n_density > 0)[idx[id3]]
+  expected_recovery_delay[[2]][idx[id2]] <- 0
+  expected_recovery_delay[[2]][idx[id3]] <- 3*(n_density > 0)[idx[id3]]
+  expect_silent(n <- impacts_1$calculate(n, 4))
+  expect_silent(n <- impacts_2$calculate(n, 4))
+  expect_equal(attr(n, "impacts"), expected_impacts)
+  expect_equal(attr(n, "dynamic_mult"), expected_dynamic_mult)
+  expect_silent(n <- impacts_1$update_recovery_delay(n))
+  expect_silent(n <- impacts_2$update_recovery_delay(n))
+  expect_equal(attr(n, "recovery_delay"), expected_recovery_delay)
 })
 
 test_that("applies dynamic implicit area-based impacts with recovery", {

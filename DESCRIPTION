@@ -17,8 +17,6 @@ Imports:
     igraph (>= 1.2.8),
     raster (>= 3.5.2),
     terra (>= 1.6.47)
-Remotes:
-    cebra-analytics/bsimpact
 Suggests:
     fmsb,
     knitr,

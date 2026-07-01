@@ -288,6 +288,7 @@ Impacts <- function(region, population_model,
           }
 
           # Set recovery for new occurrences
+          delay_idx <- which(attr(n, "recovery_delay")[[id]] == recovery_delay)
           if (any(!idx %in% delay_idx)) {
             new_idx <- idx[which(!idx %in% delay_idx)]
             attr(n, "recovery_delay")[[id]][new_idx] <- recovery_delay
