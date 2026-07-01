@@ -87,7 +87,6 @@ test_that("initializes with region, population model and impact details", {
                                      asset_value = 100*template,
                                      loss_rate = 0.2))
   expect_is(impacts_o, "Impacts")
-
   expect_named(impacts_o,
                c("get_id", "set_id", "get_impact_type", "get_valuation_type",
                  "get_value_unit", "update_recovery_delay", "calculate"))
@@ -561,32 +560,34 @@ test_that("applies dynamic density-based impacts with recovery", {
   region <- Region(template*0)
   template_vect <- template[region$get_indices()][,1]
   idx <- 5901:6000
-  population_model <- UnstructPopulation(region, growth = 1.2, capacity = template_vect*50)
+  population_model <- UnstructPopulation(region, growth = 1.2,
+                                         capacity = template_vect*50)
   asset_values <- list(100*(template > 0.1 & template < 0.4),
                        200*(template > 0.3))
   expect_silent(impacts_1 <- Impacts(region, population_model,
-                       impact_type = "density",
-                       valuation_type = "dynamic",
-                       asset_name = "impact1",
-                       asset_value = asset_values[[1]],
-                       loss_rate = 0.3,
-                       recovery_delay = 2,
-                       dynamic_links = c("suitability", "capacity")))
+                                     impact_type = "density",
+                                     valuation_type = "dynamic",
+                                     asset_name = "impact1",
+                                     asset_value = asset_values[[1]],
+                                     loss_rate = 0.3,
+                                     recovery_delay = 2,
+                                     dynamic_links = c("suitability",
+                                                       "capacity")))
   expect_silent(impacts_1$set_id(1))
   expect_silent(impacts_2 <- Impacts(region, population_model,
-                       impact_type = "density",
-                       valuation_type = "dynamic",
-                       asset_name = "impact2",
-                       asset_value = asset_values[[2]],
-                       loss_rate = 0.4,
-                       recovery_delay = 3,
-                       dynamic_links = c("suitability", "attractors")))
+                                     impact_type = "density",
+                                     valuation_type = "dynamic",
+                                     asset_name = "impact2",
+                                     asset_value = asset_values[[2]],
+                                     loss_rate = 0.4,
+                                     recovery_delay = 3,
+                                     dynamic_links = c("suitability",
+                                                       "attractors")))
   expect_silent(impacts_2$set_id(2))
   n_density <- n <- rep(0, region$get_locations())
   n[idx[1:90]] <- round(runif(90, 1, 10))
   dens_idx <- idx[which(template_vect[idx] > 0)]
   n_density[dens_idx] <- pmin(n[dens_idx]/(template_vect[dens_idx]*50), 1)
-
   expected_impacts <- list(
     n_density*asset_values[[1]][region$get_indices()][,1]*0.3,
     n_density*asset_values[[2]][region$get_indices()][,1]*0.4)
@@ -594,7 +595,6 @@ test_that("applies dynamic density-based impacts with recovery", {
   attr(expected_dynamic_mult[[1]], "links") <- c("suitability", "capacity")
   attr(expected_dynamic_mult[[2]], "links") <- c("suitability", "attractors")
   expected_recovery_delay <- list((n_density > 0)*2, (n_density > 0)*3)
-
   expect_silent(n <- impacts_1$calculate(n, 0))
   expect_silent(n <- impacts_2$calculate(n, 0))
   expect_equal(attr(n, "impacts"), expected_impacts)
@@ -602,12 +602,12 @@ test_that("applies dynamic density-based impacts with recovery", {
   expect_silent(n <- impacts_1$update_recovery_delay(n))
   expect_silent(n <- impacts_2$update_recovery_delay(n))
   expect_equal(attr(n, "recovery_delay"), expected_recovery_delay)
-
   id1 <- c(1:10, 51:55); id2 <- c(11:20, 56:60)
   n[idx[id1]] <- 0
   idx_1 <- idx[id2][which(n_density[idx[id2]] < 1)]
   n[idx_1] <- round(n[idx_1]*0.6)
-  n_density[dens_idx] <- pmin(n[dens_idx]/population_model$get_capacity()[dens_idx], 1)
+  n_density[dens_idx] <-
+    pmin(n[dens_idx]/population_model$get_capacity()[dens_idx], 1)
   expected_dynamic_mult <- list(expected_dynamic_mult[[1]]*(1 - 0.3*n_density),
                                 expected_dynamic_mult[[2]]*(1 - 0.4*n_density))
   expected_impacts <- lapply(1:2, function(i) {
@@ -625,10 +625,10 @@ test_that("applies dynamic density-based impacts with recovery", {
   expect_silent(n <- impacts_1$update_recovery_delay(n))
   expect_silent(n <- impacts_2$update_recovery_delay(n))
   expect_equal(attr(n, "recovery_delay"), expected_recovery_delay)
-
   id3 <- c(21:30, 61:65)
   n[idx[c(id2, id3)]] <- 0
-  n_density[dens_idx] <- pmin(n[dens_idx]/population_model$get_capacity()[dens_idx], 1)
+  n_density[dens_idx] <-
+    pmin(n[dens_idx]/population_model$get_capacity()[dens_idx], 1)
   expected_dynamic_mult <- list(expected_dynamic_mult[[1]]*(1 - 0.3*n_density),
                                 expected_dynamic_mult[[2]]*(1 - 0.4*n_density))
   expected_impacts <- lapply(1:2, function(i) {
@@ -648,7 +648,6 @@ test_that("applies dynamic density-based impacts with recovery", {
   expect_silent(n <- impacts_1$update_recovery_delay(n))
   expect_silent(n <- impacts_2$update_recovery_delay(n))
   expect_equal(attr(n, "recovery_delay"), expected_recovery_delay)
-
   expected_dynamic_mult <- list(expected_dynamic_mult[[1]]*(1 - 0.3*n_density),
                                 expected_dynamic_mult[[2]]*(1 - 0.4*n_density))
   expected_dynamic_mult[[1]][idx[id1]] <- 1
@@ -669,10 +668,9 @@ test_that("applies dynamic density-based impacts with recovery", {
   expect_silent(n <- impacts_1$update_recovery_delay(n))
   expect_silent(n <- impacts_2$update_recovery_delay(n))
   expect_equal(attr(n, "recovery_delay"), expected_recovery_delay)
-
   n[idx[id3]] <- round(runif(15, 1, 10))
-  n_density[dens_idx] <- pmin(n[dens_idx]/population_model$get_capacity()[dens_idx], 1)
-
+  n_density[dens_idx] <-
+    pmin(n[dens_idx]/population_model$get_capacity()[dens_idx], 1)
   expected_dynamic_mult <- list(expected_dynamic_mult[[1]]*(1 - 0.3*n_density),
                                 expected_dynamic_mult[[2]]*(1 - 0.4*n_density))
   expected_dynamic_mult[[1]][idx[id2]] <- 1
@@ -696,4 +694,160 @@ test_that("applies dynamic density-based impacts with recovery", {
 })
 
 test_that("applies dynamic implicit area-based impacts with recovery", {
+  region <- Region()
+  stage_matrix <- matrix(c(0.0, 2.0, 5.0,
+                           0.3, 0.0, 0.0,
+                           0.0, 0.6, 0.8),
+                         nrow = 3, ncol = 3, byrow = TRUE)
+  population_model <- StagedPopulation(region, stage_matrix, capacity = 50,
+                                       capacity_area = 1,
+                                       capacity_stages = 2:3)
+  initializer <- Initializer(20, region = region,
+                             population_model = population_model)
+  n <- initializer$initialize()
+  expect_silent(impacts_1 <- Impacts(region, population_model,
+                                     impact_type = "area",
+                                     valuation_type = "dynamic",
+                                     asset_name = "impact1",
+                                     asset_value = 100,
+                                     loss_rate = 0.3,
+                                     stages = 2:3,
+                                     recovery_delay = 2,
+                                     dynamic_links = c("suitability",
+                                                       "capacity")))
+  expect_silent(impacts_1$set_id(1))
+  expect_silent(impacts_2 <- Impacts(region, population_model,
+                                     impact_type = "area",
+                                     valuation_type = "dynamic",
+                                     asset_name = "impact2",
+                                     asset_value = 200,
+                                     loss_rate = 0.4,
+                                     stages = 2:3,
+                                     recovery_delay = 3,
+                                     dynamic_links = c("suitability",
+                                                       "attractors")))
+  expect_silent(impacts_2$set_id(2))
+  initializer <- Initializer(100, region = region,
+                             population_model = population_model)
+  n <- initializer$initialize()
+  attr(n, "spread_area") <- 50
+  expected_impacts <- list(100*50*0.3, 200*50*0.4)
+  expected_dynamic_mult <- list(1 - 0.3, 1 - 0.4)
+  attr(expected_dynamic_mult[[1]], "incursion") <- 50
+  attr(expected_dynamic_mult[[1]], "links") <- c("suitability", "capacity")
+  attr(expected_dynamic_mult[[2]], "incursion") <- 50
+  attr(expected_dynamic_mult[[2]], "links") <- c("suitability", "attractors")
+  expected_recovery_delay <- list(2, 3)
+  attr(expected_recovery_delay[[1]], "dynamic_mult") <- 1 - 0.3
+  attr(expected_recovery_delay[[2]], "dynamic_mult") <- 1 - 0.4
+  expect_silent(n <- impacts_1$calculate(n, 0))
+  expect_silent(n <- impacts_2$calculate(n, 0))
+  expect_equal(attr(n, "impacts"), expected_impacts)
+  expect_equal(attr(n, "dynamic_mult"), expected_dynamic_mult)
+  expect_silent(n <- impacts_1$update_recovery_delay(n))
+  expect_silent(n <- impacts_2$update_recovery_delay(n))
+  expect_equal(lapply(attr(n, "recovery_delay"), function(d) d),
+               expected_recovery_delay)
+  expect_equal(attr(attr(n, "recovery_delay"), "max"), 3)
+  expect_equal(attr(attr(n, "recovery_delay"), "first"), 1)
+  expect_equal(attr(attr(n, "recovery_delay"), "incursions"), 50)
+  attr(n, "spread_area") <- 30
+  expected_impacts <- list(100*max(30*0.51, 50*0.3), 200*max(30*0.64, 50*0.4))
+  expected_dynamic_mult[[1]][] <- 0.7^2
+  attr(expected_dynamic_mult[[1]], "incursion") <- 30
+  expected_dynamic_mult[[2]][] <- 0.6^2
+  attr(expected_dynamic_mult[[2]], "incursion") <- 30
+  attr(expected_recovery_delay[[1]], "dynamic_mult") <- c(0.49, 0.7)
+  attr(expected_recovery_delay[[2]], "dynamic_mult") <- c(0.36, 0.6)
+  expect_silent(n <- impacts_1$calculate(n, 1))
+  expect_silent(n <- impacts_2$calculate(n, 1))
+  expect_equal(attr(n, "impacts"), expected_impacts)
+  expect_equal(attr(n, "dynamic_mult"), expected_dynamic_mult)
+  expect_silent(n <- impacts_1$update_recovery_delay(n))
+  expect_silent(n <- impacts_2$update_recovery_delay(n))
+  expect_equal(lapply(attr(n, "recovery_delay"), function(d) d),
+               expected_recovery_delay)
+  expect_equal(attr(attr(n, "recovery_delay"), "max"), 3)
+  expect_equal(attr(attr(n, "recovery_delay"), "first"), 1)
+  expect_equal(attr(attr(n, "recovery_delay"), "incursions"), c(30, 50))
+  attr(n, "spread_area") <- 50
+  expected_dynamic_mult[[1]][] <- (50 - 30*(1 - 0.49))*0.7/50
+  attr(expected_dynamic_mult[[1]], "incursion") <- 50
+  expected_dynamic_mult[[2]][] <- (50 - 30*(1 - 0.36))*0.6/50
+  attr(expected_dynamic_mult[[2]], "incursion") <- 50
+  expected_impacts <- list(100*max(50*(1 - 0.4858), 30*0.51, 50*0.3),
+                           200*max(50*(1 - 0.3696), 30*0.64, 50*0.4))
+  attr(expected_recovery_delay[[1]], "dynamic_mult") <- c(0.4858, 0.49, 0.7)
+  attr(expected_recovery_delay[[2]], "dynamic_mult") <- c(0.3696, 0.36, 0.6)
+  expect_silent(n <- impacts_1$calculate(n, 2))
+  expect_silent(n <- impacts_2$calculate(n, 2))
+  expect_equal(attr(n, "impacts"), expected_impacts)
+  expect_equal(attr(n, "dynamic_mult"), expected_dynamic_mult)
+  expect_silent(n <- impacts_1$update_recovery_delay(n))
+  expect_silent(n <- impacts_2$update_recovery_delay(n))
+  expect_equal(lapply(attr(n, "recovery_delay"), function(d) d),
+               expected_recovery_delay)
+  expect_equal(attr(attr(n, "recovery_delay"), "incursions"), c(50, 30, 50))
+  attr(n, "spread_area") <- 0
+  attr(expected_dynamic_mult[[1]], "incursion") <- 0
+  attr(expected_dynamic_mult[[2]], "incursion") <- 0
+  attr(expected_recovery_delay[[1]], "dynamic_mult") <-
+    c(0.4858, 0.4858, 0.49, 0.7)
+  attr(expected_recovery_delay[[2]], "dynamic_mult") <-
+    c(0.3696, 0.3696, 0.36, 0.6)
+  expect_silent(n <- impacts_1$calculate(n, 3))
+  expect_silent(n <- impacts_2$calculate(n, 3))
+  expect_equal(attr(n, "impacts"), expected_impacts)
+  expect_equal(attr(n, "dynamic_mult"), expected_dynamic_mult)
+  expect_silent(n <- impacts_1$update_recovery_delay(n))
+  expect_silent(n <- impacts_2$update_recovery_delay(n))
+  expect_equal(lapply(attr(n, "recovery_delay"), function(d) d),
+               expected_recovery_delay)
+  expect_equal(attr(attr(n, "recovery_delay"), "incursions"), c(0, 50, 30, 50))
+  attr(expected_recovery_delay[[1]], "dynamic_mult") <-
+    c(0.4858, 0.4858, 0.4858, 0.49, 0.7)
+  attr(expected_recovery_delay[[2]], "dynamic_mult") <-
+    c(0.3696, 0.3696, 0.3696, 0.36, 0.6)
+  expect_silent(n <- impacts_1$calculate(n, 4))
+  expect_silent(n <- impacts_2$calculate(n, 4))
+  expect_equal(attr(n, "impacts"), expected_impacts)
+  expect_equal(attr(n, "dynamic_mult"), expected_dynamic_mult)
+  expect_silent(n <- impacts_1$update_recovery_delay(n))
+  expect_silent(n <- impacts_2$update_recovery_delay(n))
+  expect_equal(lapply(attr(n, "recovery_delay"), function(d) d),
+               expected_recovery_delay)
+  expect_equal(attr(attr(n, "recovery_delay"), "incursions"),
+               c(0, 0, 50, 30, 50))
+  expected_impacts[[1]] <- 0
+  expected_dynamic_mult[[1]][] <- 1
+  attr(expected_recovery_delay[[1]], "dynamic_mult") <-
+    c(1, 0.4858, 0.4858, 0.4858, 0.49, 0.7)
+  attr(expected_recovery_delay[[2]], "dynamic_mult") <-
+    c(0.3696, 0.3696, 0.3696, 0.3696, 0.36, 0.6)
+  expect_silent(n <- impacts_1$calculate(n, 5))
+  expect_silent(n <- impacts_2$calculate(n, 5))
+  expect_equal(attr(n, "impacts"), expected_impacts)
+  expect_equal(attr(n, "dynamic_mult"), expected_dynamic_mult)
+  expect_silent(n <- impacts_1$update_recovery_delay(n))
+  expect_silent(n <- impacts_2$update_recovery_delay(n))
+  expect_equal(lapply(attr(n, "recovery_delay"), function(d) d),
+               expected_recovery_delay)
+  expect_equal(attr(attr(n, "recovery_delay"), "incursions"),
+               c(0, 0, 0, 50, 30, 50))
+  expected_impacts[[2]] <- 0
+  expected_dynamic_mult[[2]][] <- 1
+  attr(expected_recovery_delay[[1]], "dynamic_mult") <-
+    c(1, 1, 0.4858, 0.4858, 0.4858, 0.49, 0.7)
+  attr(expected_recovery_delay[[2]], "dynamic_mult") <-
+    c(1, 0.3696, 0.3696, 0.3696, 0.3696, 0.36, 0.6)
+  expect_silent(n <- impacts_1$calculate(n, 6))
+  expect_silent(n <- impacts_2$calculate(n, 6))
+  expect_equal(attr(n, "impacts"), expected_impacts)
+  expect_equal(attr(n, "dynamic_mult"), expected_dynamic_mult)
+  expect_silent(n <- impacts_1$update_recovery_delay(n))
+  expect_silent(n <- impacts_2$update_recovery_delay(n))
+  expect_equal(lapply(attr(n, "recovery_delay"), function(d) d),
+               expected_recovery_delay)
+  expect_equal(attr(attr(n, "recovery_delay"), "incursions"),
+               c(0, 0, 0, 0, 50, 30, 50))
 })

@@ -448,7 +448,9 @@ Impacts <- function(region, population_model,
             dynamic_incursion <- (1 - (x > 0)*dynamic_mult + (x == 0))*x
             if (delay > 0 && length(prev_incursions) > 0) {
               prev_mult <- attr(delay, "dynamic_mult")
-              dynamic_incursion <- ((1 - prev_mult)*prev_incursions)[1:delay]
+              dynamic_incursion <- max(
+                dynamic_incursion,
+                ((1 - prev_mult)*prev_incursions)[1:delay], na.rm = TRUE)
               if (dynamic_incursion == 0) {
                 dynamic_mult <- 1
               }
