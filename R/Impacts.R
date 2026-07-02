@@ -81,6 +81,7 @@
 #'       an integer >= 1).}
 #'     \item{\code{get_impact_type()}}{Get the impact type.}
 #'     \item{\code{get_valuation_type()}}{Get the valuation type.}
+#'     \item{\code{get_asset_name()}}{Get the asset name.}
 #'     \item{\code{get_value_unit()}}{Get the asset value unit.}
 #'     \item{\code{update_recovery_delay(n)}}{Update the recovery delay
 #'       attribute attached to the population vector or matrix \code{n}.}
@@ -226,6 +227,11 @@ Impacts <- function(region, population_model,
   # Get the valuation type
   self$get_valuation_type <- function() {
     return(valuation_type)
+  }
+
+  # Get the asset name
+  self$get_asset_name <- function() {
+    return(asset_name)
   }
 
   # Get the asset value unit

@@ -1,9 +1,11 @@
 #' Results class builder
 #'
-#' Builds a class for encapsulating, calculating, and collating spread
-#' simulation results, including the population at each location at each
-#' collation time step, the total population size, and the area occupied at
-#' each time step. When simulations are replicated, summary results (means and
+#' Builds a class for encapsulating, calculating, and collating population
+#' spread modelling simulation results, including the population at each
+#' location at each collation time step, the total population size and area
+#' occupied at each time step, as well as spatio-temporal impacts and
+#' management action quantities applied (e.g. removals), plus costs when
+#' configured. When simulations are replicated, summary results (means and
 #' standard deviations) are produced.
 #'
 #' @param region A \code{Region} or inherited class object representing the
@@ -11,6 +13,11 @@
 #' @param population_model A \code{Population} or inherited class object
 #'   defining the population representation and growth functionality for the
 #'   spread simulations.
+#' @param impacts A list of \code{Impacts} class objects specifying various
+#'   impacts of the simulated population.
+#' @param actions A list of \code{Actions} or inherited class objects
+#'   specifying simulated management actions, such as detection, control, and
+#'   removal.
 #' @param time_steps The number of discrete time steps to simulate. Default is
 #'   1.
 #' @param step_duration The duration of the simulation time steps in units
@@ -32,44 +39,103 @@
 #'   calculating and collating results, as well as accessing lists of results
 #'   and the simulation parameters used to produce them:
 #'   \describe{
-#'     \item{\code{collate(r, tm, n)}}{Collate the results at simulation
-#'       replicate \code{r} and time step \code{tm} using the current vector or
-#'       array \code{n} representing the population at each location.}
+#'     \item{\code{collate(r, tm, n, calc_impacts)}}{Collate the results at
+#'       simulation replicate \code{r} and time step \code{tm} using the
+#'       current vector or array \code{n} representing the population at each
+#'       location, as well as calculated impacts (list).}
 #'     \item{\code{finalize()}}{Finalize the results collation (summary
 #'       calculations).}
-#'     \item{\code{as_list()}}{Return the results as a list (collated, total,
-#'       area).}
+#'     \item{\code{get_list()}}{Return the results as a list (collated
+#'       populations and/or occupancy, totals, area occupied, impacts, and
+#'       actions).}
 #'     \item{\code{get_params()}}{Get the simulation parameters used.}
 #'     \item{\code{save_rasters(...)}}{Save the collated results as raster TIF
 #'       files when the region is grid-based. \code{Terra} raster write options
 #'       may be passed to the function. Returns a list of saved \code{Terra}
 #'       raster layers with attached \code{"metadata"} attribute list, which
-#'       includes: plot category; population type & stage (when applicable);
+#'       includes: plot category; impact or action type & name; impact
+#'       incursion type; population stage (when applicable); an indication of
+#'       whether or not layers represent costs and/or are cumulative outputs;
 #'       multi-replicate summary (when applicable); a descriptive label; units;
 #'       scale type; and an indication of whether or not each layer contains
 #'       non-zero values.}
 #'     \item{\code{save_csv()}}{Save the collated results as comma-separated
 #'       values (CSV) files when the region is patch-based. Also saves the
-#'       population totals and area occupied to CSV files for both grid and
-#'       patch-based region types.}
+#'       population totals, area occupied, as well as impact and action totals
+#'       (where applicable) to CSV files for both grid and patch-based region
+#'       types.}
 #'     \item{\code{save_plots(width = 480, height = 480)}}{Save plots of the
-#'       population (staged) totals and the area occupied as PNG files having
-#'       specified \code{width} and \code{height} in pixels.}
+#'       population (staged) totals, the area occupied, total impacts (where
+#'       applicable), and total actions as PNG files having specified
+#'       \code{width} and \code{height} in pixels.}
 #'   }
 #' @references
+#'   Baker, C. M., Bower, S., Tartaglia, E., Bode, M., Bower, H., & Pressey,
+#'   R. L. (2018). Modelling the spread and control of cherry guava on Lord
+#'   Howe Island. \emph{Biological Conservation}, 227, 252–258.
+#'   \doi{10.1016/j.biocon.2018.09.017}
+#'
 #'   Bradhurst, R., Spring, D., Stanaway, M., Milner, J., & Kompas, T. (2021).
 #'   A generalised and scalable framework for modelling incursions,
 #'   surveillance and control of plant and environmental pests.
 #'   \emph{Environmental Modelling & Software}, 139, N.PAG.
 #'   \doi{10.1016/j.envsoft.2021.105004}
 #'
+#'   Cacho, O. J., & Hester, S. M. (2022). Modelling biocontrol of invasive
+#'   insects: An application to European Wasp (Vespula germanica) in Australia.
+#'   \emph{Ecological Modelling}, 467. \doi{10.1016/j.ecolmodel.2022.109939}
+#'
 #'   García Adeva, J. J., Botha, J. H., & Reynolds, M. (2012). A simulation
 #'   modelling approach to forecast establishment and spread of Bactrocera
 #'   fruit flies. \emph{Ecological Modelling}, 227, 93–108.
 #'   \doi{10.1016/j.ecolmodel.2011.11.026}
+#'
+#'   Gormley, A. M., Holland, E. P., Barron, M. C., Anderson, D. P., & Nugent,
+#'   G. (2016). A modelling framework for predicting the optimal balance
+#'   between control and surveillance effort in the local eradication of
+#'   tuberculosis in New Zealand wildlife.
+#'   \emph{Preventive Veterinary Medicine}, 125, 10–18.
+#'   \doi{10.1016/j.prevetmed.2016.01.007}
+#'
+#'   Krug, R. M., Roura-Pascual, N., & Richardson, D. M. (2010). Clearing of
+#'   invasive alien plants under different budget scenarios: using a
+#'   simulation model to test efficiency. \emph{Biological Invasions}, 12(12),
+#'   4099–4112. \doi{10.1007/s10530-010-9827-3}
+#'
+#'   Lustig, A., James, A., Anderson, D., & Plank, M. (2019). Pest control at a
+#'   regional scale: Identifying key criteria using a spatially explicit,
+#'   agent‐based model. \emph{Journal of Applied Ecology}, 56(7 pp.1515–1527),
+#'   1527–1515. \doi{10.1111/1365-2664.13387}
+#'
+#'   Rout, T. M., Moore, J. L., & McCarthy, M. A. (2014). Prevent, search or
+#'   destroy? A partially observable model for invasive species management.
+#'   \emph{Journal of Applied Ecology}, 51(3), 804–813.
+#'   \doi{10.1111/1365-2664.12234}
+#'
+#'   Spring, D., Croft, L., & Kompas, T. (2017). Look before you treat:
+#'   increasing the cost effectiveness of eradication programs with aerial
+#'   surveillance. \emph{Biological Invasions}, 19(2), 521.
+#'   \doi{10.1007/s10530-016-1292-1}
+#'
+#'   Wadsworth, R. A., Collingham, Y. C., Willis, S. G., Huntley, B., & Hulme,
+#'   P. E. (2000). Simulating the Spread and Management of Alien Riparian
+#'   Weeds: Are They Out of Control? \emph{Journal of Applied Ecology}, 37,
+#'   28–38. \doi{10.1046/j.1365-2664.2000.00551.x}
+#'
+#'   Warburton, B., & Gormley, A. M. (2015). Optimising the Application of
+#'   Multiple-Capture Traps for Invasive Species Management Using Spatial
+#'   Simulation. \emph{PLoS ONE}, 10(3), 1–14.
+#'   \doi{10.1371/journal.pone.0120373}
+#'
+#'   Zub, K., García-Díaz, P., Sankey, S., Eisler, R., & Lambin, X. (2022).
+#'   Using a Modeling Approach to Inform Progress Towards Stoat Eradication
+#'   From the Orkney Islands. \emph{Frontiers in Conservation Science}, 2.
+#'   \doi{10.3389/fcosc.2021.780102}
 #' @include Region.R
 #' @export
 Results <- function(region, population_model,
+                    impacts = list(),
+                    actions = list(),
                     time_steps = 1,
                     step_duration = 1,
                     step_units = "years",
@@ -83,6 +149,8 @@ Results <- function(region, population_model,
 #' @name Results
 #' @export
 Results.Region <- function(region, population_model,
+                           impacts = list(),
+                           actions = list(),
                            time_steps = 1,
                            step_duration = 1,
                            step_units = "years",
@@ -95,6 +163,22 @@ Results.Region <- function(region, population_model,
   if (is.null(population_model) || !inherits(population_model, "Population")) {
     stop("Population model must be a 'Population' or inherited class object.",
          call. = FALSE)
+  }
+
+  # Validate impact objects
+  if (length(impacts) > 0 &&
+      (!is.list(impacts) ||
+       !all(sapply(impacts, function(i) inherits(i, "Impacts"))))) {
+    stop(paste("Impacts must be a list of 'Impacts' or inherited class",
+               "objects."), call. = FALSE)
+  }
+
+  # Validate action objects
+  if (length(actions) > 0 &&
+      (!is.list(actions) ||
+       !all(sapply(actions, function(i) inherits(i, "Actions"))))) {
+    stop(paste("Actions must be a list of 'Actions' or inherited class",
+               "objects."), call. = FALSE)
   }
 
   # Population stages (NULL or number of stages)
@@ -113,6 +197,25 @@ Results.Region <- function(region, population_model,
   # Include population?
   include_population <- (population_model$get_type() %in%
                            c("unstructured", "stage_structured"))
+
+  # Direct action?
+  direct_action <- function(a) {
+    return(a$get_label(include_id = FALSE) %in%
+             c("detected", "control_search_destroy", "removed"))
+  }
+
+  # Individual type action probabilities?
+  indiv_type_action <- function(a) {
+    action_label <- a$get_label(include_id = FALSE)
+    return(population_model$get_type() %in%
+             c("unstructured", "stage_structured") &&
+             ((action_label == "detected" &&
+                 a$get_sensitivity_type() == "individual") ||
+                (action_label == "control_search_destroy" &&
+                   a$get_manage_pr_type() == "individual") ||
+                (action_label == "removed" &&
+                   a$get_removal_pr_type() == "individual")))
+  }
 
   # Initialize result lists
   if (include_population) {
@@ -202,6 +305,93 @@ Results.Region <- function(region, population_model,
     }
   }
   rm(zeros)
+
+  # Impact results
+  if (length(impacts) > 0) {
+    zeros <- list()
+    zeros$impact <- rep(0L, region$get_locations())
+    if (include_collated) {
+      zeros$total_impact <- 0L
+    }
+    if (replicates > 1) { # summaries
+      zeros$impact <- list(mean = zeros$impact, sd = zeros$impact)
+      if (include_collated) {
+        zeros$total_impact <- list(mean = zeros$total_impact,
+                                   sd = zeros$total_impact)
+      }
+    }
+    zeros$impact_steps <- list()
+    zeros$total_impact_steps <- list()
+    if (include_collated) {
+      for (tm in as.character(c(0, seq(collation_steps, time_steps,
+                                       by = collation_steps)))) {
+        zeros$impact_steps[[tm]] <- zeros$impact
+      }
+      for (tm in as.character(0:time_steps)) {
+        zeros$total_impact_steps[[tm]] <- zeros$total_impact
+      }
+    } else {
+      for (tm in as.character(0:time_steps)) {
+        zeros$impact_steps[[tm]] <- zeros$impact
+      }
+    }
+    # Nested impacts result list based on valuation types
+    results$impacts <- list(idx = list())
+    valuation_types <-
+      sapply(impacts, function(impacts_i) impacts_i$get_valuation_type())
+    for (valuation_type in unique(valuation_types)) {
+      results$impacts[[valuation_type]] <- list()
+      results$impacts$idx[[valuation_type]] <-
+        which(valuation_type == valuation_types)
+      if (include_collated) {
+        results$impacts[[valuation_type]]$total <- list()
+      }
+    }
+    for (i in 1:length(impacts)) {
+      valuation_type <- impacts[[i]]$get_valuation_type()
+      asset_name <- impacts[[i]]$get_asset_name()
+      value_unit <- impacts[[i]]$get_value_unit()
+      # Ensure asset name is unique (else append id)
+      idx <- results$impacts$idx[[valuation_type]]
+      asset_names <-
+        sapply(impacts[idx], function(impacts_i) impacts_i$get_asset_name())
+      if (length(which(asset_name == asset_names)) > 1) {
+        asset_name <- paste0(asset_name, "_", impacts[[i]]$get_id())
+      }
+      # Add zeros for impact results
+      results$impacts[[valuation_type]][[asset_name]] <- zeros$impact_steps
+      attr(results$impacts[[valuation_type]][[asset_name]], "unit") <-
+        value_unit
+      results$impacts[[valuation_type]]$total[[asset_name]] <-
+        zeros$total_impact_steps
+      attr(results$impacts[[valuation_type]]$total[[asset_name]], "unit") <-
+        value_unit
+    }
+    for (valuation_type in names(results$impacts)[-1]) {
+      idx <- results$impacts$idx[[valuation_type]]
+      value_units <-
+        sapply(impacts[idx], function(impacts_i) impacts_i$get_value_unit())
+      # Include combine when multiple monetary impacts or with same unit
+      if (length(idx) > 1 && # multiple
+          (valuation_type == "monetary" || # or same unit
+           (all(is.character(value_units)) && !any(value_units == "") &&
+            length(unique(value_units)) == 1))) {
+        results$impacts[[valuation_type]]$combined <- zeros$impact_steps
+        attr(results$impacts[[valuation_type]]$combined, "unit") <-
+          value_units[1]
+        results$impacts[[valuation_type]]$total$combined <-
+          zeros$total_impact_steps
+        attr(results$impacts[[valuation_type]]$total$combined, "unit") <-
+          value_units[1]
+      }
+      # Include cumulative monetary impacts
+      if (valuation_type == "monetary") {
+        results$impacts[[valuation_type]]$cumulative <-
+          results$impacts[[valuation_type]]
+      }
+    }
+    rm(zeros)
+  }
 
   # Create a class structure
   self <- structure(list(), class = c(class, "Results"))
