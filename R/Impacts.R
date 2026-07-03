@@ -83,6 +83,8 @@
 #'     \item{\code{get_valuation_type()}}{Get the valuation type.}
 #'     \item{\code{get_asset_name()}}{Get the asset name.}
 #'     \item{\code{get_value_unit()}}{Get the asset value unit.}
+#'     \item{\code{get_attr_names(n)}}{Get the names of impact related
+#'       attributes attached to the population vector or matrix \code{n}.}
 #'     \item{\code{update_recovery_delay(n)}}{Update the recovery delay
 #'       attribute attached to the population vector or matrix \code{n}.}
 #'     \item{\code{calculate(n, tm)}}{Perform impact calculations resulting
@@ -237,6 +239,13 @@ Impacts <- function(region, population_model,
   # Get the asset value unit
   self$get_value_unit <- function() {
     return(value_unit)
+  }
+
+  # Get the names of impact related attributes attached to n
+  self$get_attr_names <- function(n) {
+    return(names(attributes(n))[
+      which(names(attributes(n)) %in% c("impacts", "dynamic_mult",
+                                        "recovery_delay"))])
   }
 
   # Calculate density-based incursion (internal)

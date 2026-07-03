@@ -89,8 +89,8 @@ test_that("initializes with region, population model and impact details", {
   expect_is(impacts_o, "Impacts")
   expect_named(impacts_o,
                c("get_id", "set_id", "get_impact_type", "get_valuation_type",
-                 "get_asset_name", "get_value_unit", "update_recovery_delay",
-                 "calculate"))
+                 "get_asset_name", "get_value_unit", "get_attr_names",
+                 "update_recovery_delay", "calculate"))
   expect_equal(impacts_o$get_id(), 1)
   expect_error(impacts_o$set_id(0), "Impacts id should be an integer >= 1.")
   expect_silent(impacts_o$set_id(2))
@@ -140,6 +140,7 @@ test_that("calculates presence and density-based impacts", {
   expect_silent(n <- impacts_1$calculate(n, 4))
   expect_silent(n <- impacts_2$calculate(n, 4))
   expect_true("impacts" %in% names(attributes(n)))
+  expect_equal(impacts_1$get_attr_names(n), "impacts")
   calc_impacts <- attr(n, "impacts")
   expect_true(is.list(calc_impacts))
   idx <- 1:region$get_locations() # idx <- 5910:5925
@@ -178,6 +179,7 @@ test_that("calculates presence and density-based impacts", {
                           asset_value_2[region$get_indices()][,1]*0.4)
   expect_silent(n <- impacts_1$calculate(n, 4))
   expect_silent(n <- impacts_2$calculate(n, 4))
+  expect_equal(impacts_1$get_attr_names(n), "impacts")
   calc_impacts <- attr(n, "impacts")
   expect_equal(calc_impacts[[1]][idx], expected_impact_1[idx])
   expect_equal(calc_impacts[[2]][idx], expected_impact_2[idx])
@@ -211,11 +213,13 @@ test_that("updates recovery delay to prolong presence-based impacts", {
   idx <- 1:region$get_locations() # idx <- 5901:6010
   expect_silent(n <- impacts_1$calculate(n, 0))
   expect_silent(n <- impacts_2$calculate(n, 0))
+  expect_equal(impacts_1$get_attr_names(n), "impacts")
   calc_impacts <- attr(n, "impacts")
   expect_equal(calc_impacts[[1]][idx], expected_impact_1[idx])
   expect_equal(calc_impacts[[2]][idx], expected_impact_2[idx])
   expect_silent(n <- impacts_1$update_recovery_delay(n))
   expect_silent(n <- impacts_2$update_recovery_delay(n))
+  expect_equal(impacts_1$get_attr_names(n), c("impacts", "recovery_delay"))
   expect_equal(attr(n, "recovery_delay")[[1]][idx],
                expected_recovery_delay_1[idx])
   expect_equal(attr(n, "recovery_delay")[[2]][idx],
@@ -317,11 +321,13 @@ test_that("updates recovery delay to prolong density-based impacts", {
   expected_impact_2 <- n_density*asset_value_2[region$get_indices()][,1]*0.4
   expect_silent(n <- impacts_1$calculate(n, 0))
   expect_silent(n <- impacts_2$calculate(n, 0))
+  expect_equal(impacts_1$get_attr_names(n), "impacts")
   calc_impacts <- attr(n, "impacts")
   expect_equal(calc_impacts[[1]][idx], expected_impact_1[idx])
   expect_equal(calc_impacts[[2]][idx], expected_impact_2[idx])
   expect_silent(n <- impacts_1$update_recovery_delay(n))
   expect_silent(n <- impacts_2$update_recovery_delay(n))
+  expect_equal(impacts_1$get_attr_names(n), c("impacts", "recovery_delay"))
   expect_equal(attr(n, "recovery_delay")[[1]], 2)
   expect_equal(attr(n, "recovery_delay")[[2]], 3)
   expect_equal(attr(attr(n, "recovery_delay"), "incursions"), list(n_density))
@@ -428,6 +434,7 @@ test_that("calculates spatially implicit impacts via area occupied", {
   attr(n, "spread_area") <- 50
   expect_silent(n <- impacts_1$calculate(n, 0))
   expect_silent(n <- impacts_2$calculate(n, 0))
+  expect_equal(impacts_1$get_attr_names(n), "impacts")
   calc_impacts <- attr(n, "impacts")
   expect_equal(calc_impacts, list(100*50*0.3, 200*50*0.4))
   # with recovery delay
@@ -451,10 +458,12 @@ test_that("calculates spatially implicit impacts via area occupied", {
   attr(n, "spread_area") <- 50
   expect_silent(n <- impacts_1$calculate(n, 0))
   expect_silent(n <- impacts_2$calculate(n, 0))
+  expect_equal(impacts_1$get_attr_names(n), "impacts")
   calc_impacts <- attr(n, "impacts")
   expect_equal(calc_impacts, list(100*50*0.3, 200*50*0.4))
   expect_silent(n <- impacts_1$update_recovery_delay(n))
   expect_silent(n <- impacts_2$update_recovery_delay(n))
+  expect_equal(impacts_1$get_attr_names(n), c("impacts", "recovery_delay"))
   expect_equal(attr(n, "recovery_delay")[[1]], 2)
   expect_equal(attr(n, "recovery_delay")[[2]], 3)
   expect_equal(attr(attr(n, "recovery_delay"), "incursions"), 50)
@@ -536,6 +545,7 @@ test_that("applies dynamic presence-based impacts", {
   attr(expected_dynamic_mult[[2]], "links") <- c("suitability", "attractors")
   expect_silent(n <- impacts_1$calculate(n, 0))
   expect_silent(n <- impacts_2$calculate(n, 0))
+  expect_equal(impacts_1$get_attr_names(n), c("dynamic_mult", "impacts"))
   expect_equal(attr(n, "impacts"), expected_impacts)
   expect_equal(attr(n, "dynamic_mult"), expected_dynamic_mult)
   n[idx[c(1:10, 51:55)]] <- 1
@@ -571,6 +581,7 @@ test_that("applies dynamic density-based impacts with recovery", {
                                      valuation_type = "dynamic",
                                      asset_name = "impact1",
                                      asset_value = asset_values[[1]],
+                                     value_unit = "tn",
                                      loss_rate = 0.3,
                                      recovery_delay = 2,
                                      dynamic_links = c("suitability",
@@ -581,6 +592,7 @@ test_that("applies dynamic density-based impacts with recovery", {
                                      valuation_type = "dynamic",
                                      asset_name = "impact2",
                                      asset_value = asset_values[[2]],
+                                     value_unit = "tn",
                                      loss_rate = 0.4,
                                      recovery_delay = 3,
                                      dynamic_links = c("suitability",
@@ -599,10 +611,13 @@ test_that("applies dynamic density-based impacts with recovery", {
   expected_recovery_delay <- list((n_density > 0)*2, (n_density > 0)*3)
   expect_silent(n <- impacts_1$calculate(n, 0))
   expect_silent(n <- impacts_2$calculate(n, 0))
+  expect_equal(impacts_1$get_attr_names(n), c("dynamic_mult", "impacts"))
   expect_equal(attr(n, "impacts"), expected_impacts)
   expect_equal(attr(n, "dynamic_mult"), expected_dynamic_mult)
   expect_silent(n <- impacts_1$update_recovery_delay(n))
   expect_silent(n <- impacts_2$update_recovery_delay(n))
+  expect_equal(impacts_1$get_attr_names(n), c("dynamic_mult", "impacts",
+                                              "recovery_delay"))
   expect_equal(attr(n, "recovery_delay"), expected_recovery_delay)
   id1 <- c(1:10, 51:55); id2 <- c(11:20, 56:60)
   n[idx[id1]] <- 0
@@ -744,10 +759,13 @@ test_that("applies dynamic implicit area-based impacts with recovery", {
   attr(expected_recovery_delay[[2]], "dynamic_mult") <- 1 - 0.4
   expect_silent(n <- impacts_1$calculate(n, 0))
   expect_silent(n <- impacts_2$calculate(n, 0))
+  expect_equal(impacts_1$get_attr_names(n), c("dynamic_mult", "impacts"))
   expect_equal(attr(n, "impacts"), expected_impacts)
   expect_equal(attr(n, "dynamic_mult"), expected_dynamic_mult)
   expect_silent(n <- impacts_1$update_recovery_delay(n))
   expect_silent(n <- impacts_2$update_recovery_delay(n))
+  expect_equal(impacts_1$get_attr_names(n), c("dynamic_mult", "impacts",
+                                              "recovery_delay"))
   expect_equal(lapply(attr(n, "recovery_delay"), function(d) d),
                expected_recovery_delay)
   expect_equal(attr(attr(n, "recovery_delay"), "max"), 3)

@@ -103,6 +103,8 @@ an integer >= 1).}
 \item{\code{get_valuation_type()}}{Get the valuation type.}
 \item{\code{get_asset_name()}}{Get the asset name.}
 \item{\code{get_value_unit()}}{Get the asset value unit.}
+\item{\code{get_attr_names(n)}}{Get the names of impact related
+attributes attached to the population vector or matrix \code{n}.}
 \item{\code{update_recovery_delay(n)}}{Update the recovery delay
 attribute attached to the population vector or matrix \code{n}.}
 \item{\code{calculate(n, tm)}}{Perform impact calculations resulting
