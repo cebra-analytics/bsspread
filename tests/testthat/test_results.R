@@ -8,6 +8,14 @@ test_that("initializes with region, population model, and other parameters", {
   expect_error(results <- Results(region, population_model = 0),
                paste("Population model must be a 'Population' or inherited",
                      "class object."))
+  expect_error(results <- Results(region, population_model = population,
+                                  impacts = as.list(1:2)),
+               paste("Impacts must be a list of 'Impacts' or inherited",
+                     "class objects."))
+  expect_error(results <- Results(region, population_model = population,
+                                  actions = as.list(1:2)),
+               paste("Actions must be a list of 'Actions' or inherited",
+                     "class objects."))
   expect_silent(results <- Results(region, population_model = population))
   expect_is(results, "Results")
   expect_equal(results$get_params(),
@@ -128,7 +136,7 @@ test_that("collates single replicate results", {
   expect_equal(result_list$total_pop, n_total)
   expect_equal(lapply(result_list$occupancy, function(rl) rl[5922:5933]),
                expected)
-  unname(unlist(result_list$total_occup)) ; 1:11
+  expect_equal(unname(unlist(result_list$total_occup)), 1:11)
   expect_silent(results <- Results(region, population_model = population,
                                    time_steps = 10,
                                    step_duration = 1,
@@ -430,7 +438,7 @@ test_that("collates spatially implicit area results", {
   expect_named(result_list, c("occupancy", "area"))
   expect_named(result_list$occupancy, as.character(seq(0, 10, 1)))
   expect_named(unlist(unname(result_list$occupancy)), rep("mean", 11))
-  unname(unlist(unname(result_list$occupancy))) ; rep(0.8, 11)
+  expect_equal(unname(unlist(unname(result_list$occupancy))), rep(0.8, 11))
   expect_named(result_list$area, as.character(seq(0, 10, 1)))
   expect_named(unlist(unname(result_list$area)), rep(c("mean", "sd"), 11))
 
@@ -577,4 +585,176 @@ test_that("collates spatially implicit area results", {
                rep("combined", 22))
   expect_named(unlist(unname(result_list$occupancy)), rep("mean", 11))
   expect_named(unlist(unname(result_list$area)), rep(c("mean", "sd"), 11))
+})
+
+test_that("initializes results with impacts", {
+  TEST_DIRECTORY <- test_path("test_inputs")
+  template <- terra::rast(file.path(TEST_DIRECTORY, "greater_melb.tif"))
+  region <- Region(template)
+  template_vect <- template[region$get_indices()][,1]
+  pops <- region$get_locations()
+  population_model <- UnstructPopulation(region, growth = 1.2)
+  asset_value_1 <- 100*(template > 0.1 & template < 0.3)
+  asset_value_2 <- 200*(template > 0.2 & template < 0.4)
+  asset_value_3 <- 300*(template > 0.1 & template < 0.3)
+  asset_value_4 <- 400*(template > 0.2 & template < 0.4)
+  impacts_1 <- Impacts(region, population_model, # monetary
+                       asset_name = "impact1",
+                       asset_value = asset_value_1,
+                       loss_rate = 0.3)
+  impacts_1$set_id(1)
+  impacts_2 <- Impacts(region, population_model, # monetary
+                       asset_name = "impact2",
+                       asset_value = asset_value_2,
+                       loss_rate = 0.4)
+  impacts_2$set_id(2)
+  impacts_3 <- Impacts(region, population_model,
+                       valuation_type = "non-monetary",
+                       asset_name = "impact3",
+                       asset_value = asset_value_3,
+                       loss_rate = 0.3)
+  impacts_3$set_id(3)
+  impacts_4 <- Impacts(region, population_model,
+                       valuation_type = "non-monetary",
+                       asset_name = "impact4",
+                       asset_value = asset_value_4,
+                       loss_rate = 0.4)
+  impacts_4$set_id(4)
+  expect_silent(results <- Results(region, population_model = population_model,
+                     impacts = list(impacts_1, impacts_2, impacts_3,
+                                    impacts_4),
+                     time_steps = 10, collation_steps = 2,
+                     replicates = 1))
+  expect_silent(result_list <- results$get_list())
+  expect_named(result_list, c("population", "total_pop", "occupancy",
+                              "total_occup", "area", "impacts"))
+  expect_named(result_list$impacts, c("idx", "monetary", "non-monetary"))
+  expect_equal(result_list$impacts$idx,
+               list(monetary = 1:2, `non-monetary` = 3:4))
+  expect_named(result_list$impacts$monetary,
+               c("total", "impact1", "impact2", "combined", "cumulative"))
+  expect_named(result_list$impacts[["non-monetary"]],
+               c("total", "impact3", "impact4"))
+  collated <- lapply(1:6, function(i) rep(0, pops))
+  names(collated) <- as.character(seq(0, 10, 2))
+  expect_equal(result_list$impacts[["non-monetary"]][c("impact3", "impact4")],
+               list(impact3 = collated, impact4 = collated))
+  attr(collated, "unit") <- "$"
+  expect_equal(result_list$impacts$monetary[c("impact1", "impact2",
+                                              "combined")],
+               list(impact1 = collated, impact2 = collated,
+                    combined = collated))
+  totals <- lapply(1:11, function(i) 0)
+  names(totals) <- as.character(0:10)
+  expect_equal(result_list$impacts[["non-monetary"]]$total,
+               list(impact3 = totals, impact4 = totals))
+  attr(totals, "unit") <- "$"
+  expect_equal(result_list$impacts$monetary$total,
+               list(impact1 = totals, impact2 = totals, combined = totals))
+  expect_named(result_list$impacts$monetary$cumulative,
+               c("total", "impact1", "impact2", "combined"))
+  expect_equal(result_list$impacts$monetary$cumulative[c("impact1", "impact2",
+                                                         "combined")],
+               list(impact1 = collated, impact2 = collated,
+                    combined = collated))
+  expect_equal(result_list$impacts$monetary$cumulative$total,
+               list(impact1 = totals, impact2 = totals, combined = totals))
+})
+
+test_that("collates and finalizes impact results", {
+  TEST_DIRECTORY <- test_path("test_inputs")
+  template <- terra::rast(file.path(TEST_DIRECTORY, "greater_melb.tif"))
+  idx <- 5918:5922
+  region <- Region(template)
+  template[region$get_indices()][idx[4:5],] <- 0.25
+  population_model <- UnstructPopulation(region, growth = 1.2)
+  n <- rep(0, region$get_locations())
+  n[idx] <- 7:11
+  asset_value_1 <- 100*(template > 0.1 & template < 0.3)
+  asset_value_2 <- 200*(template > 0.2 & template < 0.4)
+  asset_value_3 <- 300*(template > 0.1 & template < 0.3)
+  asset_value_4 <- 400*(template > 0.2 & template < 0.4)
+  impacts_1 <- Impacts(region, population_model, # monetary
+                       asset_name = "impact1",
+                       asset_value = asset_value_1,
+                       loss_rate = 0.3)
+  impacts_1$set_id(1)
+  impacts_2 <- Impacts(region, population_model, # monetary
+                       asset_name = "impact2",
+                       asset_value = asset_value_2,
+                       loss_rate = 0.4)
+  impacts_2$set_id(2)
+  impacts_3 <- Impacts(region, population_model,
+                       valuation_type = "non-monetary",
+                       asset_name = "impact3",
+                       asset_value = asset_value_3,
+                       loss_rate = 0.3)
+  impacts_3$set_id(3)
+  impacts_4 <- Impacts(region, population_model,
+                       valuation_type = "non-monetary",
+                       asset_name = "impact4",
+                       asset_value = asset_value_4,
+                       loss_rate = 0.4)
+  impacts_4$set_id(4)
+  impacts <- list(impacts_1, impacts_2, impacts_3, impacts_4)
+  calc_impacts <- lapply(impacts, function(impacts_i)
+    attr(impacts_i$calculate(n), "impacts")[[impacts_i$get_id()]])
+  attr(n, "impacts") <- calc_impacts
+  # single replicate
+  expect_silent(results <- Results(region, population_model = population_model,
+                                   impacts = impacts, time_steps = 4,
+                                   collation_steps = 2, replicates = 1))
+  expect_silent(results$collate(r = 1, tm = 0, n = n))
+  for (tm in 1:4) {
+    results$collate(r = 1, tm = tm, n = n)
+  }
+  expect_silent(results$finalize())
+  result_list <- results$get_list()
+  calc_impacts$combined <- calc_impacts[[1]] + calc_impacts[[2]]
+  collated <- lapply(1:5, function(i) {
+    collated_tm <- lapply(1:3, function(tm) calc_impacts[[i]])
+    names(collated_tm) <- as.character(seq(0, 4, 2))
+    collated_tm
+  })
+  totals <- lapply(1:5, function(i) {
+    totals_tm <- lapply(1:5, function(tm) sum(calc_impacts[[i]]))
+    names(totals_tm) <- as.character(seq(0, 4, 1))
+    totals_tm
+  })
+  mult <- c(1, 3, 5)
+  cumulative <- lapply(1:5, function(i) {
+    cumul_tm <- lapply(1:3, function(tm) collated[[i]][[tm]]*mult[[tm]])
+    names(cumul_tm) <- as.character(seq(0, 4, 2))
+    cumul_tm
+  })
+  cumul_totals <- lapply(1:5, function(i) {
+    totals_tm <- lapply(1:5, function(tm) totals[[i]][[tm]]*tm)
+    names(totals_tm) <- as.character(seq(0, 4, 1))
+    totals_tm
+  })
+  for (i in c(1:2, 5)) {
+    attr(collated[[i]], "unit") <- "$"
+    attr(totals[[i]], "unit") <- "$"
+    attr(cumulative[[i]], "unit") <- "$"
+    attr(cumul_totals[[i]], "unit") <- "$"
+  }
+  expect_equal(result_list$impacts$monetary[c("impact1", "impact2",
+                                              "combined")],
+               list(impact1 = collated[[1]], impact2 = collated[[2]],
+                    combined = collated[[5]]))
+  expect_equal(result_list$impacts[["non-monetary"]][c("impact3", "impact4")],
+               list(impact3 = collated[[3]], impact4 = collated[[4]]))
+  expect_equal(result_list$impacts$monetary$total,
+               list(impact1 = totals[[1]], impact2 = totals[[2]],
+                    combined = totals[[5]]))
+  expect_equal(result_list$impacts[["non-monetary"]]$total,
+               list(impact3 = totals[[3]], impact4 = totals[[4]]))
+  expect_equal(result_list$impacts$monetary$cumulative[c("impact1", "impact2",
+                                                         "combined")],
+               list(impact1 = cumulative[[1]], impact2 = cumulative[[2]],
+                    combined = cumulative[[5]]))
+  expect_equal(result_list$impacts$monetary$cumulative$total,
+               list(impact1 = cumul_totals[[1]], impact2 = cumul_totals[[2]],
+                    combined = cumul_totals[[5]]))
+  # multiple replicates - IN PROGRESS
 })

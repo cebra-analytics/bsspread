@@ -579,7 +579,7 @@ Results.Region <- function(region, population_model,
               if (tm == 0) {
                 results$impacts[[vt]]$cumulative$total[[a]]$current <<- 0
               }
-              results$impacts[[vt]]$cumulative$total$current <<-
+              results$impacts[[vt]]$cumulative$total[[a]]$current <<-
                 (results$impacts[[vt]]$cumulative$total[[a]]$current +
                    total_impact)
               if ("combined" %in%
@@ -686,7 +686,7 @@ Results.Region <- function(region, population_model,
               # Cumulative totals at every time step
               if ("total" %in% names(results$impacts[[vt]]$cumulative)) {
                 results$impacts[[vt]]$cumulative$total[[a]][[tmc]] <<-
-                  results$impacts[[vt]]$cumulative$total$current
+                  results$impacts[[vt]]$cumulative$total[[a]]$current
               }
             }
           }
@@ -862,6 +862,97 @@ Results.Region <- function(region, population_model,
         }
       }
     }
+
+    # Finalize impact results
+    if (length(impacts) > 0) {
+
+      # Clear working memory for current cumulative impacts
+      for (vt in names(results$impacts)[-1]) {
+        if ("cumulative" %in% names(results$impacts[[vt]])) {
+          for (i in results$impacts$idx[[vt]]) {
+            a <- impacts[[i]]$get_asset_name()
+            results$impacts[[vt]]$cumulative[[a]]$current <<- NULL
+            if ("total" %in% names(results$impacts[[vt]]$cumulative)) {
+              results$impacts[[vt]]$cumulative$total[[a]]$current <<- NULL
+            }
+          }
+          if ("combined" %in% names(results$impacts[[vt]]$cumulative)) {
+            results$impacts[[vt]]$cumulative$combined$current <<- NULL
+          }
+          if ("total" %in% names(results$impacts[[vt]]$cumulative) &&
+              "combined" %in% names(results$impacts[[vt]]$cumulative$total)) {
+            results$impacts[[vt]]$cumulative$total$combined$current <<- NULL
+          }
+        }
+      }
+
+      # Transform impact standard deviations
+      if (replicates > 1) { # summaries
+        for (vt in names(results$impacts)[-1]) {
+          for (i in results$impacts$idx[[vt]]) {
+            a <- impacts[[i]]$get_asset_name()
+            for (tmc in names(results$impacts[[vt]][[a]])) {
+              results$impacts[[vt]][[a]][[tmc]]$sd <<-
+                sqrt(results$impacts[[vt]][[a]][[tmc]]$sd/(replicates - 1))
+            }
+            if ("total" %in% names(results$impacts[[vt]])) {
+              for (tmc in names(results$impacts[[vt]]$total[[a]])) {
+                results$impacts[[vt]]$total[[a]][[tmc]]$sd <<-
+                  sqrt(results$impacts[[vt]]$total[[a]][[tmc]]$sd/
+                         (replicates - 1))
+              }
+            }
+          }
+          if ("combined" %in% names(results$impacts[[vt]])) {
+            for (tmc in names(results$impacts[[vt]]$combined)) {
+              results$impacts[[vt]]$combined[[tmc]]$sd <<-
+                sqrt(results$impacts[[vt]]$combined[[tmc]]$sd/(replicates - 1))
+            }
+            if ("total" %in% names(results$impacts[[vt]])) {
+              for (tmc in names(results$impacts[[vt]]$total$combined)) {
+                results$impacts[[vt]]$total$combined[[tmc]]$sd <<-
+                  sqrt(results$impacts[[vt]]$total$combined[[tmc]]$sd/
+                         (replicates - 1))
+              }
+            }
+          }
+          if ("cumulative" %in% names(results$impacts[[vt]])) {
+            for (i in results$impacts$idx[[vt]]) {
+              a <- impacts[[i]]$get_asset_name()
+              for (tmc in names(results$impacts[[vt]]$cumulative[[a]])) {
+                results$impacts[[vt]]$cumulative[[a]][[tmc]]$sd <<-
+                  sqrt(results$impacts[[vt]]$cumulative[[a]][[tmc]]$sd/
+                         (replicates - 1))
+              }
+              if ("total" %in% names(results$impacts[[vt]]$cumulative)) {
+                for (tmc in
+                     names(results$impacts[[vt]]$cumulative$total[[a]])) {
+                  results$impacts[[vt]]$cumulative$total[[a]][[tmc]]$sd <<-
+                    sqrt(results$impacts[[vt]]$cumulative$total[[a]][[tmc]]$sd/
+                           (replicates - 1))
+                }
+              }
+            }
+            if ("combined" %in% names(results$impacts[[vt]]$cumulative)) {
+              for (tmc in names(results$impacts[[vt]]$cumulative$combined)) {
+                results$impacts[[vt]]$cumulative$combined[[tmc]]$sd <<-
+                  sqrt(results$impacts[[vt]]$cumulative$combined[[tmc]]$sd/
+                         (replicates - 1))
+              }
+              if ("total" %in% names(results$impacts[[vt]]$cumulative)) {
+                for (tmc in
+                     names(results$impacts[[vt]]$cumulative$total$combined)) {
+                  results$impacts[[vt]]$cumulative$total$combined[[tmc]]$sd <<-
+                    sqrt(results$impacts[[vt]]$cumulative$total$combined[[
+                      tmc]]$sd/(replicates - 1))
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
   }
 
   # Get results list
