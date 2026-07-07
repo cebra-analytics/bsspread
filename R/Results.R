@@ -389,7 +389,7 @@ Results.Region <- function(region, population_model,
     if (length(impacts)) {
       calc_impacts <- attr(n, "impacts")
       attr(n, "impacts") <- NULL
-      impacts_attr <- attributes(n)[impacts[[1]]$get_attr_names(n)]
+      # impacts_attr <- attributes(n)[impacts[[1]]$get_attr_names(n)]
       attributes(n)[impacts[[1]]$get_attr_names(n)] <- NULL
       # for (a in names(impacts_attr)) {
       #   attr(n, a) <- impacts_attr[[a]]
@@ -702,8 +702,6 @@ Results.Region <- function(region, population_model,
 
             # Combined impacts recorded in specified time steps
             if (!include_collated || tm %% collation_steps == 0) {
-              results$impacts[[vt]]$combined[[tmc]] <<- combined_impact
-
               previous_mean <- results$impacts[[vt]]$combined[[tmc]]$mean
               results$impacts[[vt]]$combined[[tmc]]$mean <<-
                 previous_mean + (combined_impact - previous_mean)/r
