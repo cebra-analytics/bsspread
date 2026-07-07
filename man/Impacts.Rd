@@ -105,8 +105,10 @@ an integer >= 1).}
 \item{\code{get_value_unit()}}{Get the asset value unit.}
 \item{\code{get_attr_names(n)}}{Get the names of impact related
 attributes attached to the population vector or matrix \code{n}.}
-\item{\code{update_recovery_delay(n)}}{Update the recovery delay
-attribute attached to the population vector or matrix \code{n}.}
+\item{\code{update_recovery_delay(n, tm)}}{Update the recovery delay
+attribute attached to the population vector or matrix \code{n} at time
+step \code{tm}, and return \code{n} with the updated recovery delay
+attribute.}
 \item{\code{calculate(n, tm)}}{Perform impact calculations resulting
 from incursion population vector or matrix \code{n} at time step
 \code{tm}, and return \code{n} with impact values attached.}

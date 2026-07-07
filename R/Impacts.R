@@ -85,8 +85,10 @@
 #'     \item{\code{get_value_unit()}}{Get the asset value unit.}
 #'     \item{\code{get_attr_names(n)}}{Get the names of impact related
 #'       attributes attached to the population vector or matrix \code{n}.}
-#'     \item{\code{update_recovery_delay(n)}}{Update the recovery delay
-#'       attribute attached to the population vector or matrix \code{n}.}
+#'     \item{\code{update_recovery_delay(n, tm)}}{Update the recovery delay
+#'       attribute attached to the population vector or matrix \code{n} at time
+#'       step \code{tm}, and return \code{n} with the updated recovery delay
+#'       attribute.}
 #'     \item{\code{calculate(n, tm)}}{Perform impact calculations resulting
 #'       from incursion population vector or matrix \code{n} at time step
 #'       \code{tm}, and return \code{n} with impact values attached.}
@@ -252,7 +254,7 @@ Impacts <- function(region, population_model,
   calculate_density_incursion <- function(n, tm = NULL) {
     n <- rowSums(as.matrix(n)[,stages, drop = FALSE])
     n_density <- n*0
-    idx <- which(population_model$get_capacity() > 0)
+    idx <- which(population_model$get_capacity(tm = tm) > 0)
     n_density[idx] <-
       pmin(n[idx]/population_model$get_capacity(tm = tm)[idx], 1)
     return(n_density)
@@ -276,7 +278,7 @@ Impacts <- function(region, population_model,
   }
 
   # Update recovery delay
-  self$update_recovery_delay <- function(n) {
+  self$update_recovery_delay <- function(n, tm) {
     if (is.numeric(recovery_delay)) {
       if (is.list(attr(n, "recovery_delay")) &&
           length(attr(n, "recovery_delay")) >= id &&
@@ -288,7 +290,7 @@ Impacts <- function(region, population_model,
 
           # Occurrence and recovery delay locations
           if (impact_type == "density") {
-            x <- calculate_density_incursion(n)
+            x <- calculate_density_incursion(n, tm = tm)
           } else { # presence
             x <- rowSums(as.matrix(n)[,stages, drop = FALSE])
           }
@@ -314,7 +316,7 @@ Impacts <- function(region, population_model,
           # Push current density to front of list for first impact only
           if (attr(attr(n, "recovery_delay"), "first") == id) {
             attr(attr(n, "recovery_delay"), "incursions") <-
-              c(list(calculate_density_incursion(n)),
+              c(list(calculate_density_incursion(n, tm = tm)),
                 attr(attr(n, "recovery_delay"), "incursions"))
             length(attr(attr(n, "recovery_delay"), "incursions")) <-
               min(length(attr(attr(n, "recovery_delay"), "incursions")),
@@ -352,7 +354,7 @@ Impacts <- function(region, population_model,
         if (impact_type == "presence" ||
             (valuation_type == "dynamic" && impact_type == "density")) {
           if (impact_type == "density") {
-            x <- calculate_density_incursion(n)
+            x <- calculate_density_incursion(n, tm = tm)
           } else { # presence
             x <- rowSums(as.matrix(n)[,stages, drop = FALSE])
           }
@@ -365,7 +367,7 @@ Impacts <- function(region, population_model,
             attr(attr(n, "recovery_delay"), "first") <- id
             if (impact_type == "density") {
               attr(attr(n, "recovery_delay"), "incursions") <-
-                list(calculate_density_incursion(n))
+                list(calculate_density_incursion(n, tm = tm))
             } else if (region$spatially_implicit() && impact_type == "area") {
               attr(attr(n, "recovery_delay"), "incursions") <-
                 calculate_area_incursion(n)
