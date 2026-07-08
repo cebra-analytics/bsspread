@@ -631,7 +631,8 @@ test_that("initializes results with impacts", {
                               "total_occup", "area", "impacts"))
   expect_named(result_list$impacts, c("idx", "monetary", "non-monetary"))
   expect_equal(result_list$impacts$idx,
-               list(monetary = 1:2, `non-monetary` = 3:4))
+               list(monetary = c("impact1" = 1, "impact2" = 2),
+                    `non-monetary` = c("impact3" = 3, "impact4" = 4)))
   expect_named(result_list$impacts$monetary,
                c("total", "impact1", "impact2", "combined", "cumulative"))
   expect_named(result_list$impacts[["non-monetary"]],
@@ -941,7 +942,8 @@ test_that("collates and finalizes spatially implicit impact results", {
   }
   expect_named(result_list$impacts, c("idx", "monetary", "non-monetary"))
   expect_equal(result_list$impacts$idx,
-               list(monetary = 1:2, `non-monetary` = 3:4))
+               list(monetary = c("impact1" = 1, "impact2" = 2),
+                    `non-monetary` = c("impact3" = 3, "impact4" = 4)))
   expect_named(result_list$impacts$monetary,
                c("impact1", "impact2", "combined", "cumulative"))
   expect_named(result_list$impacts[["non-monetary"]], c("impact3", "impact4"))

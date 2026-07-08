@@ -342,6 +342,9 @@ Results.Region <- function(region, population_model,
     for (vt in unique(valuation_types)) {
       results$impacts[[vt]] <- list()
       results$impacts$idx[[vt]] <- which(vt == valuation_types)
+      names(results$impacts$idx[[vt]]) <-
+        sapply(results$impacts$idx[[vt]],
+               function(i) impacts[[i]]$get_asset_name())
       if (include_collated) {
         results$impacts[[vt]]$total <- list()
       }
@@ -358,13 +361,12 @@ Results.Region <- function(region, population_model,
       }
     }
     for (vt in names(results$impacts)[-1]) {
-      idx <- results$impacts$idx[[vt]]
-      value_units <-
-        sapply(impacts[idx], function(impacts_i) impacts_i$get_value_unit())
-      if (length(idx) > 1 && # multiple
-          (vt == "monetary" || # or same unit
-           (all(is.character(value_units)) && !any(value_units == "") &&
-            length(unique(value_units)) == 1))) {
+      idx <- unname(results$impacts$idx[[vt]])
+      value_units <- unlist(
+        sapply(impacts[idx], function(impacts_i) impacts_i$get_value_unit()))
+      if (length(idx) > 1 && # multiple & same unit
+          (all(is.character(value_units)) && !any(value_units == "") &&
+           length(unique(value_units)) == 1)) {
         results$impacts[[vt]]$combined <- zeros$impact_steps
         attr(results$impacts[[vt]]$combined, "unit") <- value_units[1]
         if (include_collated) {
@@ -544,7 +546,7 @@ Results.Region <- function(region, population_model,
         }
 
         # Impact assets
-        for (i in results$impacts$idx[[vt]]) {
+        for (i in unname(results$impacts$idx[[vt]])) {
 
           # Asset name
           a <- impacts[[i]]$get_asset_name()
@@ -867,7 +869,7 @@ Results.Region <- function(region, population_model,
       # Clear working memory for current cumulative impacts
       for (vt in names(results$impacts)[-1]) {
         if ("cumulative" %in% names(results$impacts[[vt]])) {
-          for (i in results$impacts$idx[[vt]]) {
+          for (i in unname(results$impacts$idx[[vt]])) {
             a <- impacts[[i]]$get_asset_name()
             results$impacts[[vt]]$cumulative[[a]]$current <<- NULL
             if ("total" %in% names(results$impacts[[vt]]$cumulative)) {
@@ -887,7 +889,7 @@ Results.Region <- function(region, population_model,
       # Transform impact standard deviations
       if (replicates > 1) { # summaries
         for (vt in names(results$impacts)[-1]) {
-          for (i in results$impacts$idx[[vt]]) {
+          for (i in unname(results$impacts$idx[[vt]])) {
             a <- impacts[[i]]$get_asset_name()
             for (tmc in names(results$impacts[[vt]][[a]])) {
               results$impacts[[vt]][[a]][[tmc]]$sd <<-
@@ -915,7 +917,7 @@ Results.Region <- function(region, population_model,
             }
           }
           if ("cumulative" %in% names(results$impacts[[vt]])) {
-            for (i in results$impacts$idx[[vt]]) {
+            for (i in unname(results$impacts$idx[[vt]])) {
               a <- impacts[[i]]$get_asset_name()
               for (tmc in names(results$impacts[[vt]]$cumulative[[a]])) {
                 results$impacts[[vt]]$cumulative[[a]][[tmc]]$sd <<-
@@ -979,6 +981,10 @@ Results.Region <- function(region, population_model,
                         substr(title_str, 2, nchar(title_str))),
                  collapse = " "))
   }
+
+  # Post-fix and metadata for single replicate or summaries
+  s_post <- list("", mean = "_mean", sd = "_sd")
+  s_data <- list(NULL, mean = "mean", sd = "sd")
 
   # Save collated results as raster files
   if (include_collated && region$get_type() == "grid") {
@@ -1162,6 +1168,165 @@ Results.Region <- function(region, population_model,
         scale_type = scale_type,
         nonzero = nonzero_list[[output_key]]
       )
+
+      # Save impacts
+      if (length(impacts) > 0) {
+
+        # Replicate summaries or single replicate
+        if (replicates > 1) {
+          summaries <- c("mean", "sd")
+        } else {
+          summaries <- 1
+        }
+
+        # Save rasters for each valuation type at each time step
+        for (i in names(results$impacts)[-1]) {
+
+          # Impacts post-fix and metadata label
+          ic <- paste0("_", i)
+          i_label <- paste0(i, " ")
+          if (is.character(i)) {
+            i_label <- sub("_", " ", i_label, fixed = TRUE)
+          }
+
+          # Impact aspects and their cumulative when present
+          aspects <- names(results$impacts[[i]])
+          aspects <- aspects[which(!aspects %in% c("total", "cumulative"))]
+          unit_map <- sapply(aspects, function(a) {
+            unit <- attr(results$impacts[[i]][[a]], "unit")
+            if (is.character(unit)) {
+              unit
+            } else {
+              ""
+            }
+          })
+          if ("cumulative" %in% names(results$impacts[[i]])) {
+            cum_aspects <- names(results$impacts[[i]]$cumulative)
+            cum_aspects <- cum_aspects[which(cum_aspects != "total")]
+            names(cum_aspects) <- paste0("cum_", cum_aspects)
+            aspects <- c(aspects, names(cum_aspects))
+            unit_map_cum <- unit_map[cum_aspects]
+            names(unit_map_cum) <- names(cum_aspects)
+            unit_map <- c(unit_map, unit_map_cum)
+          } else {
+            cum_aspects <- NULL
+          }
+          for (a in aspects) {
+            for (s in summaries) {
+
+              # Add nested list to output list
+              if (a %in% names(cum_aspects)) {
+                output_key <- paste0("cumulative_impacts", ic, "_",
+                                     cum_aspects[a], s_post[[s]])
+              } else {
+                output_key <- paste0("impacts", ic, "_", a, s_post[[s]])
+              }
+              output_list[[output_key]] <- list()
+
+              # Initialise non-zero indicator
+              nonzero_list[[output_key]] <- FALSE
+
+              # Collated time steps
+              if (a %in% names(cum_aspects)) {
+                collated_tmc <-
+                  names(results$impacts[[i]]$cumulative[[cum_aspects[a]]])
+              } else {
+                collated_tmc <- names(results$impacts[[i]][[a]])
+              }
+              for (tmc in collated_tmc) {
+
+                # Copy impacts into a raster & update non-zero indicator
+                if (replicates > 1) {
+                  if (a %in% names(cum_aspects)) {
+                    output_rast <-
+                      region$get_rast(results$impacts[[i]]$cumulative[[
+                        cum_aspects[a]]][[tmc]][[s]])
+                    nonzero_list[[output_key]] <-
+                      (nonzero_list[[output_key]] |
+                         sum(results$impacts[[i]]$cumulative[[
+                           cum_aspects[a]]][[tmc]][[s]]) > 0)
+                  } else {
+                    output_rast <-
+                      region$get_rast(results$impacts[[i]][[a]][[tmc]][[s]])
+                    nonzero_list[[output_key]] <-
+                      (nonzero_list[[output_key]] |
+                         sum(results$impacts[[i]][[a]][[tmc]][[s]]) > 0)
+                  }
+                } else {
+                  if (a %in% names(cum_aspects)) {
+                    output_rast <-
+                      region$get_rast(results$impacts[[i]]$cumulative[[
+                        cum_aspects[a]]][[tmc]])
+                    nonzero_list[[output_key]] <-
+                      (nonzero_list[[output_key]] |
+                         sum(results$impacts[[i]]$cumulative[[
+                           cum_aspects[a]]][[tmc]]) > 0)
+                  } else {
+                    output_rast <-
+                      region$get_rast(results$impacts[[i]][[a]][[tmc]])
+                    nonzero_list[[output_key]] <-
+                      (nonzero_list[[output_key]] |
+                         sum(results$impacts[[i]][[a]][[tmc]]) > 0)
+                  }
+                }
+
+                # Write raster to file
+                if (a %in% names(cum_aspects)) {
+                  filename <- sprintf(
+                    paste0("cumulative_impacts%s_%s_t%0",
+                           nchar(as.character(time_steps)), "d%s.tif"),
+                    ic, cum_aspects[a], as.integer(tmc), s_post[[s]])
+                } else {
+                  filename <- sprintf(
+                    paste0("impacts%s_%s_t%0", nchar(as.character(time_steps)),
+                           "d%s.tif"),
+                    ic, a, as.integer(tmc), s_post[[s]])
+                }
+                output_list[[output_key]][[tmc]] <-
+                  terra::writeRaster(output_rast, filename, ...)
+              }
+
+              # Add list of impacts metadata as an attribute
+              if (a %in% names(cum_aspects)) {
+                aspect <- unname(cum_aspects[a])
+                cumulative <- TRUE
+                cumulative_label <- "cumulative "
+              } else {
+                aspect <- a
+                cumulative <- FALSE
+                cumulative_label <- ""
+              }
+              label <- paste0(cumulative_label, i_label, aspect, " impacts")
+              if (s == "mean") {
+                label <- paste("mean", label)
+              } else if (s == "sd") {
+                label <- paste(label, "std. dev.")
+              }
+              impact_type <- sapply(results$impacts$idx[[i]],
+                                    function(j) impacts[[j]]$get_impact_type())
+              if (length(impact_type) > 1 && aspect == "combined") {
+                impact_type <- paste(impact_type, collapse = " & ")
+              } else {
+                impact_type <- unname(impact_type[aspect])
+              }
+              impact_type <- paste0(impact_type, "-based")
+              attr(output_list[[output_key]], "metadata") <- list(
+                category = "impact",
+                type = i,
+                name = aspect,
+                impact = impact_type,
+                cost = FALSE,
+                cumulative = cumulative,
+                summary = s_data[[s]],
+                label = title_case(label),
+                units = unname(unit_map[a]),
+                scale_type = "continuous",
+                nonzero = nonzero_list[[output_key]]
+              )
+            }
+          }
+        }
+      }
 
       # Return output list as multi-layer rasters
       return(lapply(output_list, function(rast_list) {
