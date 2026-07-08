@@ -1544,6 +1544,168 @@ Results.Region <- function(region, population_model,
     } else {
       utils::write.csv(area, "area_occupied.csv", row.names = TRUE)
     }
+
+    # Save impacts
+    if (length(impacts) > 0) {
+
+      # Results for each impact valuation type
+      for (i in names(results$impacts)[-1]) {
+
+        # Include impact name
+        ic <- paste0("_", i)
+
+        # Results for single or multi-patch only
+        if (region$get_type() == "patch") {
+
+          # Impact aspects and their cumulative when present
+          aspects <- names(results$impacts[[i]])
+          aspects <- aspects[which(!aspects %in% c("total", "cumulative"))]
+          if ("cumulative" %in% names(results$impacts[[i]])) {
+            cum_aspects <- names(results$impacts[[i]]$cumulative)
+            cum_aspects <- cum_aspects[which(cum_aspects != "total")]
+            names(cum_aspects) <- paste0("cum_", cum_aspects)
+            aspects <- c(aspects, names(cum_aspects))
+          } else {
+            cum_aspects <- NULL
+          }
+
+          # Save impact CSV file(s)
+          if (include_collated) { # spatial with coordinates
+            for (a in aspects) {
+              output_df <- list()
+              if (replicates > 1) {
+                summaries <- c("mean", "sd")
+              } else {
+                summaries <- 1
+              }
+              for (s in summaries) {
+                if (replicates > 1) {
+                  if (a %in% names(cum_aspects)) {
+                    output_df[[s]] <-
+                      lapply(results$impacts[[i]]$cumulative[[cum_aspects[a]]],
+                             function(a_tm) a_tm[[s]])
+                  } else {
+                    output_df[[s]] <- lapply(results$impacts[[i]][[a]],
+                                             function(a_tm) a_tm[[s]])
+                  }
+                } else {
+                  if (a %in% names(cum_aspects)) {
+                    output_df[[s]] <-
+                      results$impacts[[i]]$cumulative[[cum_aspects[a]]]
+                  } else {
+                    output_df[[s]] <- results$impacts[[i]][[a]]
+                  }
+                }
+                names(output_df[[s]]) <- collated_labels
+                output_df[[s]] <- cbind(coords, as.data.frame(output_df[[s]]))
+                if (a %in% names(cum_aspects)) {
+                  filename <- sprintf("cumulative_impacts%s_%s%s.csv", ic,
+                                      cum_aspects[a], s_post[[s]])
+                } else {
+                  filename <- sprintf("impacts%s_%s%s.csv", ic, a,
+                                      s_post[[s]])
+                }
+                utils::write.csv(output_df[[s]], filename, row.names = FALSE)
+              }
+            }
+
+          } else { # spatially implicit
+
+            # Collect and save to CSV
+            if (replicates > 1) {
+
+              # Save mean/SD (rows) for each impact
+              for (a in aspects) {
+                if (a %in% names(cum_aspects)) {
+                  output_df <- sapply(
+                    results$impacts[[i]]$cumulative[[cum_aspects[a]]],
+                    function(imp) as.data.frame(imp))
+                  filename <- sprintf("cumulative_impacts%s_%s.csv", ic,
+                                      cum_aspects[a])
+                } else {
+                  output_df <- sapply(results$impacts[[i]][[a]],
+                                      function(imp) as.data.frame(imp))
+                  filename <- sprintf("impacts%s_%s.csv", ic, a)
+                }
+                colnames(output_df) <- time_steps_labels
+                utils::write.csv(output_df, filename, row.names = TRUE)
+              }
+
+            } else {
+
+              # Saves impacts in rows
+              a_i <- which(names(results$impacts[[i]]) != "cumulative")
+              output_df <- t(sapply(results$impacts[[i]][a_i], function(a) a))
+              colnames(output_df) <- time_steps_labels
+              filename <- sprintf("impacts%s.csv", ic)
+              utils::write.csv(output_df, filename, row.names = TRUE)
+              if ("cumulative" %in% names(results$impacts[[i]])) {
+                output_df <- t(sapply(results$impacts[[i]]$cumulative,
+                                      function(a) unlist(a)))
+                colnames(output_df) <- time_steps_labels
+                filename <- sprintf("cumulative_impacts%s.csv", ic)
+                utils::write.csv(output_df, filename, row.names = TRUE)
+              }
+            }
+          }
+        }
+
+        # Impact totals when present
+        if (include_collated) {
+          if (replicates > 1) {
+
+            # Save mean/SD (rows) impact totals for each impact
+            if ("total" %in% names(results$impacts[[i]])) {
+              for (a in names(results$impacts[[i]]$total)) {
+                output_df <- as.data.frame(
+                  sapply(results$impacts[[i]]$total[[a]],
+                         function(tot) unlist(tot)))
+                colnames(output_df) <- time_steps_labels
+                filename <- sprintf("total_impacts%s_%s.csv", ic, a)
+                utils::write.csv(output_df, filename, row.names = TRUE)
+              }
+            }
+
+            # Save mean/SD (rows) cumulative impact totals for each impact
+            if ("cumulative" %in% names(results$impacts[[i]]) &&
+                "total" %in% names(results$impacts[[i]]$cumulative)) {
+              for (a in names(results$impacts[[i]]$cumulative$total)) {
+                output_df <- as.data.frame(
+                  sapply(results$impacts[[i]]$cumulative$total[[a]],
+                         function(tot) unlist(tot)))
+                colnames(output_df) <- time_steps_labels
+                filename <- sprintf("total_cumulative_impacts%s_%s.csv", ic, a)
+                utils::write.csv(output_df, filename, row.names = TRUE)
+              }
+            }
+
+          } else {
+
+            # Save impact totals with impacts in rows
+            if ("total" %in% names(results$impacts[[i]])) {
+              output_df <- as.data.frame(t(
+                sapply(results$impacts[[i]]$total,
+                       function(a) unlist(a))))
+              colnames(output_df) <- time_steps_labels
+              filename <- sprintf("total_impacts%s.csv", ic)
+              utils::write.csv(output_df, filename, row.names = TRUE)
+            }
+
+            # Save cumulative impact totals with impacts in rows
+            if ("cumulative" %in% names(results$impacts[[i]]) &&
+                "total" %in% names(results$impacts[[i]]$cumulative)) {
+              output_df <- as.data.frame(t(
+                sapply(results$impacts[[i]]$cumulative$total,
+                       function(a) unlist(a))))
+              colnames(output_df) <- time_steps_labels
+              filename <- sprintf("total_cumulative_impacts%s.csv", ic)
+              utils::write.csv(output_df, filename, row.names = TRUE)
+            }
+          }
+        }
+      }
+    } # impacts
+
   }
 
   # Plot total population (per stage) and area occupied as PNG files
