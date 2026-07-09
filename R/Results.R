@@ -1921,6 +1921,112 @@ Results.Region <- function(region, population_model,
                      ylim = c(0, 1.1*max(area)))
       invisible(grDevices::dev.off())
     }
+
+    # Plot impacts when present
+    if (length(impacts) > 0) {
+
+      # Plots for each impact valuation type
+      for (i in names(results$impacts)[-1]) {
+
+        # Include impact name
+        ic <- c(paste0("_", i), paste0(i, " "))
+        ic[2] <- sub("_", " ", ic[2], fixed = TRUE)
+
+        # Impact aspects and their cumulative when present
+        aspects <- names(results$impacts[[i]])
+        aspects <- aspects[which(!aspects %in% c("total", "cumulative"))]
+        if ("cumulative" %in% names(results$impacts[[i]])) {
+          cum_aspects <- names(results$impacts[[i]]$cumulative)
+          cum_aspects <- cum_aspects[which(cum_aspects != "total")]
+          names(cum_aspects) <- paste0("cum_", cum_aspects)
+          aspects <- c(aspects, names(cum_aspects))
+        } else {
+          cum_aspects <- NULL
+        }
+
+        # Plot for each impact or cumulative impact
+        for (a in aspects) {
+
+          # Get the values to be plotted and their unit
+          if (include_collated) { # use totals
+            if (a %in% names(cum_aspects)) {
+              a_cum <- cum_aspects[a]
+              values <- sapply(results$impacts[[i]]$cumulative$total[[a_cum]],
+                               function(tot) unlist(tot))
+              unit <- attr(results$impacts[[i]]$cumulative$total[[a_cum]],
+                            "unit")
+            } else {
+              values <- sapply(results$impacts[[i]]$total[[a]],
+                               function(tot) unlist(tot))
+              unit <- attr(results$impacts[[i]]$total[[a]], "unit")
+            }
+          } else { # spatially-implicit
+            if (a %in% names(cum_aspects)) {
+              a_cum <- cum_aspects[a]
+              values <- sapply(results$impacts[[i]]$cumulative[[a_cum]],
+                               function(val) unlist(val))
+              unit <- attr(results$impacts[[i]]$cumulative[[a_cum]], "unit")
+            } else {
+              values <- sapply(results$impacts[[i]][[a]],
+                               function(val) unlist(val))
+              unit <- attr(results$impacts[[i]][[a]], "unit")
+            }
+          }
+          if (is.null(unit) || unit == "") {
+            unit <- ""
+          } else {
+            unit <- paste0(" (", unit, ")")
+          }
+
+          # Impact labels
+          if (a %in% names(cum_aspects)) {
+            ac <- c(paste0("_", cum_aspects[a]), paste0(cum_aspects[a], " "))
+            cc <- c("cumulative_", "cumulative ")
+          } else {
+            ac <- c(paste0("_", a), paste0(a, " "))
+            cc <- c("", "")
+          }
+
+          # Plot file names and main titles
+          if (include_collated) {
+            filename <- sprintf("total_%simpacts%s%s.png", cc[1], ic[1], ac[1])
+            main_title <- sprintf("total %s%s%simpacts", cc[2], ic[2], ac[2])
+          } else {
+            filename <- sprintf("%simpacts%s%s.png", cc[1], ic[1], ac[1])
+            main_title <- sprintf("%s%s%simpacts", cc[2], ic[2], ac[2])
+          }
+
+          # Create and save plot
+          if (replicates > 1) { # plot summary mean +/- 2 SD
+            main_title <- paste(main_title, "(mean +/- 2 SD)")
+            values <- as.data.frame(t(values))
+            grDevices::png(filename = filename, width = width,
+                           height = height)
+            graphics::plot(0:time_steps, values$mean, type = "l",
+                           main = title_case(main_title),
+                           xlab = plot_x_label,
+                           ylab = sprintf("Impact%s", unit),
+                           ylim = c(0, 1.1*max(values$mean + 2*values$sd)))
+            graphics::lines(0:time_steps, values$mean + 2*values$sd,
+                            lty = "dashed")
+            graphics::lines(0:time_steps,
+                            pmax(0, values$mean - 2*values$sd),
+                            lty = "dashed")
+            invisible(grDevices::dev.off())
+          } else {
+            grDevices::png(filename = filename, width = width,
+                           height = height)
+            graphics::plot(0:time_steps, values, type = "l",
+                           main = title_case(main_title),
+                           xlab = plot_x_label,
+                           ylab = sprintf("Impact%s", unit),
+                           ylim = c(0, 1.1*max(values)))
+            invisible(grDevices::dev.off())
+          }
+        }
+      }
+    } # impacts
+
   }
 
   return(self)
