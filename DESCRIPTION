@@ -23,6 +23,7 @@ Suggests:
     rmarkdown,
     testthat
 Collate: 
+    'Actions.R'
     'Region.R'
     'Dispersal.R'
     'AreaSpread.R'
