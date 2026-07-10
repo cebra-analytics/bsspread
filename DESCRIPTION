@@ -22,12 +22,13 @@ Suggests:
     knitr,
     rmarkdown,
     testthat
-Collate: 
+Collate:
     'Actions.R'
     'Region.R'
     'Dispersal.R'
     'AreaSpread.R'
     'Attractor.R'
+    'Detection.R'
     'Diffusion.R'
     'DirectionKernel.R'
     'Gravity.R'
