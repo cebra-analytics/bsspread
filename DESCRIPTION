@@ -1,6 +1,6 @@
 Package: bsspread
-Title: Biosecurity Spread Modelling
-Version: 0.2.22.9000
+Title: Biosecurity Population Spread Modelling
+Version: 0.4.0
 Authors@R: c(
     person("Sean", "Haythorne", email = "sean.haythorne@unimelb.edu.au", role = c("aut", "cre")),
     person("John", "Baumgartner", email = "john.baumgartner@unimelb.edu.au", role = c("aut")))
@@ -22,14 +22,17 @@ Suggests:
     knitr,
     rmarkdown,
     testthat
-Collate: 
+Collate:
+    'Actions.R'
     'Region.R'
     'Dispersal.R'
     'AreaSpread.R'
     'Attractor.R'
+    'Detection.R'
     'Diffusion.R'
     'DirectionKernel.R'
     'Gravity.R'
+    'Impacts.R'
     'Incursions.R'
     'Initializer.R'
     'Kernels.R'

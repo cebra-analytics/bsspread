@@ -8,6 +8,8 @@
 Results(
   region,
   population_model,
+  impacts = list(),
+  actions = list(),
   time_steps = 1,
   step_duration = 1,
   step_units = "years",
@@ -21,6 +23,8 @@ Results(
 \method{Results}{Region}(
   region,
   population_model,
+  impacts = list(),
+  actions = list(),
   time_steps = 1,
   step_duration = 1,
   step_units = "years",
@@ -38,6 +42,13 @@ spatial region (template) for the spread simulations.}
 \item{population_model}{A \code{Population} or inherited class object
 defining the population representation and growth functionality for the
 spread simulations.}
+
+\item{impacts}{A list of \code{Impacts} class objects specifying various
+impacts of the simulated population.}
+
+\item{actions}{A list of \code{Actions} or inherited class objects
+specifying simulated management actions, such as detection, control, and
+removal.}
 
 \item{time_steps}{The number of discrete time steps to simulate. Default is
 1.}
@@ -70,46 +81,105 @@ calculating and collating results, as well as accessing lists of results
 and the simulation parameters used to produce them:
 \describe{
 \item{\code{collate(r, tm, n)}}{Collate the results at simulation
-replicate \code{r} and time step \code{tm} using the current vector or
-array \code{n} representing the population at each location.}
+replicate \code{r} and time step \code{tm} using the current vector
+or array \code{n} representing the population at each location, as
+well as any attachments relating to impacts or actions.}
 \item{\code{finalize()}}{Finalize the results collation (summary
 calculations).}
-\item{\code{as_list()}}{Return the results as a list (collated, total,
-area).}
+\item{\code{get_list()}}{Return the results as a list (collated
+populations and/or occupancy, totals, area occupied, impacts, and
+actions).}
 \item{\code{get_params()}}{Get the simulation parameters used.}
 \item{\code{save_rasters(...)}}{Save the collated results as raster TIF
 files when the region is grid-based. \code{Terra} raster write options
 may be passed to the function. Returns a list of saved \code{Terra}
 raster layers with attached \code{"metadata"} attribute list, which
-includes: plot category; population type & stage (when applicable);
+includes: plot category; impact or action type & name; impact
+incursion type; population stage (when applicable); an indication of
+whether or not layers represent costs and/or are cumulative outputs;
 multi-replicate summary (when applicable); a descriptive label; units;
 scale type; and an indication of whether or not each layer contains
 non-zero values.}
 \item{\code{save_csv()}}{Save the collated results as comma-separated
 values (CSV) files when the region is patch-based. Also saves the
-population totals and area occupied to CSV files for both grid and
-patch-based region types.}
+population totals, area occupied, as well as impact and action totals
+(where applicable) to CSV files for both grid and patch-based region
+types.}
 \item{\code{save_plots(width = 480, height = 480)}}{Save plots of the
-population (staged) totals and the area occupied as PNG files having
-specified \code{width} and \code{height} in pixels.}
+population (staged) totals, the area occupied, total impacts (where
+applicable), and total actions as PNG files having specified
+\code{width} and \code{height} in pixels.}
 }
 }
 \description{
-Builds a class for encapsulating, calculating, and collating spread
-simulation results, including the population at each location at each
-collation time step, the total population size, and the area occupied at
-each time step. When simulations are replicated, summary results (means and
+Builds a class for encapsulating, calculating, and collating population
+spread modelling simulation results, including the population at each
+location at each collation time step, the total population size and area
+occupied at each time step, as well as spatio-temporal impacts and
+management action quantities applied (e.g. removals), plus costs when
+configured. When simulations are replicated, summary results (means and
 standard deviations) are produced.
 }
 \references{
+Baker, C. M., Bower, S., Tartaglia, E., Bode, M., Bower, H., & Pressey,
+R. L. (2018). Modelling the spread and control of cherry guava on Lord
+Howe Island. \emph{Biological Conservation}, 227, 252–258.
+\doi{10.1016/j.biocon.2018.09.017}
+
 Bradhurst, R., Spring, D., Stanaway, M., Milner, J., & Kompas, T. (2021).
 A generalised and scalable framework for modelling incursions,
 surveillance and control of plant and environmental pests.
 \emph{Environmental Modelling & Software}, 139, N.PAG.
 \doi{10.1016/j.envsoft.2021.105004}
 
+Cacho, O. J., & Hester, S. M. (2022). Modelling biocontrol of invasive
+insects: An application to European Wasp (Vespula germanica) in Australia.
+\emph{Ecological Modelling}, 467. \doi{10.1016/j.ecolmodel.2022.109939}
+
 García Adeva, J. J., Botha, J. H., & Reynolds, M. (2012). A simulation
 modelling approach to forecast establishment and spread of Bactrocera
 fruit flies. \emph{Ecological Modelling}, 227, 93–108.
 \doi{10.1016/j.ecolmodel.2011.11.026}
+
+Gormley, A. M., Holland, E. P., Barron, M. C., Anderson, D. P., & Nugent,
+G. (2016). A modelling framework for predicting the optimal balance
+between control and surveillance effort in the local eradication of
+tuberculosis in New Zealand wildlife.
+\emph{Preventive Veterinary Medicine}, 125, 10–18.
+\doi{10.1016/j.prevetmed.2016.01.007}
+
+Krug, R. M., Roura-Pascual, N., & Richardson, D. M. (2010). Clearing of
+invasive alien plants under different budget scenarios: using a
+simulation model to test efficiency. \emph{Biological Invasions}, 12(12),
+4099–4112. \doi{10.1007/s10530-010-9827-3}
+
+Lustig, A., James, A., Anderson, D., & Plank, M. (2019). Pest control at a
+regional scale: Identifying key criteria using a spatially explicit,
+agent‐based model. \emph{Journal of Applied Ecology}, 56(7 pp.1515–1527),
+1527–1515. \doi{10.1111/1365-2664.13387}
+
+Rout, T. M., Moore, J. L., & McCarthy, M. A. (2014). Prevent, search or
+destroy? A partially observable model for invasive species management.
+\emph{Journal of Applied Ecology}, 51(3), 804–813.
+\doi{10.1111/1365-2664.12234}
+
+Spring, D., Croft, L., & Kompas, T. (2017). Look before you treat:
+increasing the cost effectiveness of eradication programs with aerial
+surveillance. \emph{Biological Invasions}, 19(2), 521.
+\doi{10.1007/s10530-016-1292-1}
+
+Wadsworth, R. A., Collingham, Y. C., Willis, S. G., Huntley, B., & Hulme,
+P. E. (2000). Simulating the Spread and Management of Alien Riparian
+Weeds: Are They Out of Control? \emph{Journal of Applied Ecology}, 37,
+28–38. \doi{10.1046/j.1365-2664.2000.00551.x}
+
+Warburton, B., & Gormley, A. M. (2015). Optimising the Application of
+Multiple-Capture Traps for Invasive Species Management Using Spatial
+Simulation. \emph{PLoS ONE}, 10(3), 1–14.
+\doi{10.1371/journal.pone.0120373}
+
+Zub, K., García-Díaz, P., Sankey, S., Eisler, R., & Lambin, X. (2022).
+Using a Modeling Approach to Inform Progress Towards Stoat Eradication
+From the Orkney Islands. \emph{Frontiers in Conservation Science}, 2.
+\doi{10.3389/fcosc.2021.780102}
 }
