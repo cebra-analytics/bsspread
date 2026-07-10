@@ -28,6 +28,7 @@ Collate:
     'Dispersal.R'
     'AreaSpread.R'
     'Attractor.R'
+    'Controls.R'
     'Detection.R'
     'Diffusion.R'
     'DirectionKernel.R'
