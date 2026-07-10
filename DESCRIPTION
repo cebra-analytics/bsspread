@@ -40,6 +40,7 @@ Collate:
     'Permeability.R'
     'Population.R'
     'PresencePopulation.R'
+    'Removals.R'
     'Results.R'
     'Simulator.R'
     'StagedPopulation.R'

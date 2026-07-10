@@ -87,7 +87,7 @@
 #'       which controls are applied.}
 #'     \item{\code{include_cost()}}{Logical indication of a cost parameter
 #'       having a value.}
-#'     \item{\code{get_cost_label(include_id = TRUE)}}{Get the surveillance
+#'     \item{\code{get_cost_label(include_id = TRUE)}}{Get the control
 #'       cost label used in simulation results ("<id>_control_growth_cost" or
 #'       "control_growth_cost"). Set \code{include_id} to include the action
 #'       \code{id} as a label prefix (default is \code{TRUE}).}
