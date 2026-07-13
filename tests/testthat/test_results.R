@@ -1017,3 +1017,163 @@ test_that("collates and finalizes spatially implicit impact results", {
                list(impact1 = cumulative[[1]], impact2 = cumulative[[2]],
                     combined = cumulative[[5]]))
 })
+
+test_that("initializes results with actions (and monetary impacts)", {
+  TEST_DIRECTORY <- test_path("test_inputs")
+  template <- terra::rast(file.path(TEST_DIRECTORY, "greater_melb.tif"))
+  region <- Region(template)
+  sensitivity <- manage_pr <- template[region$get_indices()][,1]
+  pops <- region$get_locations()
+  population_model <- UnstructPopulation(region, growth = 1.2)
+  actions_1 <- Detection(region, population_model,
+                         sensitivity = sensitivity,
+                         sensitivity_type = "presence")
+  actions_1$set_id(1)
+  actions_2 <- Controls(region, population_model,
+                        control_type = "growth",
+                        control_mult = 0.4)
+  actions_2$set_id(2)
+  actions_3 <- Controls(region, population_model,
+                        control_type = "spread",
+                        control_mult = 0.5)
+  actions_3$set_id(3)
+  actions_4 <- Removals(region, population_model,
+                        removal_pr_type = "population")
+  actions_4$set_id(4)
+  # single replicate
+  expect_silent(results <- Results(region,
+                                   population_model = population_model,
+                                   actions = list(actions_1, actions_2,
+                                                  actions_3, actions_4),
+                                   time_steps = 10, collation_steps = 2,
+                                   replicates = 1))
+  result_list <- results$get_list()
+  expect_named(result_list, c("population", "total_pop", "occupancy",
+                              "total_occup", "area", "actions"))
+  collated <- lapply(1:6, function(i) rep(FALSE, pops))
+  names(collated) <- as.character(seq(0, 10, 2))
+  totals <- lapply(1:11, function(i) 0)
+  names(totals) <- as.character(0:10)
+  expect_equal(result_list$actions[[1]],
+               list(detected = collated, total = totals))
+  expect_equal(result_list$actions[[2]],
+               list(control_growth = collated, total = totals))
+  expect_equal(result_list$actions[[3]],
+               list(control_spread = collated, total = totals))
+  expect_equal(result_list$actions[[4]],
+               list(removed = collated, total = totals))
+  # multiple replicates
+  expect_silent(results <- Results(region,
+                                   population_model = population_model,
+                                   actions = list(actions_1, actions_2,
+                                                  actions_3, actions_4),
+                                   time_steps = 4, collation_steps = 2,
+                                   replicates = 3))
+  result_list <- results$get_list()
+  collated_no_sd <- lapply(1:3, function(i) list(mean = rep(0, pops)))
+  collated_with_sd <- lapply(1:3, function(i)
+    list(mean = rep(0, pops), sd = rep(0, pops)))
+  names(collated_no_sd) <- as.character(seq(0, 4, 2))
+  names(collated_with_sd) <- as.character(seq(0, 4, 2))
+  totals <- lapply(1:5, function(i) list(mean = 0, sd = 0))
+  names(totals) <- as.character(0:4)
+  expect_equal(result_list$actions[[1]],
+               list(detected = collated_no_sd, total = totals))
+  expect_equal(result_list$actions[[2]],
+               list(control_growth = collated_no_sd, total = totals))
+  expect_equal(result_list$actions[[3]],
+               list(control_spread = collated_no_sd, total = totals))
+  expect_equal(result_list$actions[[4]],
+               list(removed = collated_no_sd, total = totals))
+  # include individual numbers
+  actions_1 <- Detection(region, population_model,
+                         sensitivity = sensitivity,
+                         sensitivity_type = "individual")
+  actions_1$set_id(1)
+  actions_2 <- Controls(region, population_model,
+                        control_type = "search_destroy",
+                        manage_pr = manage_pr,
+                        manage_pr_type = "individual")
+  actions_2$set_id(2)
+  actions_3 <- Removals(region, population_model,
+                        removal_pr_type = "individual")
+  actions_3$set_id(3)
+  expect_silent(results <- Results(region,
+                                   population_model = population_model,
+                                   actions = list(actions_1, actions_2,
+                                                  actions_3),
+                                   time_steps = 4, collation_steps = 2,
+                                   replicates = 3))
+  result_list <- results$get_list()
+  expect_equal(result_list$actions[[1]],
+               list(detected = collated_no_sd, total = totals,
+                    number = list(detected = collated_with_sd,
+                                  total = totals)))
+  expect_equal(result_list$actions[[2]],
+               list(control_search_destroy = collated_no_sd, total = totals,
+                    number = list(control_search_destroy = collated_with_sd,
+                                  total = totals)))
+  expect_equal(result_list$actions[[3]],
+               list(removed = collated_no_sd, total = totals,
+                    number = list(removed = collated_with_sd,
+                                  total = totals)))
+  # with action costs and monetary-only impacts
+  asset_value_1 <- 100*(template > 0.1 & template < 0.3)
+  asset_value_2 <- 200*(template > 0.2 & template < 0.4)
+  impacts_1 <- Impacts(region, population_model, # monetary
+                       asset_name = "impact1",
+                       asset_value = asset_value_1,
+                       loss_rate = 0.3)
+  impacts_1$set_id(1)
+  impacts_2 <- Impacts(region, population_model, # monetary
+                       asset_name = "impact2",
+                       asset_value = asset_value_2,
+                       loss_rate = 0.4)
+  impacts_2$set_id(2)
+  surv_cost <- 3; attr(surv_cost, "unit") <- "$"
+  actions_1 <- Detection(region, population_model,
+                         sensitivity = sensitivity,
+                         sensitivity_type = "presence",
+                         surv_cost = surv_cost)
+  actions_1$set_id(1)
+  control_cost <- 4; attr(control_cost, "unit") <- "$"
+  actions_2 <- Controls(region, population_model,
+                        control_type = "growth",
+                        control_mult = 0.4,
+                        control_cost = control_cost)
+  actions_2$set_id(2)
+  removal_cost <- 6; attr(removal_cost, "unit") <- "$"
+  actions_3 <- Removals(region, population_model,
+                        removal_pr_type = "population",
+                        removal_cost = removal_cost)
+  actions_3$set_id(3)
+  expect_silent(results <- Results(region,
+                                   population_model = population_model,
+                                   impacts = list(impacts_1, impacts_2),
+                                   actions = list(actions_1, actions_2,
+                                                  actions_3),
+                                   time_steps = 4, collation_steps = 2,
+                                   replicates = 3))
+  result_list <- results$get_list()
+  expected_costs <- list(detected = collated_with_sd, total = totals,
+                         cumulative = list(detected = collated_with_sd,
+                                           total = totals))
+  attr(expected_costs, "unit") <- "$"
+  expect_equal(result_list$actions[[1]],
+               list(detected = collated_no_sd, total = totals,
+                    cost = expected_costs))
+  names(expected_costs)[1] <- "control_growth"
+  names(expected_costs$cumulative)[1] <- "control_growth"
+  expect_equal(result_list$actions[[2]],
+               list(control_growth = collated_no_sd, total = totals,
+                    cost = expected_costs))
+  names(expected_costs)[1] <- "removed"
+  names(expected_costs$cumulative)[1] <- "removed"
+  expect_equal(result_list$actions[[3]],
+               list(removed = collated_no_sd, total = totals,
+                    cost = expected_costs))
+  names(expected_costs)[1] <- "combined"
+  names(expected_costs$cumulative)[1] <- "combined"
+  expect_equal(result_list$actions$cost, expected_costs)
+  expect_equal(result_list$cost, expected_costs)
+})

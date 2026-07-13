@@ -381,6 +381,166 @@ Results.Region <- function(region, population_model,
     rm(zeros)
   }
 
+  # Action results
+  if (length(actions) > 0) {
+
+    # Individual action results
+    results$actions <- lapply(actions, function(actions_i) {
+
+      # Build list of initial zeros
+      zeros <- list()
+
+      # Binary indicator of action success
+      zeros$action <- rep(FALSE, region$get_locations())
+      if (include_collated) {
+        zeros$total_action <- 0L
+      }
+
+      # Number of individuals when applicable
+      include_indiv <- indiv_type_action(actions_i)
+      if (include_indiv) {
+        if (is.numeric(stages)) {
+          if (is.numeric(combine_stages)) {
+            zeros$action_num <- array(0L, c(region$get_locations(), 1))
+            colnames(zeros$action_num) <- stage_labels
+            if (include_collated) {
+              zeros$total_action_num <- zeros$action_num[1,, drop = FALSE]
+            }
+          } else {
+            zeros$action_num <- population_model$make(initial = 0L)
+            if (include_collated) {
+              zeros$total_action_num <- zeros$action_num[1,, drop = FALSE]
+            }
+          }
+        } else {
+          zeros$action_num <- rep(0L, region$get_locations())
+          if (include_collated) {
+            zeros$total_action_num <- 0L
+          }
+        }
+      }
+
+      # Action costs
+      if (actions_i$include_cost()) {
+        zeros$action_cost <- rep(0L, region$get_locations())
+        if (include_collated) {
+          zeros$total_action_cost <- 0L
+        }
+      }
+
+      # Summary statistics when applicable
+      if (replicates > 1) {
+        zeros$action <- list(mean = +zeros$action)
+        if (include_collated) {
+          zeros$total_action <- list(mean = zeros$total_action,
+                                     sd = zeros$total_action)
+        }
+        if (include_indiv) {
+          zeros$action_num <- list(mean = zeros$action_num,
+                                   sd = zeros$action_num)
+          if (include_collated) {
+            zeros$total_action_num <- list(mean = zeros$total_action_num,
+                                           sd = zeros$total_action_num)
+          }
+        }
+        if (actions_i$include_cost()) {
+          zeros$action_cost <- list(mean = zeros$action_cost,
+                                    sd = zeros$action_cost)
+          if (include_collated) {
+            zeros$total_action_cost <- list(mean = zeros$total_action_cost,
+                                            sd = zeros$total_action_cost)
+          }
+        }
+      }
+
+      # Build initial action list
+      actions_list <- list()
+      action_label <- actions_i$get_label(include_id = FALSE)
+      actions_list[[action_label]] <- list()
+      if (include_collated) {
+        for (tm in as.character(c(0, seq(collation_steps, time_steps,
+                                         by = collation_steps)))) {
+          actions_list[[action_label]][[tm]] <- zeros$action
+        }
+        actions_list$total <- list()
+        for (tm in as.character(0:time_steps)) {
+          actions_list$total[[tm]] <- zeros$total_action
+        }
+      } else {
+        for (tm in as.character(0:time_steps)) {
+          actions_list[[action_label]][[tm]] <- zeros$action
+        }
+      }
+      if (include_indiv) {
+        actions_list$number <- list()
+        actions_list$number[[action_label]] <- list()
+        if (include_collated) {
+          for (tm in as.character(c(0, seq(collation_steps, time_steps,
+                                           by = collation_steps)))) {
+            actions_list$number[[action_label]][[tm]] <- zeros$action_num
+          }
+          actions_list$number$total <- list()
+          for (tm in as.character(0:time_steps)) {
+            actions_list$number$total[[tm]] <- zeros$total_action_num
+          }
+        } else {
+          for (tm in as.character(0:time_steps)) {
+            actions_list$number[[action_label]][[tm]] <- zeros$action_num
+          }
+        }
+      }
+      if (actions_i$include_cost()) {
+        actions_list$cost <- list()
+        actions_list$cost[[action_label]] <- list()
+        if (include_collated) {
+          for (tm in as.character(c(0, seq(collation_steps, time_steps,
+                                           by = collation_steps)))) {
+            actions_list$cost[[action_label]][[tm]] <- zeros$action_cost
+          }
+          actions_list$cost$total <- list()
+          for (tm in as.character(0:time_steps)) {
+            actions_list$cost$total[[tm]] <- zeros$total_action_cost
+          }
+        } else {
+          for (tm in as.character(0:time_steps)) {
+            actions_list$cost[[action_label]][[tm]] <- zeros$action_cost
+          }
+        }
+        actions_list$cost$cumulative <- actions_list$cost
+        attr(actions_list$cost, "unit") <- actions_i$get_cost_unit()
+      }
+      actions_list
+    })
+
+    # Combined cost for multiple actions
+    if (length(actions) > 1 &&
+        all(sapply(actions, function(a) a$include_cost())) &&
+        all(sapply(actions, function(a) a$get_cost_unit()) ==
+            actions[[1]]$get_cost_unit())) {
+      results$actions$cost <- list(combined = results$actions[[1]]$cost[[1]])
+      if (include_collated) {
+        results$actions$cost$total <- results$actions[[1]]$cost$total
+      }
+      results$actions$cost$cumulative <-
+        list(combined = results$actions[[1]]$cost$cumulative[[1]])
+      attr(results$actions$cost, "unit") <- actions[[1]]$get_cost_unit()
+      if (include_collated) {
+        results$actions$cost$cumulative$total <-
+          results$actions[[1]]$cost$cumulative$total
+      }
+    }
+  }
+
+  # Combined monetary impacts and action costs
+  if (length(impacts) > 0 &&
+      all(sapply(impacts, function(i) {
+        i$get_valuation_type() == "monetary" })) &&
+      length(actions) > 0 && is.list(results$actions$cost) &&
+      all(sapply(impacts, function(i) i$get_value_unit()) ==
+          actions[[1]]$get_cost_unit())) {
+    results$cost <- results$actions$cost
+  }
+
   # Create a class structure
   self <- structure(list(), class = c(class, "Results"))
 
