@@ -591,7 +591,6 @@ test_that("initializes results with impacts", {
   TEST_DIRECTORY <- test_path("test_inputs")
   template <- terra::rast(file.path(TEST_DIRECTORY, "greater_melb.tif"))
   region <- Region(template)
-  template_vect <- template[region$get_indices()][,1]
   pops <- region$get_locations()
   population_model <- UnstructPopulation(region, growth = 1.2)
   asset_value_1 <- 100*(template > 0.1 & template < 0.3)
