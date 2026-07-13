@@ -55,13 +55,13 @@ test_that("initializes with region, population, and other parameters", {
   expect_true(controls$include_cost())
   expect_equal(controls$get_cost_label(), "control_search_destroy_cost")
   expect_equal(controls$get_cost_unit(), "$")
-  expect_silent(controls$set_id("a1"))
-  expect_equal(controls$get_id(), "a1")
-  expect_equal(controls$get_label(), "a1_control_search_destroy")
+  expect_silent(controls$set_id(1))
+  expect_equal(controls$get_id(), 1)
+  expect_equal(controls$get_label(), "1_control_search_destroy")
   expect_equal(controls$get_label(include_id = FALSE),
                "control_search_destroy")
   expect_equal(controls$get_cost_label(),
-               "a1_control_search_destroy_cost")
+               "1_control_search_destroy_cost")
   expect_equal(controls$get_cost_label(include_id = FALSE),
                "control_search_destroy_cost")
   expect_error(
@@ -115,11 +115,11 @@ test_that("initializes with region, population, and other parameters", {
   expect_true(controls$include_cost())
   expect_equal(controls$get_cost_label(), "control_growth_cost")
   expect_equal(controls$get_cost_unit(), "$")
-  expect_silent(controls$set_id("a2"))
-  expect_equal(controls$get_id(), "a2")
-  expect_equal(controls$get_label(), "a2_control_growth")
+  expect_silent(controls$set_id(2))
+  expect_equal(controls$get_id(), 2)
+  expect_equal(controls$get_label(), "2_control_growth")
   expect_equal(controls$get_label(include_id = FALSE), "control_growth")
-  expect_equal(controls$get_cost_label(), "a2_control_growth_cost")
+  expect_equal(controls$get_cost_label(), "2_control_growth_cost")
   expect_equal(controls$get_cost_label(include_id = FALSE),
                "control_growth_cost")
 })
@@ -209,17 +209,17 @@ test_that("applies stochastic search and destroy controls to population", {
                expected_controls_plus[idx,])
   expect_equal(attr(new_n2, "control_search_destroy_cost")[idx],
                expected_costs[idx])
-  expect_silent(controls$set_id("a2"))
+  expect_silent(controls$set_id(2))
   set.seed(1234)
   expect_silent(new_n <- controls$apply(n, 4))
   new_n[idx,] ; expected_n[idx,]
   expect_equal(attr(new_n, "undetected")[idx,],
                n[idx,] - expected_controls[idx,])
-  expect_equal(as.logical(attr(new_n, "a2_control_search_destroy")),
+  expect_equal(as.logical(attr(new_n, "2_control_search_destroy")),
                expected_controlled)
-  expect_equal(attr(attr(new_n, "a2_control_search_destroy"), "number")[idx,],
+  expect_equal(attr(attr(new_n, "2_control_search_destroy"), "number")[idx,],
                expected_controls[idx,])
-  expect_equal(attr(new_n, "a2_control_search_destroy_cost")[idx],
+  expect_equal(attr(new_n, "2_control_search_destroy_cost")[idx],
                expected_costs[idx])
   # population level effectiveness
   expect_silent(
@@ -452,14 +452,14 @@ test_that("applies stochastic growth/spread/establishment controls", {
   expect_equal(
     attr(new_n2, "control_establishment_cost"),
     expected_costs*(exist_control > 0 | detected_mask))
-  expect_silent(controls$set_id("a3"))
+  expect_silent(controls$set_id(3))
   expect_silent(new_n <- controls$apply(n, 4))
   detected[,2:3] <- round((n[,2:3] > 8)*n[,2:3]*0.7)
   expect_equal(attr(new_n, "undetected")[idx,], (n - detected)[idx,])
-  expect_equal(attr(new_n, "a3_control_establishment"),
+  expect_equal(attr(new_n, "3_control_establishment"),
                ((exist_mask | establish_mask)*0.7 +
                   !(exist_mask | establish_mask)))
-  expect_equal(attr(new_n, "a3_control_establishment_cost"),
+  expect_equal(attr(new_n, "3_control_establishment_cost"),
                expected_costs*(exist_control > 0 | establish_mask))
   # spatially-implicit
   region <- Region()

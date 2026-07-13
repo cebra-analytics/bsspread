@@ -86,8 +86,9 @@ A \code{Detection} class object (list) containing a function
 for accessing attributes and applying simulated detection:
 \describe{
 \item{\code{get_type()}}{Get the type of action ("detection").}
-\item{\code{get_id()}}{Get the actions identifier.}
-\item{\code{set_id(id)}}{Set the actions identifier.}
+\item{\code{get_id()}}{Get the actions numeric identifier.}
+\item{\code{set_id(id)}}{Set the actions numeric identifier. Should be
+an integer >= 1).}
 \item{\code{get_label(include_id = TRUE)}}{Get the actions label used
 in simulation results ("\if{html}{\out{<id>}}_detected" or "detected").
 Set \code{include_id} to include the action \code{id} as a label

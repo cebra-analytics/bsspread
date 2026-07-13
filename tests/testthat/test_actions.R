@@ -43,11 +43,13 @@ test_that("initializes with region, population model, stages & schedule", {
   expect_null(actions$get_cost_unit())
   expect_equal(actions$clear_attributes(1:10), 1:10) # returns n
   expect_equal(actions$apply(1:10, 4), 1:10) # returns n
-  expect_silent(actions$set_id("a1"))
-  expect_equal(actions$get_id(), "a1")
-  expect_equal(actions$get_label(), "a1_action")
+  expect_null(actions$get_id())
+  expect_error(actions$set_id(1.2), "Actions id should be an integer >= 1.")
+  expect_silent(actions$set_id(2))
+  expect_equal(actions$get_id(), 2)
+  expect_equal(actions$get_label(), "2_action")
   expect_equal(actions$get_label(include_id = FALSE), "action")
-  expect_equal(actions$get_cost_label(), "a1_action_cost")
+  expect_equal(actions$get_cost_label(), "2_action_cost")
   expect_equal(actions$get_cost_label(include_id = FALSE),
                "action_cost")
 })

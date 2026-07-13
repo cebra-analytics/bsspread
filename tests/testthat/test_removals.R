@@ -61,11 +61,11 @@ test_that("initializes with region, population, and other parameters", {
                                     removal_pr = template_vect,
                                     removal_cost = removal_cost) # silent
   expect_equal(removals$get_cost_unit(), "beans")
-  expect_silent(removals$set_id("a1"))
-  expect_equal(removals$get_id(), "a1")
-  expect_equal(removals$get_label(), "a1_removed")
+  expect_silent(removals$set_id(1))
+  expect_equal(removals$get_id(), 1)
+  expect_equal(removals$get_label(), "1_removed")
   expect_equal(removals$get_label(include_id = FALSE), "removed")
-  expect_equal(removals$get_cost_label(), "a1_removal_cost")
+  expect_equal(removals$get_cost_label(), "1_removal_cost")
   expect_equal(removals$get_cost_label(include_id = FALSE),
                "removal_cost")
 })

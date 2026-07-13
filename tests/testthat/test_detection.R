@@ -69,11 +69,11 @@ test_that("initializes with region, population, and sensitivity", {
   expect_true(detection$include_cost())
   expect_equal(detection$get_cost_label(), "surv_cost")
   expect_equal(detection$get_cost_unit(), "$")
-  expect_silent(detection$set_id("a1"))
-  expect_equal(detection$get_id(), "a1")
-  expect_equal(detection$get_label(), "a1_detected")
+  expect_silent(detection$set_id(1))
+  expect_equal(detection$get_id(), 1)
+  expect_equal(detection$get_label(), "1_detected")
   expect_equal(detection$get_label(include_id = FALSE), "detected")
-  expect_equal(detection$get_cost_label(), "a1_surv_cost")
+  expect_equal(detection$get_cost_label(), "1_surv_cost")
   expect_equal(detection$get_cost_label(include_id = FALSE),
                "surv_cost")
 })
@@ -140,16 +140,16 @@ test_that("applies stochastic detection to invasive population", {
   expect_null(attr(new_n2, "undetected"))
   expect_null(attr(new_n2, "surv_cost"))
   expect_equal(new_n2, n)
-  expect_silent(detection$set_id("a1"))
+  expect_silent(detection$set_id(1))
   set.seed(1234)
   expect_silent(new_n <- detection$apply(n, 4))
-  expect_equal(as.logical(attr(new_n, "a1_detected")), expected_detections)
-  expect_equal(attr(attr(new_n, "a1_detected"), "number")[idx,],
+  expect_equal(as.logical(attr(new_n, "1_detected")), expected_detections)
+  expect_equal(attr(attr(new_n, "1_detected"), "number")[idx,],
                expected_detected)
   expect_equal(attr(new_n, "undetected"),
-               n - attr(attr(new_n, "a1_detected"), "number"))
-  expect_equal(as.numeric(attr(new_n, "a1_surv_cost")), 2*(sensitivity > 0))
-  expect_equal(attr(attr(new_n, "a1_surv_cost"), "unit"), "$")
+               n - attr(attr(new_n, "1_detected"), "number"))
+  expect_equal(as.numeric(attr(new_n, "1_surv_cost")), 2*(sensitivity > 0))
+  expect_equal(attr(attr(new_n, "1_surv_cost"), "unit"), "$")
   # population level sensitivity
   expect_silent(detection <- Detection(
     region, population_model, sensitivity,
