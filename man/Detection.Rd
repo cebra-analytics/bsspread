@@ -107,6 +107,9 @@ cost label used in simulation results ("\if{html}{\out{<id>}}_surv_cost" or
 "surv_cost"). Set \code{include_id} to include the action \code{id}
 as a label prefix (default is \code{TRUE}).}
 \item{\code{get_cost_unit()}}{Get the unit of surveillance cost.}
+\item{\code{get_attributes(n)}}{Get attached attributes associated
+with this action from a simulated population vector or matrix
+\code{n}, and return a list of the attached attributes.}
 \item{\code{clear_attributes(n)}}{Clear attached attributes associated
 with this action from a simulated population vector or matrix
 \code{n}, and return \code{n} without the attached attributes.}

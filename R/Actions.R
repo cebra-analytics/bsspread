@@ -36,6 +36,9 @@
 #'       label used in simulation results. Set \code{include_id} to include
 #'       the action \code{id} as a label prefix (default is \code{TRUE}).}
 #'     \item{\code{get_cost_unit()}}{Get the unit of action cost.}
+#'     \item{\code{get_attributes(n)}}{Get attached attributes associated
+#'       with this action from a simulated population vector or matrix
+#'       \code{n}, and return a list of the attached attributes.}
 #'     \item{\code{clear_attributes(n)}}{Clear attached attributes associated
 #'       with this action from a simulated population vector or matrix
 #'       \code{n}, and return \code{n} without the attached attributes.}
@@ -158,6 +161,11 @@ Actions.Region <- function(region, population_model,
   # Get the unit of action cost
   self$get_cost_unit <- function() { # overridden in inherited classes
     return(NULL)
+  }
+
+  # Get attached attributes
+  self$get_attributes <- function(n) { # overridden in inherited classes
+    return(list())
   }
 
   # Clear attached attributes

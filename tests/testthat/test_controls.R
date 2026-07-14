@@ -45,8 +45,8 @@ test_that("initializes with region, population, and other parameters", {
   expect_named(controls,
                c(c("get_type", "get_id", "set_id", "get_label", "get_stages",
                    "get_schedule", "include_cost", "get_cost_label",
-                   "get_cost_unit", "clear_attributes", "apply",
-                   "get_manage_pr_type")))
+                   "get_cost_unit", "get_attributes", "clear_attributes",
+                   "apply", "get_manage_pr_type")))
   expect_equal(controls$get_type(), "control")
   expect_equal(controls$get_label(), "control_search_destroy")
   expect_equal(controls$get_manage_pr_type(), "individual")
@@ -221,6 +221,16 @@ test_that("applies stochastic search and destroy controls to population", {
                expected_controls[idx,])
   expect_equal(attr(new_n, "2_control_search_destroy_cost")[idx],
                expected_costs[idx])
+  expect_equal(
+    controls$get_attributes(new_n),
+    list(`2_control_search_destroy` = attr(new_n, "2_control_search_destroy"),
+         undetected = attr(new_n, "undetected"),
+         `2_control_search_destroy_cost` = attr(
+           new_n, "2_control_search_destroy_cost")))
+  new_n <- controls$clear_attributes(new_n)
+  expect_null(attr(new_n, "2_control_search_destroy"))
+  expect_null(attr(new_n, "undetected"))
+  expect_null(attr(new_n, "2_control_search_destroy_cost"))
   # population level effectiveness
   expect_silent(
     controls <- Controls(region, population_model,
@@ -461,6 +471,16 @@ test_that("applies stochastic growth/spread/establishment controls", {
                   !(exist_mask | establish_mask)))
   expect_equal(attr(new_n, "3_control_establishment_cost"),
                expected_costs*(exist_control > 0 | establish_mask))
+  expect_equal(
+    controls$get_attributes(new_n),
+    list(`3_control_establishment` = attr(new_n, "3_control_establishment"),
+         undetected = attr(new_n, "undetected"),
+         `3_control_establishment_cost` = attr(
+           new_n, "3_control_establishment_cost")))
+  new_n <- controls$clear_attributes(new_n)
+  expect_null(attr(new_n, "3_control_establishment"))
+  expect_null(attr(new_n, "undetected"))
+  expect_null(attr(new_n, "3_control_establishment_cost"))
   # spatially-implicit
   region <- Region()
   stage_matrix <- matrix(c(0.0, 2.0, 5.0,
@@ -498,4 +518,12 @@ test_that("applies stochastic growth/spread/establishment controls", {
   expected_cost <- 2*300
   attr(expected_cost,"unit") <- "$"
   expect_equal(attr(new_n, "control_growth_cost"), expected_cost)
+  expect_equal(controls$get_attributes(new_n),
+               list(control_growth = attr(new_n, "control_growth"),
+                    undetected = attr(new_n, "undetected"),
+                    control_growth_cost = attr(new_n, "control_growth_cost")))
+  new_n <- controls$clear_attributes(new_n)
+  expect_null(attr(new_n, "control_growth"))
+  expect_null(attr(new_n, "undetected"))
+  expect_null(attr(new_n, "control_growth_cost"))
 })

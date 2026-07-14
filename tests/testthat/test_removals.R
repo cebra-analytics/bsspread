@@ -45,8 +45,8 @@ test_that("initializes with region, population, and other parameters", {
   expect_named(removals,
                c(c("get_type", "get_id", "set_id", "get_label", "get_stages",
                    "get_schedule", "include_cost", "get_cost_label",
-                   "get_cost_unit", "clear_attributes", "apply",
-                   "get_removal_pr_type")))
+                   "get_cost_unit", "get_attributes", "clear_attributes",
+                   "apply", "get_removal_pr_type")))
   expect_equal(removals$get_type(), "removal")
   expect_equal(removals$get_label(), "removed")
   expect_equal(removals$get_removal_pr_type(), "individual")
@@ -123,6 +123,9 @@ test_that("applies stochastic removals to invasive population", {
   expected_removal_cost[idx] <- 2
   expect_equal(attr(new_n, "removal_cost"), expected_removal_cost)
   expect_equal(attr(attr(new_n, "removal_cost"), "unit"), "$")
+  expect_equal(removals$get_attributes(new_n),
+               list(removed = attr(new_n, "removed"),
+                    removal_cost = attr(new_n, "removal_cost")))
   expect_silent(new_n <- removals$clear_attributes(new_n))
   expect_null(attr(new_n, "removed"))
   expect_null(attr(new_n, "removal_cost"))

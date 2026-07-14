@@ -70,6 +70,9 @@
 #'       "surv_cost"). Set \code{include_id} to include the action \code{id}
 #'       as a label prefix (default is \code{TRUE}).}
 #'     \item{\code{get_cost_unit()}}{Get the unit of surveillance cost.}
+#'     \item{\code{get_attributes(n)}}{Get attached attributes associated
+#'       with this action from a simulated population vector or matrix
+#'       \code{n}, and return a list of the attached attributes.}
 #'     \item{\code{clear_attributes(n)}}{Clear attached attributes associated
 #'       with this action from a simulated population vector or matrix
 #'       \code{n}, and return \code{n} without the attached attributes.}
@@ -206,6 +209,21 @@ Detection.Region <- function(region,
   # Get the unit of surveillance cost
   self$get_cost_unit <- function() {
     return(attr(surv_cost, "unit"))
+  }
+
+  # Get attached attributes
+  self$get_attributes <- function(n) {
+    attr_list <- list()
+    if (self$get_label() %in% names(attributes(n))) {
+      attr_list[[self$get_label()]] <- attr(n, self$get_label())
+    }
+    if ("undetected" %in% names(attributes(n))) {
+      attr_list[["undetected"]] <- attr(n, "undetected")
+    }
+    if (self$get_cost_label() %in% names(attributes(n))) {
+      attr_list[[self$get_cost_label()]] <- attr(n, self$get_cost_label())
+    }
+    return(attr_list)
   }
 
   # Clear attached attributes

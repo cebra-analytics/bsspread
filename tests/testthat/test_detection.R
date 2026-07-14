@@ -58,8 +58,8 @@ test_that("initializes with region, population, and sensitivity", {
   expect_named(detection,
                c(c("get_type", "get_id", "set_id", "get_label", "get_stages",
                    "get_schedule", "include_cost", "get_cost_label",
-                   "get_cost_unit", "clear_attributes", "apply",
-                   "get_sensitivity", "get_sensitivity_type")))
+                   "get_cost_unit", "get_attributes", "clear_attributes",
+                   "apply", "get_sensitivity", "get_sensitivity_type")))
   expect_equal(detection$get_type(), "detection")
   expect_equal(detection$get_label(), "detected")
   expect_equal(detection$get_sensitivity(), sensitivity)
@@ -135,6 +135,10 @@ test_that("applies stochastic detection to invasive population", {
                   attr(attr(new_n2, "detected"), "number")))
   expect_equal(as.numeric(attr(new_n2, "surv_cost")), 2*(sensitivity > 0))
   expect_equal(attr(attr(new_n2, "surv_cost"), "unit"), "$")
+  expect_equal(detection$get_attributes(new_n2),
+               list(detected = attr(new_n2, "detected"),
+                    undetected = attr(new_n2, "undetected"),
+                    surv_cost = attr(new_n2, "surv_cost")))
   expect_silent(new_n2 <- detection$clear_attributes(new_n2))
   expect_null(attr(new_n2, "detected"))
   expect_null(attr(new_n2, "undetected"))
