@@ -1,1 +1,961 @@
-# bsspread
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+# bsspread: Biosecurity Population Spread Modelling
+
+<!-- badges: start -->
+
+[![Last
+commit](https://img.shields.io/github/last-commit/cebra-analytics/bsspread.svg)](https://github.com/cebra-analytics/bsspread/commits/main)
+<!-- badges: end -->
+
+The *bsspread* package provides a collection of workflow components
+implemented in *R* (<https://www.r-project.org/>) as *S3* object
+classes, which encapsulate functionality for building and running
+stochastic simulations that model the population dynamics and
+spatio-temporal spread of biosecurity threats. Population spread
+simulation models are constructed by building and linking workflow
+components as follows:
+
+1.  Define the spatial representation and region of interest for the
+    study.
+2.  Configure the population representation and dynamics for the
+    biosecurity threat.
+3.  Specify how each simulation is initialised.
+4.  Assemble one or more dispersal models for each mode or vector of
+    threat spread.
+5.  Configure and run one or more stochastic spatio-temporal simulations
+    and save their results.
+
+## Workflow components
+
+This section further describes the workflow components for building
+population spread simulation models.
+
+### Region
+
+The region of interest for the study may be configured via the *Region*
+object class. The spatial representation may be configured as either:
+
+- A grid-based raster layer (GeoTIFF file), whereby model processes are
+  configured and simulated using the active (non-NA) cell locations.
+- A network of locations or patches defined via a table of longitude and
+  latitude coordinates (CSV file).
+- A spatially implicit area.
+
+When defined by a grid-based raster layer, the region can be configured
+for two-tier dispersal, whereby long-distance dispersal is calculated
+using a courser (aggregate) spatial resolution for destinations outside
+of an inner radius from each threat-occupied location, within which
+local dispersal is calculated using the original spatial resolution of
+the region.
+
+The *Region* class provides functions for calculating distances and
+directions between (local and aggregate) cells or patches, which is
+utilised by dispersal model components (see below).
+
+The *Region* class also provides functionality for configuring and
+calculating modified dispersal distances for grid-based permeability
+layers or network-based weighted paths (graphs), which is also
+optionally utilised by dispersal model components (see below).
+
+### Population models
+
+The population representation and dynamics of the biosecurity threat may
+be configured via one of the following object classes, which are based
+on (or *inherit*) the *Population* class:
+
+- *PresencePopulation*: Models presence-only populations.
+- *UnstructPopulation*: Models unstructured populations and their
+  growth.
+- *StagedPopulation*: Models stage or age-based populations and their
+  reproduction and survival dynamics.
+
+Presence-only populations are modelled via a binary indication of threat
+presence or absence at each location at each simulation time step. An
+optional *spread delay* parameter may be configured to account for the
+time it takes for a threat species to have the ability to spread after
+it has established in each new location (e.g. seeding plants). This
+representation provides a simple approach that may be suitable for
+modelling spread for some threats, and are particularly useful when the
+parameters required for growth or population dynamics are unknown
+(Bradhurst et al., 2021; Jongejans, Skarpaas, & Shea, 2008).
+
+Unstructured populations are modelled via a numeric population size at
+each location at each simulation time step (Jongejans, Skarpaas, & Shea,
+2008). A *growth* parameter configures the population growth rate or
+lambda (e.g. 1.2 for 20% growth per time step). Capacity-limited growth
+(Ricker, 1958) may be modelled by specifying the carrying *capacity* of
+the threat at each location for grid & network-based models, or for each
+unit area occupied in spatially implicit models.
+
+Stage or age-based populations are modelled via a numeric population
+sizes for each life-stage or age of the threat at each location at each
+simulation time step. The reproduction and survival dynamics of the
+threat species are modelled via stage or age transition rates specified
+via a *growth* matrix (Lefkovitch, 1965; Leslie, 1945). Again, the
+capacity-limited growth (transition rates) may be configured by
+specifying the carrying *capacity*, as well as the life stages or ages
+that are applicable for capacity-limited dynamics (García Adeva, Botha,
+& Reynolds, 2012; Jongejans, Skarpaas, & Shea, 2008).
+
+Either population model (presence-only, unstructured, or staged) may be
+optionally configured with the likelihood or probability that the pest
+will establish on arrival for each grid or network-based dispersal
+destination, often based on threat suitability at each location
+(Bradhurst et al., 2021; García Adeva, Botha, & Reynolds, 2012;
+Jongejans, Skarpaas, & Shea, 2008). This establishment probability may
+also be configured to vary temporally within the simulated model.
+Likewise, the growth or transition rates, as well as the carrying
+capacity (in unstructured or staged populations) may be configured to
+vary spatially, temporally, or both (spatio-temporally) within the
+simulated model,
+
+### Initialisation
+
+The generation of the initial population for each model simulation may
+be configured via the *Initializer* class using either of the following
+approaches (Bradhurst et al., 2021; García Adeva, Botha, & Reynolds,
+2012):
+
+- Pre-defined initial population values at specified locations.
+- Stochastically generate an initial population for each simulation
+  (replicate) at a location chosen via sampling using incursion
+  weightings specified for each location.
+- Stochastically generate an initial population at one or more (or no)
+  locations selected via sampling using arrival probabilities specified
+  at each location. The stochastically generated threat arrivals may
+  optionally continue to be generated at specified simulation time
+  intervals.
+
+Both stochastic generation options also utilise functionality provided
+by the *Incursions* class. Initial population sizes for unstructured and
+staged models are generated via Poison sampling using specified means.
+Initial distributions of staged populations are determined
+stochastically via expected stage/age ratios, given the stages/ages
+specified for initialisation.
+
+### Dispersal models
+
+One or more dispersal models may be assembled and configured for each
+mode or vector of threat spread. The various ways organisms may spread,
+described in Gippet et al. (2019) and Wilson et al. (2009), include:
+
+- Leading edge spread (or ‘diffusion’) from established occupancy to
+  nearby locations.
+- Corridor spread along geographical features such as rivers, roads,
+  etc.
+- Natural long-range spread (commonly referred to as ‘jumps’) by wind,
+  water currents, migratory animals, etc.
+- Human-mediated spread (also referred to as ‘jumps’) by transport,
+  trade, tourism, etc.
+
+Assembling and configuring an appropriate dispersal model for a
+particular mode of spread may be achieved via the following object
+classes:
+
+1.  *Dispersal*: A generic *base* class with dispersal functionality for
+    spatially explicit (grid and network-based) spread of threat
+    *populations* (Bradhurst et al., 2021; García Adeva, Botha, &
+    Reynolds, 2012; Jongejans, Skarpaas, & Shea, 2008; Robinet et
+    al. 2012), including configuration for:
+
+    - The *proportion* of threat individuals dispersing at each time
+      step.
+    - The number of dispersal *events* from each occupied location at
+      each time step.
+    - *Density dependent* dispersal for spread that increases as the
+      number of individuals approach *capacity* (e.g. in response to
+      overcrowding).
+    - The likelihood of dispersal given destination distances (via a
+      *distance function* or *kernel*).
+    - The likelihood of dispersal given destination directions (via a
+      *direction function* or *kernel*).
+    - The likelihood of dispersal given other destination attributes
+      (e.g. food or habitat) or ‘attractiveness’ (via *attractors*).
+    - The *permeability* of the (grid-based) landscape or connectivity
+      of (network-based) locations.
+
+2.  *Kernels*: A class for generating distance or direction functions
+    (or kernels) for calculating the (relative) probability of dispersal
+    given destination distances or directions, used by *Dispersal*
+    models and inherited class objects. The kernel functions include the
+    following commonly used probability distributions (Carrasco et al.,
+    2010-1; Jongejans, Skarpaas, & Shea, 2008; Shaw, 1995):
+
+    - Uniform
+    - Beta (with shift)
+    - Cauchy
+    - Exponential (negative exponential)
+    - Gaussian (normal)
+    - Lognormal
+    - Weibull
+
+    Also included is a function for defining the probability of
+    distances or directions from a table of values.
+
+3.  *DirectionKernel*: A class extending the functionality of the
+    *Kernels* class specifically for generating direction functions (or
+    kernels), which enables:
+
+    - Directions to be defined in degrees (0-360) using trigonometric
+      angles or navigational directions.
+    - The Beta distribution to be shifted or rotated (e.g. for dominant
+      winds).
+
+4.  *Gravity*: A class *inherited* from the *Dispersal* class configured
+    for network gravity models. Gravity models provide mechanisms for
+    biased dispersal patterns based on a combination of distance between
+    locations and ‘attraction’ between origins and destinations, such as
+    population, environmental, and other conditions suitable for the
+    threat organism or its hosts, or factors influenced by human
+    behaviour. Gravity models are analogous to Newton’s gravitational
+    law, whereby the attraction decreases with distance (Bossenbroek,
+    Kraft, & Nekola, 2001; Carrasco et al., 2010-2; Crespo-Pérez et al.,
+    2011; Muirhead et al., 2006). They are typically expressed as a
+    function in the form:
+
+    $dispersal_{ij}=\frac{f(attractor1_{ij},attractor2_{ij},...)}{distance_{ij}^\beta}$
+
+    where a function $f$ of *attractor* variables $attractor1$,
+    $attractor2$, … (often a simple product), combined with the inverse
+    distance to the power of a constant $\beta$ (often 1), is used to
+    calculate the dispersal between origin and destination locations $i$
+    and $j$ respectively.
+
+5.  *Attractor*: A class for encapsulating attractor variables, which
+    can be used in spatially explicit (grid and network-based) dispersal
+    models. Examples of attractor variables include (Bossenbroek, Kraft,
+    & Nekola, 2001; Carrasco et al., 2010-2; Crespo-Pérez et al., 2011;
+    Muirhead et al., 2006; Schneider, Ellis, & Cummings, 1998):
+
+    - Population size or density of threat organisms, host species, or
+      human settlements.
+    - Carrying capacity or suitability.
+    - Environmental or climatic conditions.
+    - Human transport movement numbers or capacity between origins and
+      destinations.
+    - Availability/quantity of host material, such as wood.
+
+6.  *Permeability*: a class to represent the permeability of grid-based
+    landscapes, or location (node/patch) connectivity in network models.
+    Both approaches are implemented via *igraph* (Antonov et al., 2023;
+    Csárdi & Nepusz, 2006; Csárdi et al., 2026):
+
+    - Grid-based permeability uses approaches derived from Etherington
+      (2016), whereby the permeability layer values (0-1) of cells is
+      used to scale the actual distance between adjacent cells when
+      applying a dispersal *distance function* (as above). For example,
+      a permeability value of 0.5 results in an effective distance twice
+      that of the actual distance, a value of 0 prevents spread to or
+      through a cell, whereas a value of 1 does not modify the effective
+      distance.
+    - Network-based connectivity is defined by listing pairs of
+      connected nodes and the weight (0-1) of each connection, thereby
+      limiting the interconnectivity of the network to the pairs listed,
+      as well as modifying the effective distance between connected
+      nodes (as above).
+
+7.  *Diffusion*: A class *inherited* from the *Dispersal* class
+    configured for diffusive spread, which is implemented differently
+    dependent on the spatial (*region*) and *population* configuration:
+
+    - For spatially explicit (grid and network-based) models, diffusion
+      simulates the local spread of populations into neighbouring
+      locations at a speed specified by a *diffusion rate* (Bradhurst et
+      al., 2021; Jongejans, Skarpaas, & Shea, 2008). The optional
+      configuration of *direction function*, *attractors*, and/or
+      *permeability* will thus potentially result in asymmetric
+      diffusion.
+    - For spatially implicit models, diffusion is also defined by a
+      speed specified by a *diffusion rate*. For presence-only
+      populations a simple radial diffusion is applied, whereby the
+      implicit area occupied expands via a circle with a linear
+      increasing radius (up to a maximum area when specified by the
+      *region*). For unstructured and stage-based population models, a
+      *reaction-diffusion* model is applied, whereby capacity-limited
+      growth interplays with radial expansion, which slows down if the
+      population density approaches capacity (Andow et al., 1990;
+      Fisher, 1937; Okubo & Kareiva, 2001; Robinet et al. 2012; Skellam,
+      1951).
+
+8.  *AreaSpread*: A class *inherited* from the *Dispersal* class
+    configured for spatially implicit area spread, whereby the simulated
+    occupied area grows in proportion to the size of an unstructured or
+    stage-based population given its capacity per unit area. When a
+    maximum total area occupied is specified (via the *region*), then
+    both the population and its area of occupancy will follow a typical
+    capacity-limited sigmoid growth curve (Andow et al., 1990; Bradhurst
+    et al., 2021; Jongejans, Skarpaas, & Shea, 2008; Robinet et
+    al. 2012).
+
+### Simulator
+
+A *Simulator* class object is utilised to run one or more stochastic
+simulations of the population spread model utilising the (above) model
+components (Bradhurst et al., 2021; García Adeva, Botha, & Reynolds,
+2012). The simulator is configured with:
+
+- A *Region* class object to define the area of interest.
+- Configuration for the simulation time steps, including:
+  - The number of time steps to be simulated per model simulation.
+  - The duration that each time step represents (e.g. 3 months).
+  - The interval in time steps for collating results for all region
+    locations.
+- The number of model simulations replicates (albeit with stochastic
+  variation) to run.
+- The *Initializer* object configured to initialise the threat
+  population for each simulation.
+- The *Population* or inherited class object configured with growth
+  dynamics, carrying capacities, and establishment probabilities (when
+  applicable).
+- One or more *Dispersal* or inherited class objects configured for each
+  mode or vector of threat spread, including distance and/or direction
+  functions (kernels), attractors, and/or landscape permeability or
+  network connectivity (when applicable).
+- A *user function* for implementing custom functionality applied to the
+  simulated population at each time step.
+
+The simulator creates a *Results* class object to collate, generate, and
+save simulation results. Summary statistics (mean and standard
+deviations across replicates) are collated when more than one replicate
+is run. At each simulation time step the model processes are run in the
+following order:
+
+1.  Apply population growth or transitions.
+2.  Apply spread for each dispersal model (in order).
+3.  Apply the user function (when configured).
+4.  Collate the simulation results.
+
+When all simulations are complete the simulator returns the *Result*
+class object with the collated simulation results.
+
+## Installation
+
+You can install the latest version of *bsspread* from
+[GitHub](https://github.com/) with:
+
+``` r
+remotes::install_github("cebra-analytics/bsspread")
+```
+
+## Example
+
+The following example assembles and runs a population spread simulation
+model for Orange Hawkweed (*Hieracium aurantiacum*), an exotic weed for
+Australia, which approximately reproduces the spread distribution of the
+“dispersal-constrained habitat suitability” model described in Williams,
+Hahs, & Morgan (2008). In the following steps we build the workflow
+components, run the assembled simulation model, and examine the
+simulated results.
+
+### Step 1: Region
+
+The region of interest for our Hawkweed spread model is the Bogong High
+Plains area surrounding the ski-resort township of Falls Creek in
+Victoria, Australia. We derive template raster (GeoTIFF) for the region
+from the National Vegetation Information System (NVIS) V7.0 (NVIS, 2025)
+raster layers. We also use the NVIS data in step 2. Users may download
+[NVIS Raster
+Geodatabases](https://www.dcceew.gov.au/environment/environment-information-australia/national-vegetation-information-system/data-products)
+and place them in a suitable directory (e.g. *downloaded_data*) before
+loading and transforming the NVIS layer. We build our *Region* class
+object with our 100 m resolution template and configure it for two-tier
+dispersal, whereby dispersal beyond a 5 km radius is performed via a
+courser-grain 500 m resolution grid.
+
+``` r
+# Load NVIS major vegetation groups (MGV)
+nvis_rast <- terra::rast(
+  paste0("../downloaded_data/NVIS_V7_0_AUST_RASTERS_EXT_ALL/",
+         "NVIS_V7_0_AUST_EXT.gdb"))[["NVIS7_0_AUST_EXT_MVG_ALB"]]
+# Crop to the region of interest
+region_nvis_rast <- terra::crop(nvis_rast,
+                                c(1354000, 1372000, -4120000, -4103000))
+# Region class object configured with a masked NVIS template
+region <- bsspread::Region(+(region_nvis_rast > 0))
+region$set_aggr(aggr_factor = 5, inner_radius = 5000)
+terra::plot(region$get_rast(1), colNA = "grey",
+            main = "Hawkweed example region")
+```
+
+<img src="man/figures/README-example_1-1.png" width="100%" style="display: block; margin: auto;" />
+
+### Step 2: Population model
+
+For our Hawkweed example we will utilise a presence-only population
+model. We will configure the establishment probability for the
+population by approximately reproducing the habitat suitability index
+(HSI) provided in Williams, Hahs, & Morgan (2008 - Figure 4).
+
+#### Habitat suitability
+
+The habitat suitability index (HSI) provided by Williams, Hahs, & Morgan
+(2008) combined three components:
+
+- Vegetation type
+- Soil moisture
+- Level of disturbance
+
+via $HSI = (vegetation\cdot moisture\cdot disturbance)^{1/3}$.
+
+For the vegetation component of our habitat suitability we approximately
+map habitat suitability values for vegetation/landscape types provided
+in Williams, Hahs, & Morgan (2008 - Table 1) to NVIS (2025) major
+vegetation group (MVG) classes:
+
+| Vegetation type                  | Est. prob. | Mapped to MVG |
+|:---------------------------------|:----------:|:-------------:|
+| Bog                              |    0.01    |      27       |
+| Celmisia sericophylla herbland   |    0.01    |      21       |
+| Closed heathland                 |    0.50    |      18       |
+| Disturbed areas                  |    0.99    |      25       |
+| Kunzea heathland                 |    0.50    |      18       |
+| Late-lying snowpatch             |    0.10    |      \-       |
+| Open heathland                   |    0.90    |      18       |
+| Poa hiemata tussock grassland    |    0.99    |      19       |
+| Poa costiniana tussock grassland |    0.99    |      19       |
+| Podocarpus heathland             |    0.01    |      18       |
+| Relic bog                        |    0.20    |      27       |
+| Rocky grassland                  |    0.50    |      21       |
+| Rocky outcrops                   |    0.01    |      27       |
+| Short turf snowpatch             |    0.30    |      21       |
+| Subalpine grassland              |    0.90    |      21       |
+| Forests (assumed low)            |    0.01    |       3       |
+| Woodlands (assumed low)          |    0.01    |       5       |
+
+We assign a suitability value of 0.5 to the NVIS “unclassified native
+vegetation”, which includes the Falls Creek township area.
+
+``` r
+# Vegetation suitability via mapping to NVIS MVG 
+vegetation_suit_rast <- terra::classify(
+  region_nvis_rast,
+  matrix(c(
+    3,  0.01, # Eucalypt Open Forests
+    5,  0.01, # Eucalypt Woodlands
+    10, 0.01, # Other Forests and Woodlands
+    17, mean(c(0.50, 0.50, 0.90, 0.01)), # Other Shrublands (as per Heathlands)
+    18, mean(c(0.50, 0.50, 0.90, 0.01)), # Heathlands
+    19, 0.99, # Tussock Grasslands
+    21, mean(c(0.01, 0.50, 0.30, 0.90)), # Other Grasslands, Herblands, Sedgelands and Rushlands
+    24, 0.00, # Inland Aquatic - freshwater, salt lakes, lagoons
+    25, 0.99, # Cleared, non-native vegetation, buildings
+    26, 0.50, # Unclassified native vegetation
+    27, 0.01  # Naturally bare - sand, rock, claypan, mudflat
+  ), ncol = 2, byrow = TRUE))
+terra::plot(vegetation_suit_rast, colNA = "grey",
+            main = "Hawkweed vegetation suitability")
+```
+
+<img src="man/figures/README-example_2_1-1.png" width="100%" style="display: block; margin: auto;" />
+
+For the soil moisture component of our habitat suitability we firstly
+examined soil moisture distributions via
+[tern](https://portal.tern.org.au/metadata/d1995ee8-53f0-4a7d-91c2-ad5e4a23e5e0)
+(Stenson et al., 2021), and found that medium levels of soil moisture
+were evident across our region at a 1km resolution. Williams, Hahs, &
+Morgan (2008 - Figure 1) classifies medium soil moisture (wetness index)
+values as suitable (1) and lower and upper values as unsuitable (0).
+They estimated localised moisture values (at a 20 metre resolution)
+based on calculated total upslope catchment areas derived from a digital
+elevation model. Here we utilise a simpler approach to identify
+localised low lying areas with potential high soil moisture based on
+localised upslope via a digital elevation model (DEM) from Geoscience
+Australia (Gallant et al., 2009). Users may download the [Geoscience
+Australia DEM layer](https://pid.geoscience.gov.au/dataset/ga/69888) and
+place it in a suitable directory (e.g. *downloaded_data*).
+
+``` r
+# Soil moisture suitability via localised low lying areas utilising DEM
+dem_rast <- terra::rast(paste0("../downloaded_data/3secSRTM_DEM/",
+                               "DEM_ESRI_GRID_16bit_Integer/dem3s_int"))
+region_dem_rast <- terra::crop(dem_rast, terra::project(region_nvis_rast,
+                                                        terra::crs(dem_rast)))
+moisture_suit_rast <- region_dem_rast*0
+terra::values(moisture_suit_rast) <-
+  sapply(1:terra::ncell(region_dem_rast), function(i) {
+    # Examine neighbouring elevations
+    nh_elev <- region_dem_rast[terra::adjacent(region_dem_rast, i,
+                                               directions = "rook")[1,]][,1]
+    if (sum(nh_elev >= region_dem_rast[i][,1]) == 4) { # local low
+      return(0) # all surrounding cells are upslope or level
+    } else {
+      return(1)
+    }
+  })
+# Project to Albers via bilinear interpolation
+moisture_suit_rast <- terra::project(moisture_suit_rast, region_nvis_rast)
+terra::plot(moisture_suit_rast, colNA = "grey",
+            main = "Hawkweed moisture suitability")
+```
+
+<img src="man/figures/README-example_2_2-1.png" width="100%" style="display: block; margin: auto;" />
+
+For the level of disturbance component of our habitat suitability we
+utilise (one minus) habitat condition via the [CSIRO HCAS
+layer](https://data.csiro.au/collection/csiro:63571) (Valavi et al.,
+2025) as an approximation to the more complex disturbance component
+described in Williams, Hahs, & Morgan (2008). Lower values of habitat
+condition correspond to higher levels of disturbance, thus we utilise
+1 - HCAS. Users may download the [CSIRO HCAS
+layer](https://data.csiro.au/collection/csiro:63571) and place it in a
+suitable directory (e.g. *downloaded_data*).
+
+``` r
+# Habitat disturbance via 1 - HCAS
+hcas_rast <- terra::rast("../downloaded_data/HCAS33_HCB_1988_2024.tif")
+habitat_disturb_rast <- 1 - terra::resample(
+  terra::project(terra::crop(hcas_rast,
+                             c(1354000, 1372000, -4120000, -4103000)),
+                 region_nvis_rast), region_nvis_rast)
+terra::plot(habitat_disturb_rast, colNA = "grey",
+            main = "Habitat disturbance (1 - HCAS)")
+```
+
+<img src="man/figures/README-example_2_3-1.png" width="100%" style="display: block; margin: auto;" />
+
+We can now combine our layers for our approximate habitat suitability
+via $HSI = (vegetation\cdot moisture\cdot disturbance)^{1/3}$. We will
+limit the values having low vegetation suitability to 0.01 to avoid
+increasing the suitability of forests and woodlands, particularly those
+surrounding the area encapsulated by the Williams, Hahs, & Morgan (2008)
+HSI model.
+
+``` r
+# Combined vegetation suitability, soil moisture level, and habitat disturbance
+habitat_suit_rast <- (vegetation_suit_rast*moisture_suit_rast*
+                        habitat_disturb_rast)^(1/3)
+# Limit to 0.01 where vegetation suitability is low
+limit_rast <- (habitat_suit_rast > 0.01 & vegetation_suit_rast <= 0.01)
+habitat_suit_rast <- (habitat_suit_rast*(!limit_rast) +
+                        vegetation_suit_rast*limit_rast)
+terra::plot(habitat_suit_rast, colNA = "grey",
+            main = "Hawkweed habitat suitability")
+```
+
+<img src="man/figures/README-example_2_4-1.png" width="100%" style="display: block; margin: auto;" />
+
+#### Presence-only population model
+
+We can now build our presence-only population model.
+
+``` r
+# Presence-only population model
+population_model <- bsspread::PresencePopulation(
+  region,
+  establish_pr = habitat_suit_rast[][,1])
+```
+
+### Step 3: Initialization
+
+Each spread model simulation is initialized with Hawkweed presence at a
+randomly selected location within the Falls Creek township area where it
+was detected and eradicated during 1998-2000 (Williams, Hahs, & Morgan,
+2008 - Figure 3). A raster defining the township area can be downloaded
+from [here](https://github.com/cebra-analytics/bsspread/tree/main/data)
+and copied into a *data* directory.
+
+``` r
+# Initial Hawkweed presence within the Falls Creek township area
+initial_rast <- terra::rast("data/falls_creek_town.tif")
+incursions <- bsspread::Incursions(initial_rast,
+                                   region = region,
+                                   type = "weight")
+initializer <- bsspread::Initializer(incursions,
+                                     region = region,
+                                     population_model = population_model)
+terra::plot(initial_rast, colNA = "grey",
+            main = "Initial Hawkweed within Falls Creek township")
+```
+
+<img src="man/figures/README-example_3-1.png" width="100%" style="display: block; margin: auto;" />
+
+### Step 4: Dispersal models
+
+The Hawkweed spread is modelled via a kernel-based *Dispersal* class
+object with custom distance and direction functions or kernels.
+
+#### Distance kernel
+
+The distance kernel for our Hawkweed spread is based on a function
+described in Williams et al. (2008) and Hauser et al. (2016 - App.S2).
+To reproduce this custom function we build a lookup table for the
+function via a *Kernels* class object:
+
+``` r
+# Dispersal kernel (Williams et al., 2008; Hauser et al. 2016 - App.S2)
+distance_function <- function(d) 1 - exp(-1*(d/100)^-1.0385)
+distance_lookup <- data.frame(d = 0:10000, # m
+                              p = distance_function(0:10000))
+kernel_generator <- bsspread::Kernels()
+distance_kernel <- kernel_generator$get_lookup_function(distance_lookup)
+plot(0:5000, distance_kernel(0:5000), type = "l",
+     xlab = "Distance (m)", ylab = "Pr(dispersal)",
+     main = "Hawkweed dispersal distance kernel")
+```
+
+<img src="man/figures/README-example_4_1-1.png" width="100%" style="display: block; margin: auto;" />
+
+#### Direction kernel
+
+The direction kernel for our Hawkweed spread is based on a prevailing
+wind directions illustrated in Hauser et al. (2016 - Figure 1c). To
+reproduce this as a custom function we approximate a lookup table for
+the function via a *DirectionKernel* class object:
+
+``` r
+# Approximated from Hauser et al. (2016) Figure 1c
+direction_lookup <- as.data.frame(
+  matrix(c( 0.0,  1.0, # N
+           22.5,  1.0, # NNE
+           45.0,  0.2, # NE
+           67.5,  0.2, # ENE
+           90.0,  0.3, # E
+           112.5, 0.5, # ESE
+           135.0, 0.6, # SE
+           157.5, 0.5, # SSE
+           180.0, 0.3, # S
+           202.5, 0.2, # SSW
+           225.0, 0.2, # SW
+           247.5, 0.3, # WSW
+           270.0, 0.5, # W
+           292.5, 0.6, # WNW
+           315.0, 0.7, # NW
+           337.5, 1.0  # NNW
+  ), ncol = 2, byrow = TRUE))
+names(direction_lookup) <- c("dir", "pr")
+rownames(direction_lookup) <- c("N", "NNE", "NE", "ENE", 
+                                "E", "ESE", "SE", "SSE", 
+                                "S", "SSW", "SW", "WSW",
+                                "W", "WNW", "NW", "NNW")
+kernel_generator <- bsspread::DirectionKernel(direction_type = "navigational",
+                                              orientation = "from")
+direction_kernel <- kernel_generator$get_lookup_function(direction_lookup)
+radar_data <- as.data.frame(t(as.matrix(direction_kernel(c(90:359, 0:89)))))
+radar_data <- rbind(rep(1, 360) , rep(0, 360) , radar_data)
+vlabels <- rep("", 360)
+vlabels[seq(1, 360, 45)] <- rownames(direction_lookup)[c(1, seq(15, 2, -2))]
+fmsb::radarchart(radar_data, vlabels = vlabels, pty = 32, seg = 36,
+                 cglcol = "grey", pfcol = "darkgrey", 
+                 title = "Probability of Hawkweed dispersal to direction")
+```
+
+<img src="man/figures/README-example_4_2-1.png" width="100%" style="display: block; margin: auto;" />
+
+#### Dispersal class object
+
+We can now build our *Dispersal* class object with the custom distance
+and direction kernels. To estimate the mean number of dispersal *events*
+from each occupied location at each simulated time step we consider
+published information about Hawkweed seed dispersal. Hawkweeds produce
+up to 40,000 seeds a year per one squared metre mat, and can form a
+colony up to 0.5 metres across in its first year (CRC, 2003).
+Approximately 8% of seeds travel greater than 100 metres (Williams et
+al., 2008). Thus, we would expect up to 40000\*0.25\*0.08 = 800 seeds to
+disperse (\> 100 m) from each (new) colony, although we wouldn’t expect
+all seeds arriving in suitable locations to establish and grow into a
+new colony in the following year. Seeds remain viable for up to 7 years
+(Hauser & McCarthy, 2009) and may establish in suitable locations in
+subsequent years. These delayed seed establishment dynamics may be
+modelled with complex stage-based population models over longer
+time-spans. However, for our simple presence-only model we only consider
+seed arrivals that establish new colonies in their first year. To
+approximately reproduce the spread distribution of the
+“dispersal-constrained habitat suitability” model from Williams et
+al. (2008 - Figure 6) and Hauser & McCarthy (2009 - Figure 2a), we
+estimate that up to 10% of seed arrivals establish within suitable
+locations in their first year, thus a mean number of dispersal *events*
+of 80 was chosen for our model. Alternatively, we could have scaled our
+establishment probability estimated in step 2 by 10% to model the
+single-year establishment of all (up to 800) seeds dispersing, but this
+would be more computationally demanding to simulate.
+
+``` r
+dispersal_model <- bsspread::Dispersal(region,
+                                       population_model,
+                                       events = 80,
+                                       distance_function = distance_kernel,
+                                       direction_function = direction_kernel)
+```
+
+### Step 5: Simulator
+
+We can now build and run our population spread model simulations via a
+*Simulator* class object, with links to our population model,
+initializer, and dispersal model. We will run 1000 replicate stochastic
+model simulations each having two 1-year time steps.
+
+``` r
+progress_function <- function(n, r, tm) {
+  if (r %% 100 == 0 && tm == 2) {
+    print(paste("replicate", r))
+  }
+  return(n)
+}
+simulator <- bsspread::Simulator(region,
+                                 time_steps = 2,
+                                 step_duration = 1,
+                                 step_units = "years",
+                                 replicates = 1000,
+                                 parallel_cores = 8,
+                                 initializer = initializer,
+                                 population_model = population_model,
+                                 dispersal_models = list(dispersal_model),
+                                 user_function = progress_function)
+results <- simulator$run()
+#> [1] "replicate 100"
+#> [1] "replicate 200"
+#> [1] "replicate 300"
+#> [1] "replicate 400"
+#> [1] "replicate 500"
+#> [1] "replicate 600"
+#> [1] "replicate 700"
+#> [1] "replicate 800"
+#> [1] "replicate 900"
+#> [1] "replicate 1000"
+```
+
+### Step 6: Results
+
+The *Simulator* class object’s *run* method returns a *Results* class
+object encapsulating the collated simulation results, as well as
+functions for accessing raw results and saving results to files. Note
+that it is recommended to create and set the destination directory for
+the result files (e.g. *setwd(“results_dir”)*) prior to saving results.
+
+``` r
+# Save raster files for each simulated time step
+result_rast <- results$save_rasters()
+result_rast
+#> $occupancy_mean
+#> class       : SpatRaster 
+#> size        : 170, 180, 3  (nrow, ncol, nlyr)
+#> resolution  : 100, 100  (x, y)
+#> extent      : 1354000, 1372000, -4120000, -4103000  (xmin, xmax, ymin, ymax)
+#> coord. ref. : GDA2020 / Australian Albers (EPSG:9473) 
+#> sources     : occupancy_t0_mean.tif  
+#>               occupancy_t1_mean.tif  
+#>               occupancy_t2_mean.tif  
+#> names       :     0,     1,     2 
+#> min values  : 0.000, 0.000, 0.000 
+#> max values  : 0.037, 0.269, 0.831
+# Plot the mean occupancy for time steps 1 and 2
+label <- attr(result_rast$occupancy_mean, "metadata")$label
+for (i in 2:3) {
+  terra::plot(log(result_rast$occupancy_mean[[i]], base = 10), colNA = "black",
+              main = paste(label, ": time step", i - 1, "(log)"))
+}
+```
+
+<img src="man/figures/README-example_6_1-1.png" width="100%" style="display: block; margin: auto;" /><img src="man/figures/README-example_6_1-2.png" width="100%" style="display: block; margin: auto;" />
+
+The raster plots indicate the mean (log) occupancy across the 1000
+replicate simulations. Note that unstructured and staged population
+models also produce raster plots for the standard deviation (SD) of
+occupancy, as well as mean and SD for population sized. We may also
+examine the total occupancy (locations occupied) and the total area
+occupied via summary tables (CSV).
+
+``` r
+# Save CSV summary tables
+results$save_csv()
+total_occupancy <- read.csv("total_occupancy.csv")
+colnames(total_occupancy)[1] <- "Total occupancy"
+print(total_occupancy)
+#>   Total occupancy t0        t1       t2
+#> 1            mean  1 22.025000 435.6660
+#> 2              sd  0  5.078796 103.7741
+total_area_occupied <- read.csv("total_area_occupied.csv")
+colnames(total_area_occupied)[1] <- "Total area occupied"
+print(total_area_occupied)
+#>   Total area occupied    t0        t1      t2
+#> 1                mean 10000 220250.00 4356660
+#> 2                  sd     0  50787.96 1037741
+```
+
+Time-series plots of total occupancy and total area occupied may also be
+saved. These plots show the mean +/- 2 SD.
+
+``` r
+# Save summary time-series plots
+results$save_plots()
+dir(pattern = "*.png")
+#> [1] "total_area_occupied.png" "total_occupancy.png"
+```
+
+![Total occupancy](man/figures/total_occupancy.png) ![Total area
+occupied](man/figures/total_area_occupied.png)
+
+## References
+
+Andow, D. A., Kareiva, P. M., Levin, S. A., & Okubo, A. (1990). ‘Spread
+of invading organisms’. *Landscape Ecology*, 4(2–3), 177.
+[doi:10.1007/bf00132860](https://doi.org/10.1007/bf00132860)
+
+Antonov, M., Csárdi, G., Horvát, S., Müller, K., Nepusz, T., Noom, D.,
+Salmon, M., Traag, V., Welles, B. F., & Zanini, F. (2023). ‘igraph
+enables fast and robust network analysis across programming languages’.
+*arXiv* preprint arXiv:2311.10260.
+[doi:10.48550/arXiv.2311.10260](https://doi.org/10.48550/arXiv.2311.10260)
+
+Bossenbroek, J. M., Kraft, C. E., & Nekola, J. C. (2001). ‘Prediction of
+Long-Distance Dispersal Using Gravity Models: Zebra Mussel Invasion of
+Inland Lakes’. *Ecological Applications*, 11(6), 1778–1788.
+[doi:10.2307/3061095](https://doi.org/10.2307/3061095)
+
+Bradhurst, R., Spring, D., Stanaway, M., Milner, J., & Kompas, T.
+(2021). ‘A generalised and scalable framework for modelling incursions,
+surveillance and control of plant and environmental pests’.
+*Environmental Modelling & Software*, 139, N.PAG.
+[doi:10.1016/j.envsoft.2021.105004](https://doi.org/10.1016/j.envsoft.2021.105004)
+
+Carrasco, L. R., Harwood, T. D., Toepfer, S., MacLeod, A., Levay, N.,
+Kiss, J., Baker, R. H. A., Mumford, J. D., & Knight, J. D. (2010-1).
+‘Dispersal kernels of the invasive alien western corn rootworm and the
+effectiveness of buffer zones in eradication programmes in Europe’.
+*Annals of Applied Biology*, 156(1), 63–77.
+[doi:10.1111/j.1744-7348.2009.00363.x](https://doi.org/10.1111/j.1744-7348.2009.00363.x)
+
+Carrasco, L. R., Mumford, J. D., MacLeod, A., Harwood, T., Grabenweger,
+G., Leach, A. W., Knight, J. D., & Baker, R. H. A. (2010-2). ‘Unveiling
+human-assisted dispersal mechanisms in invasive alien insects:
+Integration of spatial stochastic simulation and phenology models’.
+*Ecological Modelling*, 221(17), 2068–2075.
+[doi:10.1016/j.ecolmodel.2010.05.012](https://doi.org/10.1016/j.ecolmodel.2010.05.012)
+
+CRC (2003). Orange Hawkweed Weed Management Guide (2003) CRC for Weed
+Management. Accessed in 2026 via
+<https://weeds.org.au/profiles/orange-hawkweed/>
+
+Crespo-Pérez, V., Rebaudo, F., Silvain, J.-F., & Dangles, O. (2011).
+‘Modeling invasive species spread in complex landscapes: the case of
+potato moth in Ecuador’. *Landscape Ecology*, 26(10), 1447.
+[doi:10.1007/s10980-011-9649-4](https://doi.org/10.1007/s10980-011-9649-4)
+
+Csárdi, G., Nepusz, T. (2006). ‘The igraph software package for complex
+network research’. *InterJournal*, *Complex Systems*, 1695.
+<https://igraph.org>
+
+Csárdi, G., Nepusz, T., Traag, V., Horvát, S., Zanini, F., Noom, D.,
+Müller, K., Schoch, D., & Salmon, M. (2026). ‘igraph: Network Analysis
+and Visualization in R’.
+[doi:10.5281/zenodo.7682609](https://doi.org/10.5281/zenodo.7682609). R
+package version 2.3.1, <https://CRAN.R-project.org/package=igraph>
+
+Etherington, T. R. (2016). ‘Least-cost modelling and landscape ecology:
+Concepts, applications, and opportunities’. *Current Landscape Ecology
+Reports*, 1, 40–53.
+[doi:10.1007/s40823-016-0006-9](https://doi.org/10.1007/s40823-016-0006-9)
+
+Fisher, R. A. (1937). ‘The wave of advance of advantageous genes’. *Ann.
+Eugenics* 7, 355–369.
+[doi:10.1111/j.1469-1809.1937.tb02153.x](https://doi.org/10.1111/j.1469-1809.1937.tb02153.x)
+
+Gallant, J., Wilson, N., Tickle, P.K., Dowling, T., Read, A. (2009),
+‘2009 3 second SRTM Derived Digital Elevation Model (DEM) Version 1.0’.
+*Geoscience Australia*, Canberra.
+<https://pid.geoscience.gov.au/dataset/ga/69888>
+
+García Adeva, J. J., Botha, J. H., & Reynolds, M. (2012). ‘A simulation
+modelling approach to forecast establishment and spread of Bactrocera
+fruit flies’. *Ecological Modelling*, 227, 93–108.
+[doi:10.1016/j.ecolmodel.2011.11.026](https://doi.org/10.1016/j.ecolmodel.2011.11.026)
+
+Gippet, J. M., Liebhold, A. M., Fenn-Moltu, G., & Bertelsmeier, C.
+(2019). ‘Human-mediated dispersal in insects’. *Current Opinion in
+Insect Science*, 35, 96.
+[doi:10.1016/j.cois.2019.07.005](https://doi.org/10.1016/j.cois.2019.07.005)
+
+Hauser, C. E., Giljohann, K. M., Rigby, M., Herbert, K., Curran, I.,
+Pascoe, C., Williams, N. S. G., Cousens, R. D., & Moore, J. L. (2016).
+‘Practicable methods for delimiting a plant invasion’. *Diversity and
+Distributions*, 22(1/2), 136–147.
+[doi:10.1111/ddi.12388](https://doi.org/10.1111/ddi.12388)
+
+Hauser, C. E., & McCarthy, M. A. (2009). ‘Streamlining “search and
+destroy”: cost-effective surveillance for invasive species management’.
+*Ecology Letters*, 12(7), 683–692.
+[doi:10.1111/j.1461-0248.2009.01323.x](https://doi.org/10.1111/j.1461-0248.2009.01323.x)
+
+Jongejans, E., Skarpaas, O., & Shea, K. (2008). ‘Dispersal, demography
+and spatial population models for conservation and control management’.
+*Perspectives In Plant Ecology Evolution And Systematics*, 9(3–4),
+153–170.
+[doi:10.1016/j.ppees.2007.09.005](https://doi.org/10.1016/j.ppees.2007.09.005)
+
+Lefkovitch Lp. (1965). ‘Study of Population Growth in Organisms Grouped
+by Stages’. *Biometrics*, 21(1), 1–18.
+[doi:10.2307/2528348](https://doi.org/10.2307/2528348)
+
+Leslie, P. H. (1945). ‘On the Use of Matrices in Certain Population
+Mathematics’. *Biometrika*, 33(3), 183–212.
+[doi:10.2307/2332297](https://doi.org/10.2307/2332297)
+
+Muirhead, J. R., Leung, B., Overdijk, C., Kelly, D. W., Nandakumar, K.,
+Marchant, K. R., & MacIsaac, H. J. (2006). ‘Modelling local and
+long-distance dispersal of invasive emerald ash borer Agrilus
+planipennis (Coleoptera) in North America’. *Diversity & Distributions*,
+12(1), 71–79.
+[doi:10.1111/j.1366-9516.2006.00218.x](https://doi.org/10.1111/j.1366-9516.2006.00218.x)
+
+National Vegetation Information System (NVIS) V7.0
+<https://www.dcceew.gov.au/> from copyright Commonwealth of Australia
+2025
+
+Okubo, A., & Kareiva, P. (2001). ‘Some Examples of Animal Diffusion’. In
+A. Okubo & S. A. Levin (Eds.) *Diffusion and Ecological Problems: Modern
+Perspectives* (pp. 238-267). Springer New York.
+[doi:10.1007/978-1-4757-4978-6](https://doi.org/10.1007/978-1-4757-4978-6)
+
+Ricker, W. E. (1958). ‘Handbook of computations for biological
+statistics of fish populations’. *Fisheries Research Board of Canada,
+Ottawa*, Bulletin No. 119.
+
+Robinet, C., Kehlenbeck, H., Kriticos, D. J., Baker, R. H. A., Battisti,
+A., Brunel, S., Dupin, M., Eyre, D., Faccoli, M., Ilieva, Z., Kenis, M.,
+Knight, J., Reynaud, P., Yart, A., & van der Werf, W. (2012). ‘A Suite
+of Models to Support the Quantitative Assessment of Spread in Pest Risk
+Analysis’. *PLoS ONE*, 7(10), 1–18.
+[doi:10.1371/journal.pone.0043366](https://doi.org/10.1371/journal.pone.0043366)
+
+Schneider, D. W., Ellis, C. D., & Cummings, K. S. (1998). ‘A
+Transportation Model Assessment of the Risk to Native Mussel Communities
+from Zebra Mussel Spread’. *Conservation Biology*, 12(4), 788–800.
+[doi:10.1111/j.1523-1739.1998.97042.x](https://doi.org/10.1111/j.1523-1739.1998.97042.x)
+
+Shaw, M. W. (1995). ‘Simulation of Population Expansion and Spatial
+Pattern when Individual Dispersal Distributions do not Decline
+Exponentially with Distance’. *Proceedings B: Biological Sciences*,
+259(1356), 243–248.
+[doi:10.1098/rspb.1995.0036](https://doi.org/10.1098/rspb.1995.0036)
+
+Skellam, J. G. (1951). ‘Random Dispersal in Theoretical Populations’.
+*Biometrika*, 38(1/2), 196–218.
+[doi:10.2307/2332328](https://doi.org/10.2307/2332328)
+
+Stenson, M., Searle, R., Malone, B., Sommer, A., Renzullo, L. & Di, H.
+(2021). Australia wide daily volumetric soil moisture estimates. Version
+1.0. Terrestrial Ecosystem Research Network. Dataset.
+[doi:10.25901/b020-nm39](https://dx.doi.org/10.25901/b020-nm39).
+Viewable access via <https://shiny.esoil.io/SMIPS/>
+
+Valavi R, Levick SR, Lehmann EA, Liu N, Giljohann KM, Williams KJ,
+Collings S, Johnson S, Botha EJ, Munroe SEM, Van Niel TG, Newnham G,
+Paget M, Malley C, Carlile P, Gunawardana D, Lyon P, Richards AE,
+Tetreault Campbell S and Ferrier S (2025) ‘HCAS 3.3 (1988-2024) base
+model estimate of habitat condition (90m grid), National Connectivity
+Index 2.0 (NCI) and annual time series for continental Australia’. Data
+collection 65549. *CSIRO*, Canberra, Australia. DOI:
+<https://data.csiro.au/collection/csiro:65549>.
+
+Williams, N. S. G., Hahs, A. K., & Morgan, J. W. (2008). ‘A
+Dispersal-Constrained Habitat Suitability Model for Predicting Invasion
+of Alpine Vegetation’. *Ecological Applications*, 18(2), 347–359.
+[doi:10.1890/07-0868.1](https://doi.org/10.1890/07-0868.1)
+
+Wilson, J. R. U., Dormontt, E. E., Prentis, P. J., Lowe, A. J., &
+Richardson, D. M. (2009). ‘Something in the way you move: dispersal
+pathways affect invasion success’. *Trends in Ecology & Evolution*,
+24(3), 136.
+[doi:10.1016/j.tree.2008.10.007](https://doi.org/10.1016/j.tree.2008.10.007)

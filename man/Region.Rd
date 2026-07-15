@@ -128,7 +128,27 @@ also provided, as well as functionality for calculating weighted paths
 (graphs) between cells (local and aggregate) or patches via permeability
 layers/networks. When used, the inverse of the permeability (0-1) of
 cells/patches is used to (linearly) scale the actual distance between
-adjacent/connected cells/patched. The effective distance between any two
+adjacent/connected cells/patches. The effective distance between any two
 cells/patches in the region is thus calculated via the shortest weighted
 path between the cells/patches.
+}
+\references{
+Antonov, M., Csárdi, G., Horvát, S., Müller, K., Nepusz, T., Noom, D.,
+Salmon, M., Traag, V., Welles, B. F., & Zanini, F. (2023). igraph enables
+fast and robust network analysis across programming languages.
+\emph{arXiv} preprint arXiv:2311.10260. \doi{10.48550/arXiv.2311.10260}
+
+Csárdi, G., Nepusz, T. (2006). The igraph software package for complex
+network research. \emph{InterJournal}, \emph{Complex Systems}, 1695.
+\url{https://igraph.org}
+
+Csárdi, G., Nepusz, T., Traag, V., Horvát, S., Zanini, F., Noom, D.,
+Müller, K., Schoch, D., & Salmon, M. (2026). igraph: Network Analysis and
+Visualization in R. \doi{10.5281/zenodo.7682609}. R package version 2.3.1,
+\url{https://CRAN.R-project.org/package=igraph}
+
+Etherington, T. R. (2016). Least-cost modelling and landscape ecology:
+Concepts, applications, and opportunities',
+\emph{Current Landscape Ecology Reports}, 1, 40–53.
+<\doi{10.1007/s40823-016-0006-9}
 }

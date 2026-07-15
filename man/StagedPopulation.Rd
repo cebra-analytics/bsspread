@@ -111,11 +111,10 @@ specified region locations \code{cells} (indices) at (optional)
 simulation time step \code{tm} (for temporally defined capacity).}
 \item{\code{get_capacity_stages()}}{Get the stage/age (indices) that are
 applicable for capacity-limited growth.}
-\item{\code{set_capacity_mult(m)}}{Dynamically set a multiplier for
-the capacity values. Parameter \code{m} may either be the population
-with a list of linked multipliers attached as an attribute
-\code{"dynamic_mult"} (see \code{bsmanage::ManageImpacts}), or a
-multiplier vector (assumed when linked attribute is absent).}
+\item{\code{set_capacity_mult(n)}}{Dynamically set a multiplier for
+the capacity values when the population \code{n} has an attached
+attribute \code{"dynamic_mult"} containing multipliers linked to
+capacity (see \code{bsmanage::ManageImpacts}).}
 \item{\code{get_establish_pr(cells = NULL, tm = NULL)}}{Get the
 establishment probability as a vector of values for each region
 location or optionally specified region locations \code{cells}
@@ -155,7 +154,10 @@ spatial population models for conservation and control management.
 
 Lefkovitch, L. P. (1965). The Study of Population Growth in Organisms
 Grouped by Stages. \emph{Biometrics}, 21(1), 1–18.
-\doi{doi.org/10.2307/2528348}
+\doi{10.2307/2528348}
+
+Leslie, P. H. (1945). On the Use of Matrices in Certain Population
+Mathematics. \emph{Biometrika}, 33(3), 183–212. \doi{10.2307/2332297}
 
 Ricker, W. E. (1958). Handbook of computations for biological statistics
 of fish populations. \emph{Bulletin (Fisheries Research Board of Canada)},

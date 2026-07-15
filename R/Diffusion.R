@@ -3,29 +3,30 @@
 #' Builds a class for representing diffusive dispersal for spread simulations
 #' with functionality inherited from the generic dispersal model.
 #' Diffusion simulates the local spread of populations into neighbouring
-#' locations (cells) a speed specified by the \code{diffusion_rate} parameter.
-#' Diffusion may be simulated for presence-only, unstructured or stage-based
-#' \code{populations}. For unstructured or stage-based populations, a specified
-#' \code{proportion} of the population at each occupied (cell) location is
-#' selected (sampled) for diffusive dispersal at each simulation time step.
-#' Presence-only populations may diffuse into a specified \code{proportion} of
-#' neighbouring locations that are reachable at the specified diffusion rate
-#' within each simulation time step. The probability of diffusive dispersal may
-#' optionally be adjusted via \code{direction} functions and/or
-#' \code{attractor} (layer) values, as well as \code{permeability} or
-#' constraint layers, which are used to adjust (effective) distances between
-#' cells and/or omit unreachable destinations. An optional establishment
-#' likelihood (layer), which is configured via the population model, may be
-#' applied to each diffusive dispersal, resulting in potential "deaths" of
-#' individuals or unsuccessful presence-only dispersal events. The dispersal
-#' functionality utilizes a wrapped population list of separate values for the
-#' \code{original}, \code{remaining}, and \code{relocated} populations. This
-#' separation enables multiple dispersal models, representing different
-#' dispersal vectors, to be run in sequence. For example, local diffusion may
-#' be combined with human-mediated and/or wind-based long-distant "jump"
-#' dispersal. Spatially implicit diffusion is also provided via simple radial
-#' diffusion for a presence-only single-patch population, or via
-#' reaction-diffusion for unstructured or stage-based single patch populations.
+#' locations (cells) at a speed specified by the \code{diffusion_rate}
+#' parameter. Diffusion may be simulated for presence-only, unstructured or
+#' stage-based \code{populations}. For unstructured or stage-based populations,
+#' a specified \code{proportion} of the population at each occupied (cell)
+#' location is selected (sampled) for diffusive dispersal at each simulation
+#' time step. Presence-only populations may diffuse into a specified
+#' \code{proportion} of neighbouring locations that are reachable at the
+#' specified diffusion rate within each simulation time step. The probability
+#' of diffusive dispersal may optionally be adjusted via \code{direction}
+#' functions and/or \code{attractor} (layer) values, as well as
+#' \code{permeability} or constraint layers, which are used to adjust
+#' (effective) distances between cells and/or omit unreachable destinations.
+#' An optional establishment likelihood (layer), which is configured via the
+#' population model, may be applied to each diffusive dispersal, resulting in
+#' potential "deaths" of individuals or unsuccessful presence-only dispersal
+#' events. The dispersal functionality utilizes a wrapped population list of
+#' separate values for the \code{original}, \code{remaining}, and
+#' \code{relocated} populations. This separation enables multiple dispersal
+#' models, representing different dispersal vectors, to be run in sequence.
+#' For example, local diffusion may be combined with human-mediated and/or
+#' wind-based long-distant "jump" dispersal. Spatially implicit diffusion is
+#' also provided via simple radial diffusion for a presence-only single-patch
+#' population, or via reaction-diffusion for unstructured or stage-based single
+#' patch populations.
 #'
 #' @param region A \code{Region} or inherited class object representing the
 #'   spatial region (template) for spread simulations. The region object

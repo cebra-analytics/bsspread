@@ -61,6 +61,11 @@
 #'   long-distance dispersal of invasive emerald ash borer Agrilus planipennis
 #'   (Coleoptera) in North America. \emph{Diversity & Distributions}, 12(1),
 #'   71–79. \doi{10.1111/j.1366-9516.2006.00218.x}
+#'
+#'   Schneider, D. W., Ellis, C. D., & Cummings, K. S. (1998). A Transportation
+#'   Model Assessment of the Risk to Native Mussel Communities from Zebra Mussel
+#'   Spread.  \emph{Conservation Biology}, 12(4), 788–800.
+#'   \doi{10.1111/j.1523-1739.1998.97042.x}
 #' @include Region.R
 #' @export
 Attractor <- function(x, region,
