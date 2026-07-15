@@ -27,6 +27,12 @@ test_that("initializes with components and parameters", {
   expect_error(simulator <- Simulator(region, dispersal_models = 0),
                paste("Dispersal models must be 'Dispersal' or inherited class",
                      "objects."))
+  expect_error(simulator <- Simulator(region, time_steps = 1,
+                                      impacts = list(1:2)),
+               "Impacts must be a list of 'Impacts' objects.")
+  expect_error(simulator <- Simulator(region, time_steps = 1,
+                                      actions = list(1:2)),
+               "Actions must be a list of 'Actions' objects.")
   expect_error(simulator <- Simulator(region, user_function = 0),
                paste("User-defined function must define a function for",
                      "transforming the population at each simulation time",
@@ -40,10 +46,29 @@ test_that("initializes with components and parameters", {
   expect_silent(simulator <- Simulator(region,
                                        population_model = staged_population,
                                        result_stages = 2:3))
-  population <- Population(region)
+  population_model <- bsspread::UnstructPopulation(region)
   initializer <- Initializer(region$get_template(),
-                             population_model = population)
-  dispersal <- Dispersal(region, population)
+                             population_model = population_model)
+  dispersal <- Dispersal(region, population_model)
+  impacts <- list(Impacts(region, population_model, # monetary
+                          asset_name = "impact1",
+                          asset_value = 10*(template < 0.9),
+                          loss_rate = 0.1),
+                  Impacts(region, population_model, # monetary
+                          asset_name = "impact2",
+                          asset_value = 20*(template > 0.6),
+                          loss_rate = 0.2))
+  sensitivity <- removal_pr <- template[region$get_indices()][,1]
+  actions <- list(Detection(region, population_model,
+                            sensitivity = sensitivity,
+                            schedule = 2:3),
+                  Removals(region, population_model,
+                           removal_pr = removal_pr,
+                           schedule = 2:3),
+                  Controls(region, population_model,
+                           control_type = "growth",
+                           control_mult = 0.7,
+                           schedule = 2:3))
   expect_silent(simulator <- Simulator(
     region,
     time_steps = 10,
@@ -52,9 +77,16 @@ test_that("initializes with components and parameters", {
     collation_steps = 2,
     replicates = 5,
     initializer = initializer,
-    population_model = population,
+    population_model = population_model,
     dispersal_models = list(dispersal),
+    impacts = impacts,
+    actions = actions,
     user_function = function(n, r, tm) n + 1))
+  expect_is(simulator, "Simulator")
+  expect_named(simulator, c("set_initializer", "set_population_model",
+                            "set_dispersal_models", "run"))
+  expect_equal(sapply(impacts, function(i) i$get_id()), 1:2)
+  expect_equal(sapply(actions, function(i) i$get_id()), 1:3)
 })
 
 test_that("runs simulator with correct configuration", {
