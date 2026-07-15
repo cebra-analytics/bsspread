@@ -1633,10 +1633,10 @@ test_that("collates and finalizes spatially implicit results with costs", {
   actions_3$set_id(3)
   actions <- list(actions_1, actions_2, actions_3)
   # single replicate
-  results <- Results(region, population_model = population_model,
-                     impacts = impacts, actions = actions,
-                     time_steps = 4, collation_steps = 2,
-                     replicates = 1) # silent
+  expect_silent(results <- Results(region, population_model = population_model,
+                                   impacts = impacts, actions = actions,
+                                   time_steps = 4, collation_steps = 2,
+                                   replicates = 1))
   action_results_0 <- results$get_list()$actions
   action_results_0$combined_cost_plus_impacts <-
     action_results_0$cost$combined
@@ -2168,4 +2168,107 @@ test_that("collates and finalizes staged action results", {
 })
 
 test_that("collates and finalizes spatially implicit staged action results", {
+  region <- Region()
+  stage_matrix <- matrix(c(0.0, 2.0, 5.0,
+                           0.3, 0.0, 0.0,
+                           0.0, 0.6, 0.8),
+                         nrow = 3, ncol = 3, byrow = TRUE)
+  population_model <- StagedPopulation(region, stage_matrix)
+  actions_1 <- Detection(region, population_model,
+                         sensitivity = 0.7,
+                         stages = 2:3, schedule = 2:3)
+  actions_1$set_id(1)
+  actions_2 <- Removals(region, population_model,
+                        removal_pr = 0.8,
+                        stages = 2:3, schedule = 2:3)
+  actions_2$set_id(2)
+  actions_3 <- Controls(region, population_model,
+                        control_type = "growth",
+                        control_mult = 0.7,
+                        stages = 2:3, schedule = 2:3)
+  actions_3$set_id(3)
+  actions <- list(actions_1, actions_2, actions_3)
+  # staged single replicate
+  expect_silent(
+    results <- Results(region, population_model = population_model,
+                       actions = actions,
+                       time_steps = 4, collation_steps = 2,
+                       replicates = 1))
+  n <- population_model$make(initial = 50)
+  n <- actions[[1]]$apply(n, 2)
+  n <- actions[[2]]$apply(n, 2)
+  n <- actions[[3]]$apply(n, 2)
+  expect_silent(results$collate(r = 1, tm = 2, n = n))
+  expect_silent(results$finalize())
+  expect_silent(result_list <- results$get_list())
+  action_results <- lapply(result_list$actions,
+                           function(i) lapply(i[names(i)[1]],
+                                              function(j) j[["2"]]))
+  action_num_results <- lapply(result_list$actions[1:2],
+                               function(i) lapply(i$number[names(i)[1]],
+                                                  function(j) j[["2"]]))
+  expect_equal(lapply(action_results[[1]], function(a) length(a)),
+               list(detected = 1))
+  expect_equal(lapply(action_num_results[[1]], function(a) dim(a)),
+               list(detected = c(1, 3)))
+  expect_equal(lapply(action_results[[2]], function(a) length(a)),
+               list(removed = 1))
+  expect_equal(lapply(action_num_results[[2]], function(a) dim(a)),
+               list(removed = c(1, 3)))
+  expect_equal(lapply(action_results[[3]], function(a) length(a)),
+               list(control_growth = 1))
+  # staged multiple replicates
+  set.seed(4321)
+  n_r <- list()
+  n <- population_model$make(initial = 40)
+  n <- actions[[1]]$apply(n, 2)
+  n <- actions[[2]]$apply(n, 2)
+  n <- actions[[3]]$apply(n, 2)
+  n_r[[1]] <- n
+  n <- population_model$make(initial = 50)
+  n <- actions[[1]]$apply(n, 2)
+  n <- actions[[2]]$apply(n, 2)
+  n <- actions[[3]]$apply(n, 2)
+  n_r[[2]] <- n
+  n <- population_model$make(initial = 60)
+  n <- actions[[1]]$apply(n, 2)
+  n <- actions[[2]]$apply(n, 2)
+  n <- actions[[3]]$apply(n, 2)
+  n_r[[3]] <- n
+  collated_arrays <- list(
+    list(detected = as.matrix(sapply(n_r, function(m) attr(m, "1_detected"))),
+         number = t(sapply(n_r, function(m)
+           attr(attr(m, "1_detected"), "number")))),
+    list(removed = as.matrix(sapply(n_r, function(m) attr(m, "2_removed"))),
+         number = t(sapply(n_r, function(m)
+           attr(attr(m, "2_removed"), "number")))),
+    list(control_growth = as.matrix(sapply(n_r, function(m)
+      attr(m, "3_control_growth") < 1))))
+  collated_summaries <- lapply(collated_arrays, function(a) {
+    a_summary <- lapply(a, function(a_i) {
+      list(mean = colMeans(a_i))
+    })
+    if ("number" %in% names(a)) {
+      a_summary$number$mean <- t(as.matrix(a_summary$number$mean))
+      a_summary$number$sd <- t(as.matrix(apply(a$number, 2, sd)))
+      a_summary$number <- lapply(a_summary$number, function(m) {
+        colnames(m) <- attr(population_model$get_growth(), "labels")
+        m
+      })
+    }
+    a_summary
+  })
+  expect_silent(results <- Results(region, population_model = population_model,
+                                   actions = actions, time_steps = 4,
+                                   collation_steps = 2, replicates = 3))
+  expect_silent(results$collate(r = 1, tm = 2, n = n_r[[1]]))
+  expect_silent(results$collate(r = 2, tm = 2, n = n_r[[2]]))
+  expect_silent(results$collate(r = 3, tm = 2, n = n_r[[3]]))
+  expect_silent(results$finalize())
+  expect_silent(result_list <- results$get_list())
+  expect_equal(result_list$actions[[1]]$detected[["2"]], collated_summaries[[1]]$detected)
+  expect_equal(result_list$actions[[1]]$number$detected[["2"]], collated_summaries[[1]]$number)
+  expect_equal(result_list$actions[[2]]$removed[["2"]], collated_summaries[[2]]$removed)
+  expect_equal(result_list$actions[[2]]$number$removed[["2"]], collated_summaries[[2]]$number)
+  expect_equal(result_list$actions[[3]]$control_growth[["2"]], collated_summaries[[3]]$control_growth)
 })
