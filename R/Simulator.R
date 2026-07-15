@@ -336,9 +336,10 @@ Simulator.Region <- function(region,
       # Calculate impacts
       if (length(impacts)) {
 
-        # Calculate each impact
+        # Calculate each impact and update recovery delays where applicable
         for (i in 1:length(impacts)) {
           n <- impacts[[i]]$calculate(n, 0)
+          n <- impacts[[i]]$update_recovery_delay(n, 0)
         }
 
         # Apply any dynamically linked impacts to capacity
@@ -379,9 +380,10 @@ Simulator.Region <- function(region,
         # Calculate impacts
         if (length(impacts)) {
 
-          # Calculate each impact
+          # Calculate each impact and update recovery delays where applicable
           for (i in 1:length(impacts)) {
             n <- impacts[[i]]$calculate(n, tm)
+            n <- impacts[[i]]$update_recovery_delay(n, tm)
           }
 
           # Apply any dynamically linked impacts to capacity
@@ -399,14 +401,6 @@ Simulator.Region <- function(region,
           # Apply sequentially
           for (i in 1:length(actions)) {
             n <- actions[[i]]$apply(n, tm)
-          }
-        }
-
-
-        # Apply actions
-        if (length(actions)) {
-          for (i in 1:length(actions)) {
-            n <- actions[[i]]$apply(n, 0)
           }
         }
 
