@@ -50,8 +50,9 @@ A \code{Actions} class object (list) containing a function for
 applying simulated actions:
 \describe{
 \item{\code{get_type()}}{Get the actions type.}
-\item{\code{get_id()}}{Get the actions identifier.}
-\item{\code{set_id(id)}}{Set the actions identifier.}
+\item{\code{get_id()}}{Get the actions numeric identifier.}
+\item{\code{set_id(id)}}{Set the actions numeric identifier. Should be
+an integer >= 1).}
 \item{\code{get_label(include_id = TRUE)}}{Get the actions label used
 in simulation results. Set \code{include_id} to include the action
 \code{id} as a label prefix (default is \code{TRUE}).}
@@ -65,6 +66,9 @@ having a value.}
 label used in simulation results. Set \code{include_id} to include
 the action \code{id} as a label prefix (default is \code{TRUE}).}
 \item{\code{get_cost_unit()}}{Get the unit of action cost.}
+\item{\code{get_attributes(n)}}{Get attached attributes associated
+with this action from a simulated population vector or matrix
+\code{n}, and return a list of the attached attributes.}
 \item{\code{clear_attributes(n)}}{Clear attached attributes associated
 with this action from a simulated population vector or matrix
 \code{n}, and return \code{n} without the attached attributes.}

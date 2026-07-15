@@ -208,7 +208,7 @@ Impacts <- function(region, population_model,
   self <- structure(list(), class = "Impacts")
 
   # Id for tracking multiple impacts
-  id <- 1
+  id <- NULL
 
   # Get the impacts id
   self$get_id <- function() {

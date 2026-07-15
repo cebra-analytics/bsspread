@@ -91,7 +91,7 @@ test_that("initializes with region, population model and impact details", {
                c("get_id", "set_id", "get_impact_type", "get_valuation_type",
                  "get_asset_name", "get_value_unit", "get_attr_names",
                  "update_recovery_delay", "calculate"))
-  expect_equal(impacts_o$get_id(), 1)
+  expect_null(impacts_o$get_id())
   expect_error(impacts_o$set_id(0), "Impacts id should be an integer >= 1.")
   expect_silent(impacts_o$set_id(2))
   expect_equal(impacts_o$get_id(), 2)
