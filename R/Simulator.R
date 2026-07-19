@@ -339,6 +339,8 @@ Simulator.Region <- function(region,
         # Calculate each impact and update recovery delays where applicable
         for (i in 1:length(impacts)) {
           n <- impacts[[i]]$calculate(n, 0)
+        }
+        for (i in 1:length(impacts)) {
           n <- impacts[[i]]$update_recovery_delay(n, 0)
         }
 
@@ -383,6 +385,8 @@ Simulator.Region <- function(region,
           # Calculate each impact and update recovery delays where applicable
           for (i in 1:length(impacts)) {
             n <- impacts[[i]]$calculate(n, tm)
+          }
+          for (i in 1:length(impacts)) {
             n <- impacts[[i]]$update_recovery_delay(n, tm)
           }
 
