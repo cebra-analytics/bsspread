@@ -1,8 +1,9 @@
 #' Simulator class builder
 #'
-#' Builds a class to configure and run replicate discrete-time spread
-#' simulations over a given spatial region using (sub)models for population
-#' growth and dispersal.
+#' Builds a class to configure and run replicate discrete-time incursion
+#' management simulations over a given spatial region using (sub)models for
+#' simulating population growth and dispersal, calculating impacts, and
+#' applying management actions, such as detection, control and removal.
 #'
 #' @param region A \code{raster::RasterLayer}, \code{terra::SpatRaster}, or
 #'   \code{Region} or inherited class object representing the spatial region
@@ -33,6 +34,11 @@
 #' @param dispersal_models A list of \code{Dispersal} or inherited class
 #'   objects defining the dispersal functionality for the different spread
 #'   vectors to be simulated.
+#' @param impacts A list of \code{Impacts} class objects specifying how to
+#'   calculate various impacts of the simulated population at each time step.
+#' @param actions A list of \code{Actions} or inherited class objects for
+#'   applying invasive species management actions, such as detection, control,
+#'   and removal.
 #' @param user_function An optional user-defined \code{function(n, r, tm)} that
 #'   is applied to the population vector or matrix \code{n} (returning a
 #'   transformed \code{n}) prior to collating the results at simulation
@@ -51,16 +57,67 @@
 #'     \item{\code{run()}}{Run the simulations and return the results.}
 #'   }
 #' @references
+#'   Baker, C. M., Bower, S., Tartaglia, E., Bode, M., Bower, H., & Pressey,
+#'   R. L. (2018). Modelling the spread and control of cherry guava on Lord
+#'   Howe Island. \emph{Biological Conservation}, 227, 252–258.
+#'   \doi{10.1016/j.biocon.2018.09.017}
+#'
 #'   Bradhurst, R., Spring, D., Stanaway, M., Milner, J., & Kompas, T. (2021).
 #'   A generalised and scalable framework for modelling incursions,
 #'   surveillance and control of plant and environmental pests.
 #'   \emph{Environmental Modelling & Software}, 139, N.PAG.
 #'   \doi{10.1016/j.envsoft.2021.105004}
 #'
+#'   Cacho, O. J., & Hester, S. M. (2022). Modelling biocontrol of invasive
+#'   insects: An application to European Wasp (Vespula germanica) in Australia.
+#'   \emph{Ecological Modelling}, 467. \doi{10.1016/j.ecolmodel.2022.109939}
+#'
 #'   García Adeva, J. J., Botha, J. H., & Reynolds, M. (2012). A simulation
 #'   modelling approach to forecast establishment and spread of Bactrocera
 #'   fruit flies. \emph{Ecological Modelling}, 227, 93–108.
 #'   \doi{10.1016/j.ecolmodel.2011.11.026}
+#'
+#'   Gormley, A. M., Holland, E. P., Barron, M. C., Anderson, D. P., & Nugent,
+#'   G. (2016). A modelling framework for predicting the optimal balance
+#'   between control and surveillance effort in the local eradication of
+#'   tuberculosis in New Zealand wildlife.
+#'   \emph{Preventive Veterinary Medicine}, 125, 10–18.
+#'   \doi{10.1016/j.prevetmed.2016.01.007}
+#'
+#'   Krug, R. M., Roura-Pascual, N., & Richardson, D. M. (2010). Clearing of
+#'   invasive alien plants under different budget scenarios: using a
+#'   simulation model to test efficiency. \emph{Biological Invasions}, 12(12),
+#'   4099–4112. \doi{10.1007/s10530-010-9827-3}
+#'
+#'   Lustig, A., James, A., Anderson, D., & Plank, M. (2019). Pest control at a
+#'   regional scale: Identifying key criteria using a spatially explicit,
+#'   agent‐based model. \emph{Journal of Applied Ecology}, 56(7 pp.1515–1527),
+#'   1527–1515. \doi{10.1111/1365-2664.13387}
+#'
+#'   Rout, T. M., Moore, J. L., & McCarthy, M. A. (2014). Prevent, search or
+#'   destroy? A partially observable model for invasive species management.
+#'   \emph{Journal of Applied Ecology}, 51(3), 804–813.
+#'   \doi{10.1111/1365-2664.12234}
+#'
+#'   Spring, D., Croft, L., & Kompas, T. (2017). Look before you treat:
+#'   increasing the cost effectiveness of eradication programs with aerial
+#'   surveillance. \emph{Biological Invasions}, 19(2), 521.
+#'   \doi{10.1007/s10530-016-1292-1}
+#'
+#'   Wadsworth, R. A., Collingham, Y. C., Willis, S. G., Huntley, B., & Hulme,
+#'   P. E. (2000). Simulating the Spread and Management of Alien Riparian
+#'   Weeds: Are They Out of Control? \emph{Journal of Applied Ecology}, 37,
+#'   28–38. \doi{10.1046/j.1365-2664.2000.00551.x}
+#'
+#'   Warburton, B., & Gormley, A. M. (2015). Optimising the Application of
+#'   Multiple-Capture Traps for Invasive Species Management Using Spatial
+#'   Simulation. \emph{PLoS ONE}, 10(3), 1–14.
+#'   \doi{10.1371/journal.pone.0120373}
+#'
+#'   Zub, K., García-Díaz, P., Sankey, S., Eisler, R., & Lambin, X. (2022).
+#'   Using a Modeling Approach to Inform Progress Towards Stoat Eradication
+#'   From the Orkney Islands. \emph{Frontiers in Conservation Science}, 2.
+#'   \doi{10.3389/fcosc.2021.780102}
 #' @include Region.R
 #' @include Results.R
 #' @export
@@ -75,6 +132,8 @@ Simulator <- function(region,
                       initializer = NULL,
                       population_model = NULL,
                       dispersal_models = list(),
+                      impacts = list(),
+                      actions = list(),
                       user_function = NULL,
                       class = character(), ...) {
   UseMethod("Simulator")
@@ -107,6 +166,8 @@ Simulator.Region <- function(region,
                              initializer = NULL,
                              population_model = NULL,
                              dispersal_models = list(),
+                             impacts = list(),
+                             actions = list(),
                              user_function = NULL,
                              class = character(), ...) {
 
@@ -150,10 +211,31 @@ Simulator.Region <- function(region,
            call. = FALSE)
     }
   }
+  # Check parallel cores
   if (!is.null(parallel_cores) && (!is.numeric(parallel_cores) ||
                                    parallel_cores <= 0)) {
     stop("The number of parallel cores should be a numeric value > 0.",
          call. = FALSE)
+  }
+
+  # Check impact objects and set impact ids
+  if (length(impacts)) {
+    if (!all(unlist(lapply(impacts, inherits, "Impacts")))) {
+      stop("Impacts must be a list of 'Impacts' objects.", call. = FALSE)
+    }
+    for (i in 1:length(impacts)) {
+      impacts[[i]]$set_id(i)
+    }
+  }
+
+  # Check actions objects and set action ids
+  if (length(actions)) {
+    if (!all(unlist(lapply(actions, inherits, "Actions")))) {
+      stop("Actions must be a list of 'Actions' objects.", call. = FALSE)
+    }
+    for (i in 1:length(actions)) {
+      actions[[i]]$set_id(i)
+    }
   }
 
   # Set parallel cores in region and dispersal objects
@@ -207,6 +289,8 @@ Simulator.Region <- function(region,
 
     # Results setup
     results <<- Results(region, population_model, # DEBUG ####
+                        impacts = impacts,
+                        actions = actions,
                         time_steps = time_steps,
                         step_duration = step_duration,
                         step_units = step_units,
@@ -249,6 +333,28 @@ Simulator.Region <- function(region,
         }
       }
 
+      # Calculate impacts
+      if (length(impacts)) {
+
+        # Calculate each impact and update recovery delays where applicable
+        for (i in 1:length(impacts)) {
+          n <- impacts[[i]]$calculate(n, 0)
+        }
+        for (i in 1:length(impacts)) {
+          n <- impacts[[i]]$update_recovery_delay(n, 0)
+        }
+
+        # Apply any dynamically linked impacts to capacity
+        population_model$set_capacity_mult(n)
+      }
+
+      # Apply actions
+      if (length(actions)) {
+        for (i in 1:length(actions)) {
+          n <- actions[[i]]$apply(n, 0)
+        }
+      }
+
       # Initial results (t = 0)
       results$collate(r, 0, n)
 
@@ -271,6 +377,35 @@ Simulator.Region <- function(region,
 
           # Unpack population array from separated list
           n <- dispersal_models[[1]]$unpack(n)
+        }
+
+        # Calculate impacts
+        if (length(impacts)) {
+
+          # Calculate each impact and update recovery delays where applicable
+          for (i in 1:length(impacts)) {
+            n <- impacts[[i]]$calculate(n, tm)
+          }
+          for (i in 1:length(impacts)) {
+            n <- impacts[[i]]$update_recovery_delay(n, tm)
+          }
+
+          # Apply any dynamically linked impacts to capacity
+          population_model$set_capacity_mult(n)
+        }
+
+        # Apply actions
+        if (length(actions)) {
+
+          # Clear attributes
+          for (i in 1:length(actions)) {
+            n <- actions[[i]]$clear_attributes(n)
+          }
+
+          # Apply sequentially
+          for (i in 1:length(actions)) {
+            n <- actions[[i]]$apply(n, tm)
+          }
         }
 
         # User-defined function
