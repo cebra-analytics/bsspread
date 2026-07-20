@@ -59,7 +59,7 @@
 #'     \item{\code{set_capacity_mult(n)}}{Dynamically set a multiplier for
 #'       the capacity values when the population \code{n} has an attached
 #'       attribute \code{"dynamic_mult"} containing multipliers linked to
-#'       capacity (see \code{bsmanage::ManageImpacts}).}
+#'       capacity (see \code{Impacts}).}
 #'     \item{\code{get_establish_pr(cells = NULL, tm = NULL)}}{Get the
 #'       establishment probability as a vector of values for each region
 #'       location or optionally specified region locations \code{cells}

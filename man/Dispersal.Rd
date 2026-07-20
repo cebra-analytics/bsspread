@@ -156,7 +156,7 @@ matrices. The separation of original, remaining and relocated
 populations enables multiple models for different dispersal vectors
 to run in sequence. Spread and establishment control (suppression) may
 also be processed when passed via attributes (see
-\code{bsmanage::ManageControls}).}
+\code{Controls}).}
 }
 }
 \description{

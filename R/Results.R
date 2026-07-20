@@ -3834,7 +3834,7 @@ Results.Region <- function(region, population_model,
               values <- sapply(results$impacts[[i]]$cumulative$total[[a_cum]],
                                function(tot) unlist(tot))
               unit <- attr(results$impacts[[i]]$cumulative$total[[a_cum]],
-                            "unit")
+                           "unit")
             } else {
               values <- sapply(results$impacts[[i]]$total[[a]],
                                function(tot) unlist(tot))

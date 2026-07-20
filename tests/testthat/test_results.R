@@ -621,10 +621,10 @@ test_that("initializes results with impacts", {
   impacts_4$set_id(4)
   # single replicate
   expect_silent(results <- Results(region, population_model = population_model,
-                     impacts = list(impacts_1, impacts_2, impacts_3,
-                                    impacts_4),
-                     time_steps = 10, collation_steps = 2,
-                     replicates = 1))
+                                   impacts = list(impacts_1, impacts_2, impacts_3,
+                                                  impacts_4),
+                                   time_steps = 10, collation_steps = 2,
+                                   replicates = 1))
   expect_silent(result_list <- results$get_list())
   expect_named(result_list, c("population", "total_pop", "occupancy",
                               "total_occup", "area", "impacts"))
@@ -960,8 +960,8 @@ test_that("collates and finalizes spatially implicit impact results", {
                     combined = cumulative[[5]]))
   # multiple replicates
   expect_silent(results <- Results(region, population_model = population_model,
-                     impacts = impacts, time_steps = 4,
-                     collation_steps = 2, replicates = 3))
+                                   impacts = impacts, time_steps = 4,
+                                   collation_steps = 2, replicates = 3))
   attr(n, "impacts") <- NULL
   n_r <- lapply(-1:1, function(i) {
     n <- n + 2*i
@@ -1182,10 +1182,10 @@ test_that("collates and finalizes action results with costs", {
   TEST_DIRECTORY <- test_path("test_inputs")
   template <- terra::rast(file.path(TEST_DIRECTORY, "greater_melb.tif"))
   idx <- 5916:5922
-  region <- bsspread::Region(template)
+  region <- Region(template)
   template[region$get_indices()][idx,] <- c(rep(0.5, 4), 0.5, 0.75, 1)
   sensitivity <- removal_pr <- template[region$get_indices()][,1]
-  population_model <- bsspread::UnstructPopulation(region, growth = 1.2)
+  population_model <- UnstructPopulation(region, growth = 1.2)
   n <- rep(0, region$get_locations())
   idx <- idx[5:7]
   n_list <- list(n, n, n)
@@ -1838,7 +1838,7 @@ test_that("collates and finalizes staged action results", {
   TEST_DIRECTORY <- test_path("test_inputs")
   template <- terra::rast(file.path(TEST_DIRECTORY, "greater_melb.tif"))
   idx <- 5916:5922
-  region <- bsspread::Region(template)
+  region <- Region(template)
   template[region$get_indices()][idx,] <- c(rep(0.5, 4), 0.5, 0.75, 1)
   idx <- idx[5:7]
   sensitivity <- removal_pr <- template[region$get_indices()][,1]
@@ -2029,10 +2029,10 @@ test_that("collates and finalizes staged action results", {
   actions_3$set_id(3)
   actions <- list(actions_1, actions_2, actions_3)
   expect_silent(results <- Results(region,
-                     population_model = population_model,
-                     actions = actions,
-                     time_steps = 4, collation_steps = 2,
-                     replicates = 3))
+                                   population_model = population_model,
+                                   actions = actions,
+                                   time_steps = 4, collation_steps = 2,
+                                   replicates = 3))
   zero_results <- results$get_list()$actions
   locs <- region$get_locations()
   expect_equal(lapply(zero_results[[1]][1:2],
@@ -2266,9 +2266,14 @@ test_that("collates and finalizes spatially implicit staged action results", {
   expect_silent(results$collate(r = 3, tm = 2, n = n_r[[3]]))
   expect_silent(results$finalize())
   expect_silent(result_list <- results$get_list())
-  expect_equal(result_list$actions[[1]]$detected[["2"]], collated_summaries[[1]]$detected)
-  expect_equal(result_list$actions[[1]]$number$detected[["2"]], collated_summaries[[1]]$number)
-  expect_equal(result_list$actions[[2]]$removed[["2"]], collated_summaries[[2]]$removed)
-  expect_equal(result_list$actions[[2]]$number$removed[["2"]], collated_summaries[[2]]$number)
-  expect_equal(result_list$actions[[3]]$control_growth[["2"]], collated_summaries[[3]]$control_growth)
+  expect_equal(result_list$actions[[1]]$detected[["2"]],
+               collated_summaries[[1]]$detected)
+  expect_equal(result_list$actions[[1]]$number$detected[["2"]],
+               collated_summaries[[1]]$number)
+  expect_equal(result_list$actions[[2]]$removed[["2"]],
+               collated_summaries[[2]]$removed)
+  expect_equal(result_list$actions[[2]]$number$removed[["2"]],
+               collated_summaries[[2]]$number)
+  expect_equal(result_list$actions[[3]]$control_growth[["2"]],
+               collated_summaries[[3]]$control_growth)
 })

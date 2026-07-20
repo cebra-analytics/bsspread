@@ -10,7 +10,8 @@ manage_parallel_worker_state <- new.env(parent = emptyenv())
 #'
 #' @noRd
 parallel_worker_state <- function() {
-  if (exists("manage_parallel_worker_state", envir = .GlobalEnv, inherits = FALSE)) {
+  if (exists("manage_parallel_worker_state", envir = .GlobalEnv,
+             inherits = FALSE)) {
     get("manage_parallel_worker_state", envir = .GlobalEnv)
   } else {
     manage_parallel_worker_state
@@ -264,7 +265,8 @@ parallel_init_cluster <- function(n_workers,
     "parallel_attach_worker_callbacks"
   )
   parallel::clusterExport(cl, export_vars, envir = environment())
-  parallel::clusterExport(cl, ".parallel_worker_init", envir = psock_export_envir)
+  parallel::clusterExport(cl, ".parallel_worker_init",
+                          envir = psock_export_envir)
 
   psock_vars <- unique(psock_exports)
   if (length(psock_vars)) {
