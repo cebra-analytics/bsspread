@@ -131,6 +131,11 @@ Region <- function(x, ...) {
   UseMethod("Region")
 }
 
+# Stable list keys for path cache (independent of options(scipen)).
+cell_key <- function(x) {
+  format(as.integer(x), scientific = FALSE, trim = TRUE)
+}
+
 #' @name Region
 #' @export
 Region.Raster <- function(x, ...) {
@@ -347,9 +352,6 @@ Region.SpatRaster <- function(x, ...) {
   # required), as well as permeability graphs (when required)
   self$calculate_paths <- function(cells) {
 
-    # Ensure cell characters are stored without scientific notation
-    options(scipen = 999)
-
     # Only include two-tier aggregate when inner radius within maximum distance
     include_aggr <- is.list(aggr)
     if (is.list(aggr) && aggr$inner_radius >= paths$max_distance) {
@@ -357,7 +359,7 @@ Region.SpatRaster <- function(x, ...) {
     }
 
     # Newly occupied cells
-    new_cells <- cells[which(!as.character(cells) %in% names(paths$idx))]
+    new_cells <- cells[which(!cell_key(cells) %in% names(paths$idx))]
 
     # Calculate reachable indices, distances and directions for new cells
     if (length(new_cells)) {
@@ -370,7 +372,7 @@ Region.SpatRaster <- function(x, ...) {
       calculate_cell_paths <- function(cell) {
 
         # Map path lists use cells as characters
-        cell_char <- as.character(cell)
+        cell_char <- cell_key(cell)
 
         # Calculate reachable indices
         if (include_aggr) { # two-tier approach
@@ -483,7 +485,7 @@ Region.SpatRaster <- function(x, ...) {
         doParallel::stopImplicitCluster()
 
         # Merge new paths (which were gathered in parallel)
-        names(new_paths) <- as.character(new_cells)
+        names(new_paths) <- cell_key(new_cells)
         new_paths <- list(
           idx = lapply(new_paths, function(p) p$idx[[1]]),
           distances = lapply(new_paths, function(p) p$distances[[1]]),
@@ -538,6 +540,10 @@ Region.SpatRaster <- function(x, ...) {
                                     cells = 1:terra::ncell(aggr$rast),
                                     directions = "bishop", pairs = TRUE),
                     weight = sqrt(2)))
+            cell_adj_df <- data.frame(from = cell_key(cell_adj_df[, "from"]),
+                                      to = cell_key(cell_adj_df[, "to"]),
+                                      weight = cell_adj_df[, "weight"],
+                                      stringsAsFactors = FALSE)
 
             # Create graph for all aggregate cells (including NAs)
             paths$graphs$aggr <<- igraph::graph_from_data_frame(
@@ -615,6 +621,10 @@ Region.SpatRaster <- function(x, ...) {
                                   pairs = TRUE), weight = 1),
             cbind(terra::adjacent(x, cells = cell_idx, directions = "bishop",
                                   pairs = TRUE), weight = sqrt(2)))
+          cell_adj_df <- data.frame(from   = cell_key(cell_adj_df[, "from"]),
+                                    to     = cell_key(cell_adj_df[, "to"]),
+                                    weight = cell_adj_df[, "weight"],
+                                    stringsAsFactors = FALSE)
 
           # Create or update graph
           if (is.null(paths$graphs$cell)) {
@@ -676,6 +686,10 @@ Region.SpatRaster <- function(x, ...) {
           cbind(terra::adjacent(x, cells = 1:terra::ncell(x),
                                 directions = "bishop", pairs = TRUE),
                 weight = sqrt(2)))
+        cell_adj_df <- data.frame(from   = cell_key(cell_adj_df[, "from"]),
+                                  to     = cell_key(cell_adj_df[, "to"]),
+                                  weight = cell_adj_df[, "weight"],
+                                  stringsAsFactors = FALSE)
 
         # Create graph for all region cells (including NAs)
         paths$graphs$cell <<- igraph::graph_from_data_frame(
@@ -706,7 +720,7 @@ Region.SpatRaster <- function(x, ...) {
       calculate_cell_perm_dist <- function(cell) {
 
         # Map path lists use cells as characters
-        cell_char <- as.character(cell)
+        cell_char <- cell_key(cell)
 
         # List for modified distances
         cell_perm_dist <- list()
@@ -714,8 +728,8 @@ Region.SpatRaster <- function(x, ...) {
         # Get base (no perm) weight distance to reachable inner cells
         base_dist <- as.vector(igraph::distances(
           paths$graphs$cell,
-          v = as.character(indices[cell]),
-          to = as.character(indices[paths$idx[[cell_char]]$cell]),
+          v = cell_key(indices[cell]),
+          to = cell_key(indices[paths$idx[[cell_char]]$cell]),
           weights = paths$weights$cell$base))
 
         # Calculate modified distances for each permeability layer
@@ -725,8 +739,8 @@ Region.SpatRaster <- function(x, ...) {
           # Get permeability weight distance to reachable inner cells
           perm_dist <- as.vector(igraph::distances(
             paths$graphs$cell,
-            v = as.character(indices[cell]),
-            to = as.character(indices[paths$idx[[cell_char]]$cell]),
+            v = cell_key(indices[cell]),
+            to = cell_key(indices[paths$idx[[cell_char]]$cell]),
             weights = paths$weights$cell$perms[[perm_id]]))
 
           # Calculate the distance modifiers
@@ -748,8 +762,8 @@ Region.SpatRaster <- function(x, ...) {
           # Get base weight distance to reachable aggregate cells
           base_dist <- as.vector(igraph::distances(
             paths$graphs$aggr,
-            v = as.character(aggr_i),
-            to = as.character(aggr$indices[paths$idx[[cell_char]]$aggr]),
+            v = cell_key(aggr_i),
+            to = cell_key(aggr$indices[paths$idx[[cell_char]]$aggr]),
             weights = paths$weights$aggr$base))
 
           # Calculate modified distances for each permeability layer
@@ -759,8 +773,8 @@ Region.SpatRaster <- function(x, ...) {
             # Get permeability weight distance to reachable aggregate cells
             perm_dist <- as.vector(igraph::distances(
               paths$graphs$aggr,
-              v = as.character(aggr_i),
-              to = as.character(aggr$indices[paths$idx[[cell_char]]$aggr]),
+              v = cell_key(aggr_i),
+              to = cell_key(aggr$indices[paths$idx[[cell_char]]$aggr]),
               weights = paths$weights$aggr$perms[[perm_id]]))
 
             # Calculate the distance modifiers
@@ -789,14 +803,14 @@ Region.SpatRaster <- function(x, ...) {
             calculate_cell_perm_dist(cell)
           }
         doParallel::stopImplicitCluster()
-        names(new_perm_dist) <- as.character(new_cells)
+        names(new_perm_dist) <- cell_key(new_cells)
 
       } else {
 
         # Calculate and collect in serial
         new_perm_dist <- list()
         for (cell in new_cells) {
-          new_perm_dist[[as.character(cell)]] <- calculate_cell_perm_dist(cell)
+          new_perm_dist[[cell_key(cell)]] <- calculate_cell_perm_dist(cell)
         }
       }
 
@@ -804,9 +818,6 @@ Region.SpatRaster <- function(x, ...) {
       paths$perm_dist <<- c(paths$perm_dist, new_perm_dist)
 
     }
-
-    # Reinstate default scientific notation
-    options(scipen = 0)
 
   }
 
@@ -816,15 +827,12 @@ Region.SpatRaster <- function(x, ...) {
   self$get_paths <- function(cells, directions = FALSE, max_distance = NULL,
                              perm_id = NULL) {
 
-    # Ensure cell characters are stored without scientific notation
-    options(scipen = 999)
-
     # Using permeability?
     use_perm <- (is.numeric(perm_id) && is.list(paths$perms) &&
                    length(paths$perms) >= perm_id)
 
     # Map path lists use cells as characters
-    cells_char <- as.character(cells)
+    cells_char <- cell_key(cells)
 
     # Prepare selected paths as a nested list with indices and distances
     selected <- list(idx = paths$idx[cells_char],
@@ -949,9 +957,6 @@ Region.SpatRaster <- function(x, ...) {
         }
       } # end loop
     }
-
-    # Reinstate default scientific notation
-    options(scipen = 0)
 
     return(selected)
   }
@@ -1094,14 +1099,11 @@ Region.data.frame <- function(x, ...) {
   # required), as well as permeability graphs (when required)
   self$calculate_paths <- function(patches) {
 
-    # Ensure cell characters are stored without scientific notation
-    options(scipen = 999)
-
     # Reachable patches
     for (patch in patches) {
 
       # Map path lists use patches as characters
-      patch_char <- as.character(patch)
+      patch_char <- cell_key(patch)
 
       # Calculate indices when not present
       if (!patch_char %in% names(paths$idx)) {
@@ -1186,7 +1188,7 @@ Region.data.frame <- function(x, ...) {
       for (patch in patches) {
 
         # Map path lists use patches as characters
-        patch_char <- as.character(patch)
+        patch_char <- cell_key(patch)
 
         # Calculate modified distances when not present
         if (!patch_char %in% names(paths$perm_dist)) {
@@ -1202,8 +1204,8 @@ Region.data.frame <- function(x, ...) {
             # Get minimum weight path distance to reachable patches
             perm_dist <- as.vector(igraph::distances(
               paths$graphs,
-              v = as.character(patch),
-              to = as.character(paths$idx[[patch_char]]),
+              v = cell_key(patch),
+              to = cell_key(paths$idx[[patch_char]]),
               weights = perm_weights))
 
             # Store as integers
@@ -1214,9 +1216,6 @@ Region.data.frame <- function(x, ...) {
         }
       }
     }
-
-    # Reinstate default scientific notation
-    options(scipen = 0)
   }
 
   # Get a list of indices, distances and directions of/to reachable patches for
@@ -1224,9 +1223,6 @@ Region.data.frame <- function(x, ...) {
   # and/or permeability modified distances.
   self$get_paths <- function(patches, directions = FALSE, max_distance = NULL,
                              perm_id = NULL) {
-
-    # Ensure cell characters are stored without scientific notation
-    options(scipen = 999)
 
     # Using permeability?
     use_perm <- (is.numeric(perm_id) && is.list(paths$perms) &&
@@ -1242,7 +1238,7 @@ Region.data.frame <- function(x, ...) {
     for (patch in patches) {
 
       # Map path lists use patches as characters
-      patch_char <- as.character(patch)
+      patch_char <- cell_key(patch)
 
       # Select indices and distances
       selected$idx[[patch_char]] <- paths$idx[[patch_char]]
@@ -1312,9 +1308,6 @@ Region.data.frame <- function(x, ...) {
         }
       }
     }
-
-    # Reinstate default scientific notation
-    options(scipen = 0)
 
     return(selected)
   }

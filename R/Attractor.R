@@ -37,6 +37,8 @@
 #'     \item{\code{get_is_dynamic()}}{Get indicator for dynamic attractors.}
 #'     \item{\code{set_multiplier(mult)}}{Dynamically set a multiplier for the
 #'       attractor values.}
+#'     \item{\code{warm_value_cache()}}{Pre-build cached region and aggregate
+#'       value vectors (used before dispersal origin loops).}
 #'   }
 #' @references
 #'   Bossenbroek, J. M., Kraft, C. E., & Nekola, J. C. (2001). Prediction of
@@ -100,6 +102,35 @@ Attractor.SpatRaster <- function(x, region,
 
   # Aggregate raster
   aggr_rast <- NULL
+  cell_values_cache <- NULL
+  aggr_values_cache <- NULL
+
+  invalidate_value_cache <- function() {
+    cell_values_cache <<- NULL
+    aggr_values_cache <<- NULL
+  }
+
+  get_cell_values_cache <- function() {
+    if (is.null(cell_values_cache)) {
+      cell_values_cache <<- as.vector(x[region$get_indices()][, 1])
+    }
+    cell_values_cache
+  }
+
+  get_aggr_values_cache <- function() {
+    if (!region$two_tier()) {
+      return(NULL)
+    }
+    if (is.null(aggr_values_cache)) {
+      aggr <- region$get_aggr()
+      if (is.null(aggr_rast)) {
+        aggr_rast <<- terra::aggregate(x, fact = aggr$factor, fun = "mean",
+                                       na.rm = TRUE)
+      }
+      aggr_values_cache <<- as.vector(aggr_rast[aggr$indices][, 1])
+    }
+    aggr_values_cache
+  }
 
   # Check dynamic indicator
   if (!is.logical(is_dynamic)) {
@@ -117,10 +148,19 @@ Attractor.SpatRaster <- function(x, region,
   self$set_multiplier <- function(mult) {
     x <<- x_orig*1
     x[region$get_indices()] <<- mult*x[region$get_indices()][,1]
+    invalidate_value_cache()
     if (region$two_tier()) {
       aggr_rast <<- terra::aggregate(x, fact = region$get_aggr()$factor,
                                      fun = "mean", na.rm = TRUE)
     }
+  }
+
+  self$warm_value_cache <- function() {
+    get_cell_values_cache()
+    if (region$two_tier()) {
+      get_aggr_values_cache()
+    }
+    invisible(NULL)
   }
 
   # Get the attractor raster
@@ -133,40 +173,39 @@ Attractor.SpatRaster <- function(x, region,
     if (is.numeric(cells)) {
       if (na.incl) {
         return(x[cells][,1])
-      } else {
-        return(x[region$get_indices()[cells]][,1])
       }
-    } else {
-      if (na.incl) {
-        return(x[][,1])
-      } else {
-        return(x[region$get_indices()][,1])
-      }
+      return(get_cell_values_cache()[cells])
     }
+    if (na.incl) {
+      return(x[][,1])
+    }
+    get_cell_values_cache()
   }
 
   # Get aggregate values for specified aggregate region cell indices
   self$get_aggr_values <- function(cells = NULL, na.incl = FALSE) {
-    if (region$two_tier()) {
-      aggr <- region$get_aggr()
-      if (is.null(aggr_rast) && region$two_tier()) {
+    if (!region$two_tier()) {
+      return(NULL)
+    }
+    aggr <- region$get_aggr()
+    if (is.numeric(cells)) {
+      if (na.incl) {
+        if (is.null(aggr_rast)) {
+          aggr_rast <<- terra::aggregate(x, fact = aggr$factor, fun = "mean",
+                                         na.rm = TRUE)
+        }
+        return(aggr_rast[cells][,1])
+      }
+      return(get_aggr_values_cache()[cells])
+    }
+    if (na.incl) {
+      if (is.null(aggr_rast)) {
         aggr_rast <<- terra::aggregate(x, fact = aggr$factor, fun = "mean",
                                        na.rm = TRUE)
       }
-      if (is.numeric(cells)) {
-        if (na.incl) {
-          return(aggr_rast[cells][,1])
-        } else {
-          return(aggr_rast[aggr$indices[cells]][,1])
-        }
-      } else {
-        if (na.incl) {
-          return(aggr_rast[][,1])
-        } else {
-          return(aggr_rast[aggr$indices][,1])
-        }
-      }
+      return(aggr_rast[][,1])
     }
+    get_aggr_values_cache()
   }
 
   return(self)
