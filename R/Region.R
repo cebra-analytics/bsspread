@@ -265,7 +265,7 @@ Region.SpatRaster <- function(x, ...) {
                                  idx_rast)
     aggr_idx_rast_at_indices <- aggr_idx_rast[indices][, 1]
     aggr$cells <<- unname(split(
-      seq_along(aggr_idx_rast_at_indices), 
+      seq_along(aggr_idx_rast_at_indices),
       factor(aggr_idx_rast_at_indices, levels = seq_along(aggr$indices))
     ))
     aggr$get_cells <<- function(indices) {
