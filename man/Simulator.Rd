@@ -116,7 +116,8 @@ setting objects (in the function environment) and running the simulations:
 object.}
 \item{\code{set_dispersal_models(models)}}{Set the list of dispersal
 model objects.}
-\item{\code{run()}}{Run the simulations and return the results.}
+\item{\code{run(...)}}{Run the simulations and return the results.
+Replicate-level parallelism is available via \code{parallel_replicates}.}
 }
 }
 \description{
