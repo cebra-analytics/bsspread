@@ -2266,9 +2266,14 @@ test_that("collates and finalizes spatially implicit staged action results", {
   expect_silent(results$collate(r = 3, tm = 2, n = n_r[[3]]))
   expect_silent(results$finalize())
   expect_silent(result_list <- results$get_list())
-  expect_equal(result_list$actions[[1]]$detected[["2"]], collated_summaries[[1]]$detected)
-  expect_equal(result_list$actions[[1]]$number$detected[["2"]], collated_summaries[[1]]$number)
-  expect_equal(result_list$actions[[2]]$removed[["2"]], collated_summaries[[2]]$removed)
-  expect_equal(result_list$actions[[2]]$number$removed[["2"]], collated_summaries[[2]]$number)
-  expect_equal(result_list$actions[[3]]$control_growth[["2"]], collated_summaries[[3]]$control_growth)
+  expect_equal(result_list$actions[[1]]$detected[["2"]],
+               collated_summaries[[1]]$detected)
+  expect_equal(result_list$actions[[1]]$number$detected[["2"]],
+               collated_summaries[[1]]$number)
+  expect_equal(result_list$actions[[2]]$removed[["2"]],
+               collated_summaries[[2]]$removed)
+  expect_equal(result_list$actions[[2]]$number$removed[["2"]],
+               collated_summaries[[2]]$number)
+  expect_equal(result_list$actions[[3]]$control_growth[["2"]],
+               collated_summaries[[3]]$control_growth)
 })

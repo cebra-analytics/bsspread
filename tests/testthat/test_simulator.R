@@ -205,7 +205,8 @@ test_that("runs simulator with correct configuration - impacts & actions", {
   expect_named(results_list$occupancy, as.character(seq(0, 4, 2)))
   expect_named(results_list$total_occup, as.character(0:4))
   expect_named(results_list$impacts, c("idx", "monetary"))
-  expect_equal(results_list$impacts$idx, list(monetary = c(impact1 = 1, impact2 = 2)))
+  expect_equal(results_list$impacts$idx,
+               list(monetary = c(impact1 = 1, impact2 = 2)))
   expect_named(results_list$impacts$monetary,
                c("total", "impact1", "impact2", "combined", "cumulative"))
   expect_named(results_list$impacts$monetary$total,

@@ -414,7 +414,8 @@ test_that("applies stochastic removals to invasive population", {
                      "without area occupied."))
   attr(n, "spread_area") <- 300
   set.seed(1234)
-  expected_removals <- array(c(0, stats::rbinom(2, size = n[,2:3], 0.65)), c(1, 3))
+  expected_removals <-
+    array(c(0, stats::rbinom(2, size = n[,2:3], 0.65)), c(1, 3))
   expected_removed <- rowSums((n - expected_removals)[,2:3, drop = FALSE]) == 0
   colnames(expected_removals) <- colnames(n)
   set.seed(1234)

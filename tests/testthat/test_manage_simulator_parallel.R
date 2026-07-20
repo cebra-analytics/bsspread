@@ -159,7 +159,8 @@ test_that("parallel_merge_callback fires for each merged replicate", {
   expect_true("pool_ready" %in% phases)
   expect_true("after_merge" %in% phases)
   expect_lt(match("before_pool", phases), match("pool_ready", phases))
-  expect_lt(match("pool_ready", phases), match(phases[grepl("^received r=", phases)][1L], phases))
+  expect_lt(match("pool_ready", phases),
+            match(phases[grepl("^received r=", phases)][1L], phases))
   expect_equal(sum(grepl("^received r=", phases)), 3L)
   expect_equal(sum(grepl("^merged r=", phases)), 3L)
 })
