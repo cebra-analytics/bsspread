@@ -130,7 +130,7 @@
 #'       populations enables multiple models for different dispersal vectors
 #'       to run in sequence. Spread and establishment control (suppression) may
 #'       also be processed when passed via attributes (see
-#'       \code{bsmanage::ManageControls}).}
+#'       \code{Controls}).}
 #'   }
 #' @references
 #'   Bradhurst, R., Spring, D., Stanaway, M., Milner, J., & Kompas, T. (2021).
@@ -538,11 +538,11 @@ Dispersal.Region <- function(region, population_model,
           if (!is.null(attractor_cell_vals[[j]])) {
             destination_p$cell <-
               destination_p$cell*
-                attractor_cell_vals[[j]][paths$idx[[loc_char]]$cell]
+              attractor_cell_vals[[j]][paths$idx[[loc_char]]$cell]
             if (aggr_paths_present && !is.null(attractor_aggr_vals[[j]])) {
               destination_p$aggr <-
                 destination_p$aggr*
-                  attractor_aggr_vals[[j]][paths$idx[[loc_char]]$aggr]
+                attractor_aggr_vals[[j]][paths$idx[[loc_char]]$aggr]
             }
           }
         }
@@ -728,7 +728,7 @@ Dispersal.Region <- function(region, population_model,
           has_destinations <- any(
             destination_p$cell > 0) ||
             (aggr_paths_present && any(destination_p$aggr > 0)
-          )
+            )
           if (has_destinations) {
             dest_p <- if (aggr_paths_present) {
               c(destination_p$cell, destination_p$aggr)
@@ -736,7 +736,7 @@ Dispersal.Region <- function(region, population_model,
               destination_p$cell
             }
             destinations <- sample(seq_along(dest_p), size = dispersals,
-                                  replace = TRUE, prob = dest_p)
+                                   replace = TRUE, prob = dest_p)
           } else {
             dispersals <- FALSE
           }
@@ -860,8 +860,8 @@ Dispersal.Region <- function(region, population_model,
           } else {
             for (sd_i in 1:length(dispersal_stages)) {
               dispersers[, sd_i] <- stats::rbinom(dispersals,
-                                                   size = dispersers[, sd_i],
-                                                   prob = establish_p)
+                                                  size = dispersers[, sd_i],
+                                                  prob = establish_p)
             }
             destinations <- destinations[which(rowSums(dispersers) > 0)]
             dispersers <- dispersers[which(rowSums(dispersers) > 0),,

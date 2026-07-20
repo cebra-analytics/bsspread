@@ -5,16 +5,16 @@ TEST_INPUTS_DIR <- test_path("test_inputs")
 make_spread_simulator <- function(replicates = 4L, parallel_cores = NULL) {
   TEST_DIRECTORY <- TEST_INPUTS_DIR
   template <- terra::rast(file.path(TEST_DIRECTORY, "greater_melb.tif"))
-  region <- bsspread::Region(template)
+  region <- Region(template)
   initial_n <- rep(0, region$get_locations())
   initial_n[5922] <- 10
-  population_model <- bsspread::UnstructPopulation(region, growth = 1.5)
-  initializer <- bsspread::Initializer(
+  population_model <- UnstructPopulation(region, growth = 1.5)
+  initializer <- Initializer(
     initial_n,
     region = region,
     population_model = population_model
   )
-  dispersal <- bsspread::Dispersal(
+  dispersal <- Dispersal(
     region,
     population_model,
     proportion = 1,
@@ -35,16 +35,16 @@ psock_worker_init <- local({
   test_inputs_dir <- TEST_INPUTS_DIR
   function(sim_env) {
     template <- terra::rast(file.path(test_inputs_dir, "greater_melb.tif"))
-    region <- bsspread::Region(template)
+    region <- Region(template)
     initial_n <- rep(0, region$get_locations())
     initial_n[5922] <- 10
-    population_model <- bsspread::UnstructPopulation(region, growth = 1.5)
-    initializer <- bsspread::Initializer(
+    population_model <- UnstructPopulation(region, growth = 1.5)
+    initializer <- Initializer(
       initial_n,
       region = region,
       population_model = population_model
     )
-    dispersal <- bsspread::Dispersal(
+    dispersal <- Dispersal(
       region,
       population_model,
       proportion = 1,

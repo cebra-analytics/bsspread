@@ -46,7 +46,7 @@ test_that("initializes with components and parameters", {
   expect_silent(simulator <- Simulator(region,
                                        population_model = staged_population,
                                        result_stages = 2:3))
-  population_model <- bsspread::UnstructPopulation(region)
+  population_model <- UnstructPopulation(region)
   initializer <- Initializer(region$get_template(),
                              population_model = population_model)
   dispersal <- Dispersal(region, population_model)
