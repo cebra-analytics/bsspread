@@ -245,7 +245,7 @@ test_that("disperses grid population with attractors", {
   idx <- region$get_paths(5922, max_distance = 5000)$idx[["5922"]]$cell
   mult[idx] <- 1
   n <- dispersal$unpack(n)
-  attr(n, "dynamic_mult") <- list(NULL, list(mult))
+  attr(n, "dynamic_mult") <- list(NULL, mult)
   attr(attr(n, "dynamic_mult")[[2]], "links") <- "attractors"
   n <- dispersal$pack(n)
   expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))
@@ -363,7 +363,7 @@ test_that("disperses unstructured population in a two-tier grid region", {
   mult <- rep(0, region$get_locations())
   mult[1:5922] <- 1
   n <- dispersal$unpack(n)
-  attr(n, "dynamic_mult") <- list(NULL, list(mult))
+  attr(n, "dynamic_mult") <- list(NULL, mult)
   attr(attr(n, "dynamic_mult")[[2]], "links") <- "suitability"
   n <- dispersal$pack(n)
   expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))
@@ -514,7 +514,7 @@ test_that("disperses in patch/network with attractors", {
   mult <- rep(1, region$get_locations())
   mult[3:4] <- 0
   n <- dispersal$unpack(n)
-  attr(n, "dynamic_mult") <- list(NULL, list(mult))
+  attr(n, "dynamic_mult") <- list(NULL, mult)
   attr(attr(n, "dynamic_mult")[[2]], "links") <- "attractors"
   expected_n <- rep(0, region$get_locations())
   expected_n[c(1, idx)] <- 1
@@ -592,7 +592,7 @@ test_that("disperses unstructured population in patch/network", {
   mult <- rep(1, region$get_locations())
   mult[3:4] <- 0
   n <- dispersal$unpack(n)
-  attr(n, "dynamic_mult") <- list(NULL, list(mult))
+  attr(n, "dynamic_mult") <- list(NULL, mult)
   attr(attr(n, "dynamic_mult")[[2]], "links") <- "suitability"
   n <- dispersal$pack(n)
   expect_silent(new_n <- dispersal$unpack(dispersal$disperse(n, tm = 1)))

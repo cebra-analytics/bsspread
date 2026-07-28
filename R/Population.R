@@ -255,9 +255,7 @@ Population.Region <- function(region,
         if (length(dm_idx)) {
           dynamic_mult <- rep(1, region$get_locations())
           for (i in dm_idx) {
-            for (j in 1:length(attr(n, "dynamic_mult")[[i]])) {
-              dynamic_mult <- dynamic_mult*attr(n, "dynamic_mult")[[i]][[j]]
-            }
+            dynamic_mult <- dynamic_mult*attr(n, "dynamic_mult")[[i]]
           }
           capacity <<- capacity_orig*dynamic_mult
         } else {

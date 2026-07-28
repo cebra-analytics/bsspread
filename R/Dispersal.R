@@ -353,10 +353,7 @@ Dispersal.Region <- function(region, population_model,
       if (length(dm_idx)) {
         dynamic_mult <- rep(1, region$get_locations())
         for (i in dm_idx) {
-          for (j in 1:length(attr(n$relocated, "dynamic_mult")[[i]])) {
-            dynamic_mult <-
-              dynamic_mult*attr(n$relocated, "dynamic_mult")[[i]][[j]]
-          }
+          dynamic_mult <- dynamic_mult*attr(n$relocated, "dynamic_mult")[[i]]
         }
         num_dynamic <- sum(sapply(attractors, function(a) {
           if (is.function(a$get_is_dynamic)) {
@@ -827,11 +824,9 @@ Dispersal.Region <- function(region, population_model,
               establish_p <- rep(1, length(destinations))
             }
             for (j in dm_idx) {
-              for (k in 1:length(attr(n$relocated, "dynamic_mult")[[j]])) {
-                establish_p <-
-                  (establish_p*
-                     attr(n$relocated, "dynamic_mult")[[j]][[k]][destinations])
-              }
+              establish_p <-
+                (establish_p*
+                   attr(n$relocated, "dynamic_mult")[[j]][destinations])
             }
           }
         }

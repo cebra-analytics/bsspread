@@ -103,7 +103,7 @@ test_that("grows populations with capacity", {
   mult <- (capacity > 10)*0.5
   expect_silent(population$set_capacity_mult(n))
   expect_equal(population$get_capacity(), capacity)
-  attr(n, "dynamic_mult") <- list(NULL, list(mult))
+  attr(n, "dynamic_mult") <- list(NULL, mult)
   attr(attr(n, "dynamic_mult")[[2]], "links") <- "suitability"
   expect_silent(population$set_capacity_mult(n))
   expect_equal(population$get_capacity(), capacity)
