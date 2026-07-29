@@ -461,8 +461,21 @@ Controls.Region <- function(region, population_model,
         # Detection-based control
         if ("undetected" %in% names(attributes(n))) {
 
-          # Detected locations
+          # Detected locations (included previously removed)
           idx <- which(rowSums(as.matrix(n - attr(n, "undetected"))) > 0)
+          detected_attr <- "detected"
+          if (!is.null(self$get_id())) {
+            detected_attr <- c("detected",
+                               paste0(1:self$get_id(), "_detected"))
+          }
+          if (any(detected_attr %in% names(attributes(n)))) {
+            detected_attr <-
+              detected_attr[which(detected_attr %in% names(attributes(n)))]
+            idx <- unique(c(idx, as.numeric(unlist(
+              sapply(detected_attr, function (d_attr) {
+              which(rowSums(as.matrix(attr(n, d_attr))) > 0)
+            })))))
+          }
 
           # Expand control locations via radius
           if (is.numeric(radius) && length(idx) > 0 &&

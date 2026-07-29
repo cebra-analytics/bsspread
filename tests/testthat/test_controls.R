@@ -427,6 +427,34 @@ test_that("applies stochastic growth/spread/establishment controls", {
   expect_equal(attr(attr(new_n, "control_growth"), "apply_to"), "survival")
   expect_equal(attr(new_n, "control_growth_cost"),
                (expected_costs*(exist_control > 0 | detected_mask)))
+  # remove the detections
+  new_n <- new_n - detected
+  attr(new_n, "detected") <- detected
+  set.seed(1234)
+  expect_silent(new_n2 <- controls$apply(new_n, 4))
+  expect_equal(as.numeric(attr(new_n2, "control_growth")),
+               ((exist_mask | detected_mask)*0.7 +
+                  !(exist_mask | detected_mask)))
+  expect_equal(attr(attr(new_n2, "control_growth"), "stages"), 2:3)
+  expect_equal(attr(attr(new_n2, "control_growth"), "apply_to"), "survival")
+  expect_equal(attr(new_n2, "control_growth_cost"),
+               (expected_costs*(exist_control > 0 | detected_mask)))
+  # removed detections split across two detection actions
+  attr(new_n, "detected") <- NULL
+  attr(new_n, "1_detected") <- attr(new_n, "2_detected") <- detected
+  attr(new_n, "1_detected")[145:150,] <- 0
+  attr(new_n, "2_detected")[120:143,] <- 0
+  controls$set_id(3)
+  set.seed(1234)
+  expect_silent(new_n2 <- controls$apply(new_n, 4))
+  expect_equal(as.numeric(attr(new_n2, "control_growth")),
+               ((exist_mask | detected_mask)*0.7 +
+                  !(exist_mask | detected_mask)))
+  expect_equal(attr(attr(new_n2, "control_growth"), "stages"), 2:3)
+  expect_equal(attr(attr(new_n2, "control_growth"), "apply_to"), "survival")
+  expect_equal(attr(new_n2, "control_growth_cost"),
+               (expected_costs*(exist_control > 0 | detected_mask)))
+  # establishment control
   establish_mask <- +(rowSums(detected) > 0 | NA)
   establish_mask <- terra::buffer(region$get_rast(establish_mask),
                                   width = 3000)[region$get_indices()][,1] > 0
