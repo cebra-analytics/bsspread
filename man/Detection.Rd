@@ -125,3 +125,47 @@ newly applied detection/surveillance.}
 Builds a class for simulating the application of detection or surveillance
 applied in the management of an invasive species.
 }
+\references{
+Baker, C. M., Bower, S., Tartaglia, E., Bode, M., Bower, H., & Pressey,
+R. L. (2018). Modelling the spread and control of cherry guava on Lord
+Howe Island. \emph{Biological Conservation}, 227, 252–258.
+\doi{10.1016/j.biocon.2018.09.017}
+
+Bradhurst, R., Spring, D., Stanaway, M., Milner, J., & Kompas, T. (2021).
+A generalised and scalable framework for modelling incursions,
+surveillance and control of plant and environmental pests.
+\emph{Environmental Modelling & Software}, 139, N.PAG.
+\doi{10.1016/j.envsoft.2021.105004}
+
+Cacho, O. J., & Hester, S. M. (2022). Modelling biocontrol of invasive
+insects: An application to European Wasp (Vespula germanica) in Australia.
+\emph{Ecological Modelling}, 467. \doi{10.1016/j.ecolmodel.2022.109939}
+
+Gormley, A. M., Holland, E. P., Barron, M. C., Anderson, D. P., & Nugent,
+G. (2016). A modelling framework for predicting the optimal balance
+between control and surveillance effort in the local eradication of
+tuberculosis in New Zealand wildlife.
+\emph{Preventive Veterinary Medicine}, 125, 10–18.
+\doi{10.1016/j.prevetmed.2016.01.007}
+
+Lustig, A., James, A., Anderson, D., & Plank, M. (2019). Pest control at a
+regional scale: Identifying key criteria using a spatially explicit,
+agent‐based model. \emph{Journal of Applied Ecology}, 56(7 pp.1515–1527),
+1527–1515. \doi{10.1111/1365-2664.13387}
+
+Ramsey, D. S. L., & Efford, M. G. (2010). Management of bovine
+tuberculosis in brushtail possums in New Zealand: predictions from a
+spatially explicit individual-based model.
+\emph{Journal of Applied Ecology}, 47(4), 911–919.
+\doi{10.1111/j.1365-2664.2010.01839.x}
+
+Spring, D., Croft, L., & Kompas, T. (2017). Look before you treat:
+increasing the cost effectiveness of eradication programs with aerial
+surveillance. \emph{Biological Invasions}, 19(2), 521.
+\doi{10.1007/s10530-016-1292-1}
+
+Wadsworth, R. A., Collingham, Y. C., Willis, S. G., Huntley, B., & Hulme,
+P. E. (2000). Simulating the Spread and Management of Alien Riparian
+Weeds: Are They Out of Control? \emph{Journal of Applied Ecology}, 37,
+28–38. \doi{10.1046/j.1365-2664.2000.00551.x}
+}

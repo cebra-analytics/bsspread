@@ -1,6 +1,6 @@
 Package: bsspread
 Title: Biosecurity Population Spread Modelling
-Version: 0.4.3
+Version: 0.4.4
 Authors@R: c(
     person("Sean", "Haythorne", email = "sean.haythorne@unimelb.edu.au", role = c("aut", "cre")),
     person("John", "Baumgartner", email = "john.baumgartner@unimelb.edu.au", role = c("aut")))

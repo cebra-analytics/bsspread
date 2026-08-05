@@ -135,3 +135,25 @@ newly applied removals.}
 Builds a class for simulating the application of management removals or
 eradication of an invasive species.
 }
+\references{
+Baker, C. M., Bower, S., Tartaglia, E., Bode, M., Bower, H., & Pressey,
+R. L. (2018). Modelling the spread and control of cherry guava on Lord
+Howe Island. \emph{Biological Conservation}, 227, 252–258.
+\doi{10.1016/j.biocon.2018.09.017}
+
+Bradhurst, R., Spring, D., Stanaway, M., Milner, J., & Kompas, T. (2021).
+A generalised and scalable framework for modelling incursions,
+surveillance and control of plant and environmental pests.
+\emph{Environmental Modelling & Software}, 139, N.PAG.
+\doi{10.1016/j.envsoft.2021.105004}
+
+Spring, D., Croft, L., & Kompas, T. (2017). Look before you treat:
+increasing the cost effectiveness of eradication programs with aerial
+surveillance. \emph{Biological Invasions}, 19(2), 521.
+\doi{10.1007/s10530-016-1292-1}
+
+Wadsworth, R. A., Collingham, Y. C., Willis, S. G., Huntley, B., & Hulme,
+P. E. (2000). Simulating the Spread and Management of Alien Riparian
+Weeds: Are They Out of Control? \emph{Journal of Applied Ecology}, 37,
+28–38. \doi{10.1046/j.1365-2664.2000.00551.x}
+}

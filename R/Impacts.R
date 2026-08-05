@@ -93,6 +93,62 @@
 #'       from incursion population vector or matrix \code{n} at time step
 #'       \code{tm}, and return \code{n} with impact values attached.}
 #'   }
+#' @references
+#'   Arponen, A., Heikkinen, R. K., Thomas, C. D., & Moilanen, A. (2005). The
+#'   Value of Biodiversity in Reserve Selection: Representation, Species
+#'   Weighting, and Benefit Functions. \emph{Conservation Biology}, 19(6),
+#'   2009–2014. \doi{10.1111/j.1523-1739.2005.00218.x}
+#'
+#'   Costanza, R., D'Arge, R., De Groot, R., Farber, S., Grasso, M.,
+#'   Hannon, B., Limburg, K., Naeem, S., O'Neill, R. V., & Paruelo, J. (1998).
+#'   The value of ecosystem services: putting the issues in perspective.
+#'   \emph{Ecological Economics}, 25(E 1), 67–72.
+#'   \doi{10.1016/S0921-8009(98)00019-6}
+#'
+#'   Department of Agriculture, Fisheries and Forestry (DAFF) (2021). National
+#'   Environmental Biosecurity Response Agreement 2.0.
+#'   \url{https://www.agriculture.gov.au/biosecuritytrade/policy/emergency/nebra}
+#'
+#'   Dodd, A. J., Stoeckl, N., Baumgartner, J. B. & Kompas, T. F. (2020). Key
+#'   Result Summary: Valuing Australia's Biosecurity System. Tech. Rep. 170713,
+#'   \emph{Centre of Excellence for Biosecurity Risk Analysis (CEBRA),}
+#'   \emph{The University of Melbourne, Melbourne}.
+#'   \url{https://cebra.unimelb.edu.au/__data/assets/pdf_file/0020/3535013/CEBRA_Value_Docs_KeyResultSummary_v0.6_Endorsed.pdf}
+#'
+#'   MacLeod, A., Head, J., & Gaunt, A. (2004). An assessment of the potential
+#'   economic impact of Thrips palmi on horticulture in England and the
+#'   significance of a successful eradication campaign. \emph{Crop Protection},
+#'   23(7), 610–601. \doi{10.1016/j.cropro.2003.11.010}
+#'
+#'   O'Loughlin, L. S., Gooden, B., Barney, J. N., & Lindenmayer, D. B. (2019).
+#'   Surrogacy in invasion research and management : inferring "impact" from
+#'   "invasiveness". \emph{Frontiers in Ecology and the Environment}, 17(8),
+#'   464–473. \doi{10.1002/fee.2097}
+#'
+#'   Soliman, T., Mourits, M. C. M., Oude Lansink, A. G. J. M., &
+#'   van der Werf, W. (2010). Economic impact assessment in pest risk analysis.
+#'   \emph{Crop Protection}, 29(6), 517–524. \doi{10.1016/j.cropro.2009.12.014}
+#'
+#'   Soliman, T., Mourits, M. C. M., Oude Lansink, A. G. J. M., &
+#'   van der Werf, W. (2015). Quantitative economic impact assessment of
+#'   invasive plant pests: What does it require and when is it worth the
+#'   effort? \emph{Crop Protection}, 69, 9–17.
+#'   \doi{10.1016/j.cropro.2014.11.011}
+#'
+#'   Stoeckl, N., Dodd, A., & Kompas, T. (2023). The monetary value of 16
+#'   services protected by the Australian National Biosecurity System:
+#'   Spatially explicit estimates and vulnerability to incursions.
+#'   \emph{Ecosystem Services}, 60. \doi{10.1016/j.ecoser.2023.101509}
+#'
+#'   Weitzman, M. L. (1998). The Noah's Ark Problem. \emph{Econometrica},
+#'   66(6), 1279–1298. \doi{10.2307/2999617}
+#'
+#'   Welsh, M. J., Brockerhoff, E. G., Kean, J. M., Phillips, C.,
+#'   Stringer, L. D., Vereijssen, J., Turner, J. A., Epanchin-Niell, R. S.,
+#'   Monge, J. J., Soliman, T., Robinson, A. P., Kompas, T., Liebhold, A. M.,
+#'   & Ormsby, M. (2021). Approaches for estimating benefits and costs of
+#'   interventions in plant biosecurity across invasion phases.
+#'   \emph{Ecological Applications}, 31(5). \doi{10.1002/eap.2319}
 #' @export
 Impacts <- function(region, population_model,
                     impact_type = c("presence", "density", "area"),
