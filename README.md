@@ -333,7 +333,7 @@ may optionally be linked (via configured *dynamic links*) to apply
 likelihood), carrying capacity, and/or dispersal attraction when
 applicable, such as when a threat utilises a resource or asset (e.g. as
 a food source) (Costanza et al., 1998; MacLeod, Head, & Gaunt, 2004). An
-optional *discount rate* (per time interval) may configured for monetary
+optional *discount rate* (per time interval) may be configured for monetary
 asset values to estimate future values that account for inflation.
 Typically the discounting uses market interest rates (Dodd et al., 2020;
 MacLeod, Head, & Gaunt, 2004; Soliman et al., 2015; Stoeckl, Dodd, &
@@ -371,7 +371,7 @@ detecting (local) populations having at least at certain size (of
 detectable individuals), specified via a *sensitivity threshold* value,
 and the probability of detection for (local) population sizes below the
 threshold value is reduced proportionally (i.e. scaled by
-size/threshold). When specified at the presence/absence level,
+size/threshold). When specified at the presence level,
 sensitivity values denote the probability of detection any (local)
 presence of (detectable individuals within) the invasive species
 population (equivalent to threshold = 1).
