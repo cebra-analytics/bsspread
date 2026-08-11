@@ -482,6 +482,11 @@ components (Bradhurst et al., 2021; García Adeva, Botha, & Reynolds,
   mode or vector of threat spread, including distance and/or direction
   functions (kernels), attractors, and/or landscape permeability or
   network connectivity (when applicable).
+- One or more *Impacts* or inherited class objects configured to
+  calculate threat impacts at each simulation time step.
+- One or more *Actions* or inherited class objects (including
+  *Detection*, *Controls*, *Removals*) configured to apply actions at
+  scheduled simulation time steps.
 - A *user function* for implementing custom functionality applied to the
   simulated population at each time step.
 
@@ -493,8 +498,10 @@ following order:
 
 1.  Apply population growth or transitions.
 2.  Apply spread for each dispersal model (in order).
-3.  Apply the user function (when configured).
-4.  Collate the simulation results.
+3.  Calculate impacts (in order).
+4.  Apply actions (in order).
+5.  Apply the user function (when configured).
+6.  Collate the simulation results.
 
 When all simulations are complete the simulator returns the *Result*
 class object with the collated simulation results.

@@ -177,12 +177,16 @@ A *Simulator* class object is utilised to run one or more stochastic simulations
 - The *Initializer* object configured to initialise the threat population for each simulation.
 - The *Population* or inherited class object configured with growth dynamics, carrying capacities, and establishment probabilities (when applicable).
 - One or more *Dispersal* or inherited class objects configured for each mode or vector of threat spread, including distance and/or direction functions (kernels), attractors, and/or landscape permeability or network connectivity (when applicable).
+- One or more *Impacts* or inherited class objects configured to calculate threat impacts at each simulation time step.
+- One or more *Actions* or inherited class objects (including *Detection*, *Controls*, *Removals*) configured to apply actions at scheduled simulation time steps.
 - A *user function* for implementing custom functionality applied to the simulated population at each time step.
 
 The simulator creates a *Results* class object to collate, generate, and save simulation results. Summary statistics (mean and standard deviations across replicates) are collated when more than one replicate is run. At each simulation time step the model processes are run in the following order:
 
 1. Apply population growth or transitions.
 1. Apply spread for each dispersal model (in order).
+1. Calculate impacts (in order).
+1. Apply actions (in order).
 1. Apply the user function (when configured).
 1. Collate the simulation results.
 
