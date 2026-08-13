@@ -422,10 +422,15 @@ Region.SpatRaster <- function(x, ...) {
         }
 
         # Calculate (local) cell distances
-        paths$distances[[cell_char]] <<- list(
-          cell = as.integer(round(as.numeric(
-            terra::distance(region_pts[cell],
-                            region_pts[paths$idx[[cell_char]]$cell])))))
+        paths$distances[[cell_char]] <<- list()
+        if (length(paths$idx[[cell_char]]$cell)) {
+          paths$distances[[cell_char]]$cell <<-
+            as.integer(round(as.numeric(
+              terra::distance(region_pts[cell],
+                              region_pts[paths$idx[[cell_char]]$cell]))))
+        } else {
+          paths$distances[[cell_char]]$cell <<- integer(0)
+        }
 
         # Calculate aggregate cell distances when applicable
         if (include_aggr && length(paths$idx[[cell_char]]$aggr) > 0) {
@@ -438,12 +443,17 @@ Region.SpatRaster <- function(x, ...) {
         # Calculate reachable cell directions
         if (include_directions) {
 
-          # Calculate (local) cell directions
-          xy_diff <- (terra::crds(region_pts[cell])[
-            rep(1, length(paths$idx[[cell_char]]$cell)),] -
-              terra::crds(region_pts[paths$idx[[cell_char]]$cell]))
-          paths$directions[[cell_char]] <<- list(cell = as.integer(round(
-            atan2(xy_diff[,"y"], xy_diff[,"x"])*180/pi + 180)))
+          paths$directions[[cell_char]] <<- list()
+          if (length(paths$idx[[cell_char]]$cell)) {
+            # Calculate (local) cell directions
+            xy_diff <- (terra::crds(region_pts[cell])[
+              rep(1, length(paths$idx[[cell_char]]$cell)),] -
+                terra::crds(region_pts[paths$idx[[cell_char]]$cell]))
+            paths$directions[[cell_char]]$cell <<- as.integer(round(
+              atan2(xy_diff[,"y"], xy_diff[,"x"])*180/pi + 180))
+          } else {
+            paths$directions[[cell_char]]$cell <<- integer(0)
+          }
 
           # Calculate aggregate cell directions when applicable
           if (include_aggr && length(paths$idx[[cell_char]]$aggr) > 0) {
@@ -725,31 +735,40 @@ Region.SpatRaster <- function(x, ...) {
         # List for modified distances
         cell_perm_dist <- list()
 
-        # Get base (no perm) weight distance to reachable inner cells
-        base_dist <- as.vector(igraph::distances(
-          paths$graphs$cell,
-          v = cell_key(indices[cell]),
-          to = cell_key(indices[paths$idx[[cell_char]]$cell]),
-          weights = paths$weights$cell$base))
-
         # Calculate modified distances for each permeability layer
         cell_perm_dist$cell <- list()
-        for (perm_id in 1:length(paths$perms)) {
+        if (length(paths$idx[[cell_char]]$cell)) {
 
-          # Get permeability weight distance to reachable inner cells
-          perm_dist <- as.vector(igraph::distances(
+          # Get base (no perm) weight distance to reachable inner cells
+          base_dist <- as.vector(igraph::distances(
             paths$graphs$cell,
             v = cell_key(indices[cell]),
             to = cell_key(indices[paths$idx[[cell_char]]$cell]),
-            weights = paths$weights$cell$perms[[perm_id]]))
+            weights = paths$weights$cell$base))
 
-          # Calculate the distance modifiers
-          perm_dist <- perm_dist/base_dist
-          perm_dist[which(!is.finite(perm_dist))] <- NA
+          for (perm_id in 1:length(paths$perms)) {
 
-          # Scale the distance to (otherwise) reachable inner cells
-          cell_perm_dist$cell[[perm_id]] <- as.integer(
-            round(paths$distances[[cell_char]]$cell*perm_dist))
+            # Get permeability weight distance to reachable inner cells
+            perm_dist <- as.vector(igraph::distances(
+              paths$graphs$cell,
+              v = cell_key(indices[cell]),
+              to = cell_key(indices[paths$idx[[cell_char]]$cell]),
+              weights = paths$weights$cell$perms[[perm_id]]))
+
+            # Calculate the distance modifiers
+            perm_dist <- perm_dist/base_dist
+            perm_dist[which(!is.finite(perm_dist))] <- NA
+
+            # Scale the distance to (otherwise) reachable inner cells
+            cell_perm_dist$cell[[perm_id]] <- as.integer(
+              round(paths$distances[[cell_char]]$cell*perm_dist))
+          }
+
+        } else {
+
+          for (perm_id in 1:length(paths$perms)) {
+            cell_perm_dist$cell[[perm_id]] <- integer(0)
+          }
         }
 
         # Aggregate distance multipliers when applicable

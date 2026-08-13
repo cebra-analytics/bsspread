@@ -106,6 +106,22 @@ test_that("creates two tier aggregation", {
   expect_is(aggr$get_cells, "function")
 })
 
+test_that("handles isolated cells with no reachable local paths", {
+  r <- terra::rast(nrows = 3, ncols = 3,
+                   extent = terra::ext(0, 300000, 0, 300000),
+                   crs = "EPSG:3577")
+  r[] <- NA
+  r[1] <- 1
+  r[9] <- 1
+  region <- Region(r)
+  region$configure_paths(max_distance = 20000, directions = TRUE)
+  expect_silent(region$calculate_paths(1:2))
+  paths <- region$get_paths(2, max_distance = 20000, directions = TRUE)
+  expect_length(paths$idx[["2"]]$cell, 0)
+  expect_length(paths$distances[["2"]]$cell, 0)
+  expect_length(paths$directions[["2"]]$cell, 0)
+})
+
 test_that("creates paths to single tier cells", {
   TEST_DIRECTORY <- test_path("test_inputs")
   template <- terra::rast(file.path(TEST_DIRECTORY, "greater_melb.tif"))
