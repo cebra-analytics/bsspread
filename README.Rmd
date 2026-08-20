@@ -537,7 +537,7 @@ dir(pattern = "*.png")
 
 ![Total occupancy](man/figures/total_occupancy.png)
 ![Total area occupied](man/figures/total_area_occupied.png)
-![Total non-monetary HCAS impacts](man/figures/total_impacts_non-monetary_hcas.png)
+![Total non-monetary HCAS impacts](man/figures/total_impacts_non-monetary_HCAS.png)
 
 ### Step 8: Management Actions
 
@@ -588,6 +588,9 @@ simulator <- bsspread::Simulator(region,
                                  user_function = progress_function)
 results <- simulator$run()
 ```
+
+We can now examine our raster output results.
+
 ```{r example_8_4, message = FALSE, fig.align = "center"}
 # Save raster files for each simulated time step
 output <- lapply(result_rast, function(x) file.remove(terra::sources(x)))
@@ -651,7 +654,7 @@ dir(pattern = "*.png")
 
 ![Total occupancy (managed)](man/figures/total_occupancy_managed.png)
 ![Total area occupied (managed)](man/figures/total_area_occupied_managed.png)
-![Total non-monetary HCAS impacts (managed)](man/figures/total_impacts_non-monetary_hcas_managed.png)
+![Total non-monetary HCAS impacts (managed)](man/figures/total_impacts_non-monetary_HCAS_managed.png)
 ![Total detected](man/figures/total_actions_1_detected.png)
 ![Total removed](man/figures/total_actions_2_removed.png)
 

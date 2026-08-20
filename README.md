@@ -333,11 +333,11 @@ may optionally be linked (via configured *dynamic links*) to apply
 likelihood), carrying capacity, and/or dispersal attraction when
 applicable, such as when a threat utilises a resource or asset (e.g. as
 a food source) (Costanza et al., 1998; MacLeod, Head, & Gaunt, 2004). An
-optional *discount rate* (per time interval) may be configured for monetary
-asset values to estimate future values that account for inflation.
-Typically the discounting uses market interest rates (Dodd et al., 2020;
-MacLeod, Head, & Gaunt, 2004; Soliman et al., 2015; Stoeckl, Dodd, &
-Kompas, 2023; Welsh et al., 2021).
+optional *discount rate* (per time interval) may be configured for
+monetary asset values to estimate future values that account for
+inflation. Typically the discounting uses market interest rates (Dodd et
+al., 2020; MacLeod, Head, & Gaunt, 2004; Soliman et al., 2015; Stoeckl,
+Dodd, & Kompas, 2023; Welsh et al., 2021).
 
 ### Actions
 
@@ -371,10 +371,10 @@ detecting (local) populations having at least at certain size (of
 detectable individuals), specified via a *sensitivity threshold* value,
 and the probability of detection for (local) population sizes below the
 threshold value is reduced proportionally (i.e. scaled by
-size/threshold). When specified at the presence level,
-sensitivity values denote the probability of detection any (local)
-presence of (detectable individuals within) the invasive species
-population (equivalent to threshold = 1).
+size/threshold). When specified at the presence level, sensitivity
+values denote the probability of detection any (local) presence of
+(detectable individuals within) the invasive species population
+(equivalent to threshold = 1).
 
 An optional *surveillance cost* (combined resource and fixed costs) may
 be specified for each location where surveillance is applied (Spring,
@@ -523,7 +523,9 @@ Australia, which approximately reproduces the spread distribution of the
 “dispersal-constrained habitat suitability” model described in Williams,
 Hahs, & Morgan (2008). In the following steps we build the workflow
 components, run the assembled simulation model, and examine the
-simulated results.
+simulated results, including estimated environmental impacts. We will
+then re-run our simulation model with surveillance (detection) and
+removal management actions, and compare results.
 
 ### Step 1: Region
 
@@ -855,7 +857,41 @@ dispersal_model <- bsspread::Dispersal(region,
                                        direction_function = direction_kernel)
 ```
 
-### Step 5: Simulator
+### Step 5: Impacts
+
+We will estimate non-monetary environmental impacts of our simulated
+Hawkweed incursion and spread via a quantifiable loss in habitat
+condition, again using the the [CSIRO HCAS
+layer](https://data.csiro.au/collection/csiro:63571) (Valavi et al.,
+2025), which may be downloaded and placed it in a suitable directory
+(e.g. *downloaded_data*). For illustrative purposes we calculate a 20%
+loss in habitat condition in locations where the simulated Hawkweed is
+present. More complex unstructured or stage-based models could estimate
+a loss in habitat condition in proportion to the Hawkweed density, based
+on the number of simulated individual plants or colonies relative to the
+carrying capacity at each location.
+
+``` r
+# Environmental impacts estimated via 20% loss in habitat condition
+hcas_rast <- terra::rast("../downloaded_data/HCAS33_HCB_1988_2024.tif")
+hcas_rast <- 1 - terra::resample(
+  terra::project(terra::crop(hcas_rast,
+                             c(1354000, 1372000, -4120000, -4103000)),
+                 region_nvis_rast), region_nvis_rast)
+envir_impacts <- bsspread::Impacts(region,
+                                   population_model,
+                                   impact_type = "presence",
+                                   valuation_type = "non-monetary",
+                                   asset_name = "HCAS",
+                                   asset_value = hcas_rast,
+                                   loss_rate = 0.2)
+terra::plot(hcas_rast, colNA = "grey",
+            main = "Habitat condition (HCAS)")
+```
+
+<img src="man/figures/README-example_5-1.png" width="100%" style="display: block; margin: auto;" />
+
+### Step 6: Simulator
 
 We can now build and run our population spread model simulations via a
 *Simulator* class object, with links to our population model,
@@ -878,6 +914,7 @@ simulator <- bsspread::Simulator(region,
                                  initializer = initializer,
                                  population_model = population_model,
                                  dispersal_models = list(dispersal_model),
+                                 impacts = list(envir_impacts),
                                  user_function = progress_function)
 results <- simulator$run()
 #> [1] "replicate 100"
@@ -892,7 +929,7 @@ results <- simulator$run()
 #> [1] "replicate 1000"
 ```
 
-### Step 6: Results
+### Step 7: Results
 
 The *Simulator* class object’s *run* method returns a *Results* class
 object encapsulating the collated simulation results, as well as
@@ -913,25 +950,74 @@ result_rast
 #> sources     : occupancy_t0_mean.tif  
 #>               occupancy_t1_mean.tif  
 #>               occupancy_t2_mean.tif  
-#> names       :     0,     1,     2 
-#> min values  : 0.000, 0.000, 0.000 
-#> max values  : 0.037, 0.269, 0.831
-# Plot the mean occupancy for time steps 1 and 2
+#> names       :     0,     1,    2 
+#> min values  : 0.000, 0.000, 0.00 
+#> max values  : 0.037, 0.313, 0.84 
+#> 
+#> $`impacts_non-monetary_HCAS_mean`
+#> class       : SpatRaster 
+#> size        : 170, 180, 3  (nrow, ncol, nlyr)
+#> resolution  : 100, 100  (x, y)
+#> extent      : 1354000, 1372000, -4120000, -4103000  (xmin, xmax, ymin, ymax)
+#> coord. ref. : GDA2020 / Australian Albers (EPSG:9473) 
+#> sources     : impacts_non-monetary_HCAS_t0_mean.tif  
+#>               impacts_non-monetary_HCAS_t1_mean.tif  
+#>               impacts_non-monetary_HCAS_t2_mean.tif  
+#> names       :           0,          1,         2 
+#> min values  : 0.000000000, 0.00000000, 0.0000000 
+#> max values  : 0.006406152, 0.05424767, 0.1623542 
+#> 
+#> $`impacts_non-monetary_HCAS_sd`
+#> class       : SpatRaster 
+#> size        : 170, 180, 3  (nrow, ncol, nlyr)
+#> resolution  : 100, 100  (x, y)
+#> extent      : 1354000, 1372000, -4120000, -4103000  (xmin, xmax, ymin, ymax)
+#> coord. ref. : GDA2020 / Australian Albers (EPSG:9473) 
+#> sources     : impacts_non-monetary_HCAS_t0_sd.tif  
+#>               impacts_non-monetary_HCAS_t1_sd.tif  
+#>               impacts_non-monetary_HCAS_t2_sd.tif  
+#> names       :          0,         1,          2 
+#> min values  : 0.00000000, 0.0000000, 0.00000000 
+#> max values  : 0.03269842, 0.0872497, 0.09710664
+# Plot the mean occupancy for time steps 0, 1 and 2
 label <- attr(result_rast$occupancy_mean, "metadata")$label
-for (i in 2:3) {
+for (i in 1:3) {
   terra::plot(log(result_rast$occupancy_mean[[i]], base = 10), colNA = "black",
-              main = paste(label, ": time step", i - 1, "(log)"))
+              main = paste(label, ": time step", i - 1, "(log)"),
+              range = c(-3, 0))
 }
 ```
 
-<img src="man/figures/README-example_6_1-1.png" width="100%" style="display: block; margin: auto;" /><img src="man/figures/README-example_6_1-2.png" width="100%" style="display: block; margin: auto;" />
+<img src="man/figures/README-example_7_1-1.png" width="100%" style="display: block; margin: auto;" /><img src="man/figures/README-example_7_1-2.png" width="100%" style="display: block; margin: auto;" /><img src="man/figures/README-example_7_1-3.png" width="100%" style="display: block; margin: auto;" />
 
-The raster plots indicate the mean (log) occupancy across the 1000
-replicate simulations. Note that unstructured and staged population
-models also produce raster plots for the standard deviation (SD) of
-occupancy, as well as mean and SD for population sized. We may also
-examine the total occupancy (locations occupied) and the total area
-occupied via summary tables (CSV).
+``` r
+# Plot the mean & SD impacts for time step 2
+label <- attr(result_rast$`impacts_non-monetary_HCAS_mean`[[3]],
+              "metadata")$label
+terra::plot(log(result_rast$`impacts_non-monetary_HCAS_mean`[[3]], base = 10),
+            colNA = "black", main = paste(label, ": time step 2 (log)"),
+            range = c(-4.7, -0.5))
+```
+
+<img src="man/figures/README-example_7_1-4.png" width="100%" style="display: block; margin: auto;" />
+
+``` r
+label <- attr(result_rast$`impacts_non-monetary_HCAS_sd`[[3]],
+              "metadata")$label
+terra::plot(log(result_rast$`impacts_non-monetary_HCAS_sd`[[3]], base = 10),
+            colNA = "black", main = paste(label, ": time step 2 (log)"),
+            range = c(-3.4, -0.6))
+```
+
+<img src="man/figures/README-example_7_1-5.png" width="100%" style="display: block; margin: auto;" />
+
+The raster plots indicate the mean (log) occupancy as well as the mean
+and standard deviation (SD) of estimated non-monetary impacts, or loss
+in habitat condition (HCAS), across the 1000 replicate simulations. Note
+that unstructured and staged population models also produce raster plots
+for mean occupancy, as well as mean and SD for population sizes. We may
+also examine the total occupancy (locations occupied), the total area
+occupied, and total impacts via summary tables (CSV).
 
 ``` r
 # Save CSV summary tables
@@ -940,28 +1026,295 @@ total_occupancy <- read.csv("total_occupancy.csv")
 colnames(total_occupancy)[1] <- "Total occupancy"
 print(total_occupancy)
 #>   Total occupancy t0        t1       t2
-#> 1            mean  1 22.025000 435.6660
-#> 2              sd  0  5.078796 103.7741
+#> 1            mean  1 22.367000 442.4290
+#> 2              sd  0  4.954883 100.9872
 total_area_occupied <- read.csv("total_area_occupied.csv")
 colnames(total_area_occupied)[1] <- "Total area occupied"
 print(total_area_occupied)
 #>   Total area occupied    t0        t1      t2
-#> 1                mean 10000 220250.00 4356660
-#> 2                  sd     0  50787.96 1037741
+#> 1                mean 10000 223670.00 4424290
+#> 2                  sd     0  49548.83 1009872
+total_impacts <- read.csv("total_impacts_non-monetary_HCAS.csv")
+colnames(total_impacts)[1] <- "Total non-monetary impacts"
+print(total_impacts)
+#>   Total non-monetary impacts         t0        t1        t2
+#> 1                       mean 0.13144877 2.3661143 39.280901
+#> 2                         sd 0.04835405 0.5813789  8.752391
 ```
 
-Time-series plots of total occupancy and total area occupied may also be
-saved. These plots show the mean +/- 2 SD.
+Time-series plots of total occupancy, total area occupied, and total
+impacts may also be saved. These plots show the mean +/- 2 SD.
 
 ``` r
 # Save summary time-series plots
 results$save_plots()
 dir(pattern = "*.png")
-#> [1] "total_area_occupied.png" "total_occupancy.png"
+#> [1] "total_area_occupied.png"             "total_impacts_non-monetary_HCAS.png"
+#> [3] "total_occupancy.png"
 ```
 
 ![Total occupancy](man/figures/total_occupancy.png) ![Total area
-occupied](man/figures/total_area_occupied.png)
+occupied](man/figures/total_area_occupied.png) ![Total non-monetary HCAS
+impacts](man/figures/total_impacts_non-monetary_HCAS.png)
+
+### Step 8: Management Actions
+
+We will now rerun our population spread model simulations with
+surveillance (detection) and removal management actions and compare
+results.
+
+The mean occupancy output (at time step 2) from our unmanaged spread
+model simulations from step 6 may be utilised, as an approximate
+reproduction of the spread distribution of the Williams et al. (2008)
+model, to build an example surveillance design that reproduces the
+design described in Hauser & McCarthy (2009). This example surveillance
+design is described in the
+[bsspread](https://github.com/cebra-analytics/bsdesign) package. The
+sensitivity or detection probability of this surveillance design may
+then be utilised for simulating surveillance (detection) actions. The
+sensitivity distribution of a surveillance design built using a previous
+population spread simulation run may be downloaded from
+[here](https://github.com/cebra-analytics/bsspread/tree/main/data) and
+copied into a *data* directory.
+
+``` r
+# Load the sensitivity of our corresponding surveillance design example
+sensitivity_rast <- terra::rast("data/sensitivity.tif")
+# Presence-based detection actions
+detect_action <- bsspread::Detection(
+  region,
+  population_model,
+  sensitivity = sensitivity_rast[region$get_indices()][,1], # as vector
+  sensitivity_type = "presence"
+)
+terra::plot(sensitivity_rast,
+            main = "Hawkweed surveillance sensitivity",
+            colNA = "black")
+```
+
+<img src="man/figures/README-example_8_1-1.png" width="100%" style="display: block; margin: auto;" />
+
+Our simulated removal actions will utilise a constant 90% success rate
+to account for undiscovered Hawkweed at locations where its simulated
+presence has been detected.
+
+``` r
+# Presence-based detection actions
+remove_action <- bsspread::Removals(
+  region,
+  population_model,
+  removal_pr = 0.9
+)
+```
+
+We will now rerun our simulation model with these management actions.
+
+``` r
+simulator <- bsspread::Simulator(region,
+                                 time_steps = 2,
+                                 step_duration = 1,
+                                 step_units = "years",
+                                 replicates = 1000,
+                                 parallel_cores = 8,
+                                 initializer = initializer,
+                                 population_model = population_model,
+                                 dispersal_models = list(dispersal_model),
+                                 impacts = list(envir_impacts),
+                                 actions = list(detect_action, remove_action),
+                                 user_function = progress_function)
+results <- simulator$run()
+#> [1] "replicate 100"
+#> [1] "replicate 200"
+#> [1] "replicate 300"
+#> [1] "replicate 400"
+#> [1] "replicate 500"
+#> [1] "replicate 600"
+#> [1] "replicate 700"
+#> [1] "replicate 800"
+#> [1] "replicate 900"
+#> [1] "replicate 1000"
+```
+
+We can now examine our raster output results.
+
+``` r
+# Save raster files for each simulated time step
+output <- lapply(result_rast, function(x) file.remove(terra::sources(x)))
+result_rast <- results$save_rasters()
+result_rast
+#> $occupancy_mean
+#> class       : SpatRaster 
+#> size        : 170, 180, 3  (nrow, ncol, nlyr)
+#> resolution  : 100, 100  (x, y)
+#> extent      : 1354000, 1372000, -4120000, -4103000  (xmin, xmax, ymin, ymax)
+#> coord. ref. : GDA2020 / Australian Albers (EPSG:9473) 
+#> sources     : occupancy_t0_mean.tif  
+#>               occupancy_t1_mean.tif  
+#>               occupancy_t2_mean.tif  
+#> names       :     0,     1,    2 
+#> min values  : 0.000, 0.000, 0.00 
+#> max values  : 0.007, 0.007, 0.01 
+#> 
+#> $`impacts_non-monetary_HCAS_mean`
+#> class       : SpatRaster 
+#> size        : 170, 180, 3  (nrow, ncol, nlyr)
+#> resolution  : 100, 100  (x, y)
+#> extent      : 1354000, 1372000, -4120000, -4103000  (xmin, xmax, ymin, ymax)
+#> coord. ref. : GDA2020 / Australian Albers (EPSG:9473) 
+#> sources     : impacts_non-monetary_HCAS_t0_mean.tif  
+#>               impacts_non-monetary_HCAS_t1_mean.tif  
+#>               impacts_non-monetary_HCAS_t2_mean.tif  
+#> names       :           0,           1,           2 
+#> min values  : 0.000000000, 0.000000000, 0.000000000 
+#> max values  : 0.006998935, 0.006418557, 0.007387764 
+#> 
+#> $`impacts_non-monetary_HCAS_sd`
+#> class       : SpatRaster 
+#> size        : 170, 180, 3  (nrow, ncol, nlyr)
+#> resolution  : 100, 100  (x, y)
+#> extent      : 1354000, 1372000, -4120000, -4103000  (xmin, xmax, ymin, ymax)
+#> coord. ref. : GDA2020 / Australian Albers (EPSG:9473) 
+#> sources     : impacts_non-monetary_HCAS_t0_sd.tif  
+#>               impacts_non-monetary_HCAS_t1_sd.tif  
+#>               impacts_non-monetary_HCAS_t2_sd.tif  
+#> names       :          0,          1,          2 
+#> min values  : 0.00000000, 0.00000000, 0.00000000 
+#> max values  : 0.03623568, 0.03422976, 0.03718999 
+#> 
+#> $actions_1_detected_mean
+#> class       : SpatRaster 
+#> size        : 170, 180, 3  (nrow, ncol, nlyr)
+#> resolution  : 100, 100  (x, y)
+#> extent      : 1354000, 1372000, -4120000, -4103000  (xmin, xmax, ymin, ymax)
+#> coord. ref. : GDA2020 / Australian Albers (EPSG:9473) 
+#> sources     : actions_1_detected_t0_mean.tif  
+#>               actions_1_detected_t1_mean.tif  
+#>               actions_1_detected_t2_mean.tif  
+#> names       :     0,     1,     2 
+#> min values  : 0.000, 0.000, 0.000 
+#> max values  : 0.036, 0.036, 0.042 
+#> 
+#> $actions_2_removed_mean
+#> class       : SpatRaster 
+#> size        : 170, 180, 3  (nrow, ncol, nlyr)
+#> resolution  : 100, 100  (x, y)
+#> extent      : 1354000, 1372000, -4120000, -4103000  (xmin, xmax, ymin, ymax)
+#> coord. ref. : GDA2020 / Australian Albers (EPSG:9473) 
+#> sources     : actions_2_removed_t0_mean.tif  
+#>               actions_2_removed_t1_mean.tif  
+#>               actions_2_removed_t2_mean.tif  
+#> names       :     0,     1,     2 
+#> min values  : 0.000, 0.000, 0.000 
+#> max values  : 0.033, 0.035, 0.038
+# Plot the mean occupancy and impacts for time steps 2
+label <- attr(result_rast$occupancy_mean, "metadata")$label
+terra::plot(log(result_rast$occupancy_mean[[3]], base = 10), colNA = "black",
+            main = paste(label, ": time step 2 (log)"),
+            range = c(-3, 0))
+```
+
+<img src="man/figures/README-example_8_4-1.png" width="100%" style="display: block; margin: auto;" />
+
+``` r
+label <- attr(result_rast$`impacts_non-monetary_HCAS_mean`[[3]], "metadata")$label
+terra::plot(log(result_rast$`impacts_non-monetary_HCAS_mean`[[3]], base = 10),
+            colNA = "black", main = paste(label, ": time step 2 (log)"),
+            range = c(-4.7, -0.5))
+```
+
+<img src="man/figures/README-example_8_4-2.png" width="100%" style="display: block; margin: auto;" />
+
+``` r
+# Plot the mean (locations) detected and removed for time step 2
+label <- attr(result_rast$actions_1_detected_mean[[3]], "metadata")$label
+terra::plot(log(result_rast$actions_1_detected_mean[[3]], base = 10),
+            colNA = "black", main = paste(label, ": time step 2 (log)"),
+            range = c(-3, -1))
+```
+
+<img src="man/figures/README-example_8_4-3.png" width="100%" style="display: block; margin: auto;" />
+
+``` r
+label <- attr(result_rast$actions_2_removed_mean[[3]], "metadata")$label
+terra::plot(log(result_rast$actions_2_removed_mean[[3]], base = 10),
+            colNA = "black", main = paste(label, ": time step 2 (log)"),
+            range = c(-3, -1))
+```
+
+<img src="man/figures/README-example_8_4-4.png" width="100%" style="display: block; margin: auto;" />
+
+The raster plots for the mean occupancy and non-monetary impacts with
+simulated detections and removals illustrate the reduction in Hawkweed
+presence and its impacts compared to that of the unmanaged simulations
+examined in step 7. The distribution of mean simulated Hawkweed presence
+detected and removed at each simulation time step are also included in
+the saved raster outputs. We may examine the total occupancy (locations
+occupied), the total area occupied, and total impacts for our managed
+simulations via summary tables (CSV) and compare these results with the
+unmanaged totals. We may also examine the mean and SD of the total
+detected and removed Hawkweed cell presences.
+
+``` r
+# CSV summary table comparisons
+results$save_csv()
+total_occupancy_managed <- read.csv("total_occupancy.csv")
+colnames(total_occupancy)[1] <- "Total mean occupancy"
+total_occupancy[,1] <- c("unmanaged", "managed")
+total_occupancy[2, 2:4] <- total_occupancy_managed[1, 2:4]
+print(total_occupancy)
+#>   Total mean occupancy    t0     t1      t2
+#> 1            unmanaged 1.000 22.367 442.429
+#> 2              managed 0.121  0.937  13.786
+total_area_occupied_managed <- read.csv("total_area_occupied.csv")
+colnames(total_area_occupied)[1] <- "Total mean area occupied"
+total_area_occupied[,1] <- c("unmanaged", "managed")
+total_area_occupied[2, 2:4] <- total_area_occupied_managed[1, 2:4]
+print(total_area_occupied)
+#>   Total mean area occupied    t0     t1      t2
+#> 1                unmanaged 10000 223670 4424290
+#> 2                  managed  1210   9370  137860
+total_impacts_managed <- read.csv("total_impacts_non-monetary_HCAS.csv")
+colnames(total_impacts)[1] <- "Total mean impacts"
+total_impacts[,1] <- c("unmanaged", "managed")
+total_impacts[2, 2:4] <- total_impacts_managed[1, 2:4]
+print(total_impacts)
+#>   Total mean impacts        t0        t1        t2
+#> 1          unmanaged 0.1314488 2.3661143 39.280901
+#> 2            managed 0.1312390 0.2849031  1.958447
+total_detected <- read.csv("total_actions_1_detected.csv")
+colnames(total_detected)[1] <- "Total detected"
+print(total_detected)
+#>   Total detected        t0       t1       t2
+#> 1           mean 0.9560000 1.983000  9.80100
+#> 2             sd 0.2051977 5.581565 28.98734
+total_removed <- read.csv("total_actions_2_removed.csv")
+colnames(total_removed)[1] <- "Total removed"
+print(total_removed)
+#>   Total removed        t0       t1       t2
+#> 1          mean 0.8790000 1.782000  8.86800
+#> 2            sd 0.3262905 5.032077 26.25109
+```
+
+Time-series plots of total occupancy, total area occupied, total
+impacts, total detected, and total removed for our managed simulations
+may also be saved. These plots show the mean +/- 2 SD.
+
+``` r
+# Save summary time-series plots
+results$save_plots()
+dir(pattern = "*.png")
+#> [1] "total_actions_1_detected.png"        "total_actions_2_removed.png"        
+#> [3] "total_area_occupied.png"             "total_impacts_non-monetary_HCAS.png"
+#> [5] "total_occupancy.png"
+```
+
+![Total occupancy (managed)](man/figures/total_occupancy_managed.png)
+![Total area occupied
+(managed)](man/figures/total_area_occupied_managed.png) ![Total
+non-monetary HCAS impacts
+(managed)](man/figures/total_impacts_non-monetary_HCAS_managed.png)
+![Total detected](man/figures/total_actions_1_detected.png) ![Total
+removed](man/figures/total_actions_2_removed.png)
 
 ## References
 
