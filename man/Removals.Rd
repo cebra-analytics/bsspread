@@ -15,7 +15,7 @@ Removals(
   removal_cost = NULL,
   radius = NULL,
   stages = NULL,
-  schedule = NULL,
+  schedule = "all",
   ...
 )
 
@@ -29,7 +29,7 @@ Removals(
   removal_cost = NULL,
   radius = NULL,
   stages = NULL,
-  schedule = NULL,
+  schedule = "all",
   ...
 )
 }
@@ -59,10 +59,11 @@ population.}
 \item{remove_always}{A logical indication of whether or not removal is
 always to applied to locations where invasive species are present (even
 when they are not detected by explicit surveillance). Default is
-\code{FALSE}, indicating that removal is dependent on detection when
-surveillance actions are present. Set to \code{TRUE} for locations where
-some removal is likely regardless of explicit management efforts (e.g.
-via the general public or property owners).}
+\code{FALSE}, indicating that removal is dependent on detection from
+surveillance actions, which must be applied prior to removal at each
+simulation time step. Set to \code{TRUE} where some removal is likely
+regardless of explicit management efforts (e.g via the general public or
+property owners).}
 
 \item{detected_only}{A logical indication of whether or not removal is only
 applied to detected individuals (e.g. via traps). Default is \code{FALSE},
@@ -89,7 +90,7 @@ removals are applied. Default is all stages (when set to \code{NULL}).}
 
 \item{schedule}{Vector of discrete simulation time steps (t = 0, 1, 2, ...)
 in which to apply removals. Default is all time steps (when set to
-\code{NULL}).}
+\code{"all"}).}
 
 \item{...}{Additional parameters.}
 }

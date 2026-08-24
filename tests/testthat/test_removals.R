@@ -23,6 +23,10 @@ test_that("initializes with region, population, and other parameters", {
                                     removal_cost = 1:5),
                paste("The removal cost parameter must be a numeric vector",
                      "with values for each location."))
+  expect_message(removals <- Removals(region, population_model,
+                       remove_always = TRUE,
+                       detected_only = TRUE),
+                 "Remove always will override detected only indicator.")
   expect_error(removals <- Removals(region, population_model,
                                     radius = -1),
                "The radius (m) parameter must be numeric and >= 0.",
@@ -87,7 +91,7 @@ test_that("applies stochastic removals to invasive population", {
   initial_n[idx] <- (10:12)*10
   initializer <- Initializer(initial_n, region = region,
                              population_model = population_model)
-  # without detected
+  # remove always
   set.seed(1234)
   n <- initializer$initialize()
   set.seed(1234)
@@ -102,6 +106,7 @@ test_that("applies stochastic removals to invasive population", {
   attr(removal_cost, "unit") <- "$"
   expect_silent(removals <- Removals(region, population_model,
                                      removal_pr = template_vect,
+                                     remove_always = TRUE,
                                      detected_only = FALSE,
                                      removal_cost = removal_cost,
                                      radius = NULL,
@@ -142,6 +147,7 @@ test_that("applies stochastic removals to invasive population", {
   expected_removal_cost[idx] <- 2
   expect_silent(removals <- Removals(region, population_model,
                                      removal_pr = 0.65,
+                                     remove_always = TRUE,
                                      detected_only = FALSE,
                                      removal_cost = removal_cost,
                                      radius = NULL,
@@ -151,10 +157,10 @@ test_that("applies stochastic removals to invasive population", {
   expect_equal(attr(attr(new_n, "removed"), "number")[idx,], expected_removals)
   expect_equal(as.logical(attr(new_n, "removed")), expected_removed)
   expect_equal(attr(new_n, "removal_cost"), expected_removal_cost)
-  # detection only
+  # without detected
   expect_silent(removals <- Removals(region, population_model,
                                      removal_pr = template_vect,
-                                     detected_only = TRUE,
+                                     detected_only = FALSE,
                                      removal_cost = removal_cost,
                                      radius = NULL,
                                      stages = 2:3,
@@ -166,6 +172,13 @@ test_that("applies stochastic removals to invasive population", {
   expect_equal(new_n[idx,], n[idx,])
   expect_equal(attr(new_n, "removal_cost"), expected_removal_cost*0)
   # with detected/undetected
+  expect_silent(removals <- Removals(region, population_model,
+                                     removal_pr = template_vect,
+                                     detected_only = TRUE,
+                                     removal_cost = removal_cost,
+                                     radius = NULL,
+                                     stages = 2:3,
+                                     schedule = 4:6))
   detected <- n*0
   detected[idx,2:3] <- trunc(n[idx,2:3]*c(0, 0.5, 1))
   undetected <- n - detected
@@ -235,41 +248,6 @@ test_that("applies stochastic removals to invasive population", {
                attr(n, "undetected")[idx,] - expected_removals$undetected)
   expect_equal(attr(new_n, "4_removal_cost"),
                expected_removal_cost*(rowSums(detected) > 0))
-  # remove always (as per without detected)
-  expect_silent(removals <-
-                  Removals(region, population_model,
-                           removal_pr = template_vect,
-                           remove_always = TRUE,
-                           removal_cost = removal_cost,
-                           radius = NULL,
-                           stages = 2:3, schedule = 4:6))
-  n_apply <- array(as.numeric(n), dim(n))
-  n_undetected <- array(as.numeric(attr(n, "undetected")*(n_apply > 0)),
-                        dim(n))
-  n_apply <- list(detected = n_apply - n_undetected, undetected = n_undetected)
-  set.seed(1234)
-  expected_removals <- lapply(n_apply, function(a) {
-    removed <- array(c(rep(0, 3),
-                       stats::rbinom(6, size = a[idx,2:3], c(0.5, 0.75, 1))),
-                     c(3, 3))
-    colnames(removed) <- colnames(n)
-    return(removed)
-  })
-  expected_removed <- rep(FALSE, region$get_locations())
-  expected_removed[idx] <-
-    rowSums((n[idx, 2:3] - (expected_removals$detected +
-                              expected_removals$undetected)[,2:3])) == 0
-  set.seed(1234)
-  expect_silent(new_n <- removals$apply(n, 4))
-  expect_equal(attr(attr(new_n, "removed"), "number")[idx,],
-               expected_removals$detected + expected_removals$undetected)
-  expect_equal(as.logical(attr(new_n, "removed")), expected_removed)
-  expect_equal(new_n[idx,], n[idx,] - (expected_removals$detected +
-                                         expected_removals$undetected))
-  expect_equal(attr(new_n, "undetected")[idx,],
-               attr(n, "undetected")[idx,] - expected_removals$undetected)
-  expect_equal(attr(new_n, "removal_cost"),
-               expected_removal_cost*(rowSums(n) > 0))
   # with radius
   expect_silent(removals <- Removals(region, population_model,
                                      removal_pr = template_vect,
@@ -313,6 +291,7 @@ test_that("applies stochastic removals to invasive population", {
     removals <- Removals(region, population_model,
                          removal_pr = template_vect,
                          removal_pr_type = "population",
+                         remove_always = TRUE,
                          detected_only = FALSE,
                          stages = 2:3))
   idx2 <- which(rowSums(n[,2:3]) > 0)
@@ -339,6 +318,7 @@ test_that("applies stochastic removals to invasive population", {
   expect_silent(
     removals <- Removals(region, population_model,
                          removal_pr = template_vect,
+                         remove_always = TRUE,
                          detected_only = FALSE,
                          removal_cost = removal_cost,
                          radius = NULL,
@@ -357,6 +337,7 @@ test_that("applies stochastic removals to invasive population", {
     removals <- Removals(region, population_model,
                          removal_pr = template_vect,
                          removal_pr_type = "population",
+                         remove_always = TRUE,
                          detected_only = FALSE))
   idx2 <- which(n > 0)
   attr(n, "undetected") <- NULL
@@ -379,6 +360,7 @@ test_that("applies stochastic removals to invasive population", {
   expect_silent(
     removals <- Removals(region, population_model,
                          removal_pr = template_vect,
+                         remove_always = TRUE,
                          detected_only = FALSE,
                          removal_cost = removal_cost,
                          radius = NULL,
@@ -405,6 +387,7 @@ test_that("applies stochastic removals to invasive population", {
   expect_silent(
     removals <- Removals(region, population_model,
                          removal_pr = 0.65,
+                         remove_always = TRUE,
                          detected_only = FALSE,
                          removal_cost = 2,
                          radius = NULL,

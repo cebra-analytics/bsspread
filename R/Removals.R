@@ -24,10 +24,11 @@
 #' @param remove_always A logical indication of whether or not removal is
 #'   always to applied to locations where invasive species are present (even
 #'   when they are not detected by explicit surveillance). Default is
-#'   \code{FALSE}, indicating that removal is dependent on detection when
-#'   surveillance actions are present. Set to \code{TRUE} for locations where
-#'   some removal is likely regardless of explicit management efforts (e.g.
-#'   via the general public or property owners).
+#'   \code{FALSE}, indicating that removal is dependent on detection from
+#'   surveillance actions, which must be applied prior to removal at each
+#'   simulation time step. Set to \code{TRUE} where some removal is likely
+#'   regardless of explicit management efforts (e.g via the general public or
+#'   property owners).
 #' @param detected_only A logical indication of whether or not removal is only
 #'   applied to detected individuals (e.g. via traps). Default is \code{FALSE},
 #'   indicating that removal is applied to all individuals at locations where
@@ -49,7 +50,7 @@
 #'   removals are applied. Default is all stages (when set to \code{NULL}).
 #' @param schedule Vector of discrete simulation time steps (t = 0, 1, 2, ...)
 #'   in which to apply removals. Default is all time steps (when set to
-#'   \code{NULL}).
+#'   \code{"all"}).
 #' @param ... Additional parameters.
 #' @return A \code{Removals} class object (list) containing a function
 #'   for accessing attributes and applying simulated removals:
@@ -117,7 +118,8 @@ Removals <- function(region, population_model,
                      detected_only = FALSE,
                      removal_cost = NULL,
                      radius = NULL,
-                     stages = NULL, schedule = NULL, ...) {
+                     stages = NULL,
+                     schedule = "all", ...) {
   UseMethod("Removals")
 }
 
@@ -131,7 +133,8 @@ Removals.Region <- function(region, population_model,
                             detected_only = FALSE,
                             removal_cost = NULL,
                             radius = NULL,
-                            stages = NULL, schedule = NULL, ...) {
+                            stages = NULL,
+                            schedule = "all", ...) {
 
   # Build via base class
   self <- Actions(region = region,
@@ -156,6 +159,11 @@ Removals.Region <- function(region, population_model,
 
   # Check removal probability type
   removal_pr_type <- match.arg(removal_pr_type)
+
+  # Notify if remove always and detected only
+  if (remove_always && detected_only) {
+    message("Remove always will override detected only indicator.")
+  }
 
   # Validate radius
   if (!is.null(radius) && (!is.numeric(radius) || radius < 0)) {
@@ -252,7 +260,7 @@ Removals.Region <- function(region, population_model,
     }
 
     # Scheduled time step?
-    if (is.null(schedule) || tm %in% schedule) {
+    if (all(schedule == "all") || tm %in% schedule) {
 
       # Detection-based removal
       if (!remove_always && "undetected" %in% names(attributes(n))) {
@@ -275,7 +283,7 @@ Removals.Region <- function(region, population_model,
           idx <- which(n_apply$detected > 0)
         }
 
-      } else {
+      } else if (remove_always) {
 
         # Apply to all individuals
         if ("undetected" %in% names(attributes(n))) {
@@ -287,15 +295,14 @@ Removals.Region <- function(region, population_model,
         }
 
         # Removal locations
-        if (!remove_always && detected_only) {
-          idx <- c() # none detected
+        if (population_model$get_type() == "stage_structured") {
+          idx <- which(rowSums(n[,self$get_stages(), drop = FALSE]) > 0)
         } else {
-          if (population_model$get_type() == "stage_structured") {
-            idx <- which(rowSums(n[,self$get_stages(), drop = FALSE]) > 0)
-          } else {
-            idx <- which(n > 0)
-          }
+          idx <- which(n > 0)
         }
+
+      } else {
+        idx <- c() # none
       }
 
       # Expand removal locations via radius

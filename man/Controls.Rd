@@ -17,7 +17,7 @@ Controls(
   radius = NULL,
   stages = NULL,
   apply_to = NULL,
-  schedule = NULL,
+  schedule = "all",
   ...
 )
 
@@ -33,7 +33,7 @@ Controls(
   radius = NULL,
   stages = NULL,
   apply_to = NULL,
-  schedule = NULL,
+  schedule = "all",
   ...
 )
 }
@@ -112,7 +112,7 @@ control the seasonal survival rates of specified life stages.}
 
 \item{schedule}{Vector of discrete simulation time steps (t = 0, 1, 2, ...)
 in which to apply controls. Default is all time steps (when set to
-\code{NULL}).}
+\code{"all"}).}
 
 \item{...}{Additional parameters.}
 }

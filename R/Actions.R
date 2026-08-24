@@ -14,7 +14,7 @@
 #'   actions are applied. Default is all stages (when set to \code{NULL}).
 #' @param schedule Vector of discrete simulation time steps (t = 0, 1, 2, ...)
 #'   in which to apply actions. Default is all time steps (when set to
-#'   \code{NULL}).
+#'   \code{"all"}).
 #' @param ... Additional parameters.
 #' @return A \code{Actions} class object (list) containing a function for
 #'   applying simulated actions:
@@ -116,7 +116,7 @@
 Actions <- function(region, population_model,
                     type = c("detection", "control", "removal"),
                     stages = NULL,
-                    schedule = NULL,
+                    schedule = "all",
                     class = character(), ...) {
   UseMethod("Actions")
 }
@@ -126,7 +126,7 @@ Actions <- function(region, population_model,
 Actions.Region <- function(region, population_model,
                            type = c("detection", "control", "removal"),
                            stages = NULL,
-                           schedule = NULL,
+                           schedule = "all",
                            class = character(), ...) {
 
   # Check the population model
@@ -156,7 +156,8 @@ Actions.Region <- function(region, population_model,
   }
 
   # Check the time step schedule for action application
-  if (!is.null(schedule) && !is.numeric(schedule)) {
+  if (!is.null(schedule) &&
+      !(is.numeric(schedule) || schedule == "all")) {
     stop(paste("The schedule for applying actions should be a vector of",
                "numeric simulation time steps."), call. = FALSE)
   }

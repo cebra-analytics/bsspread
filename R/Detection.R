@@ -43,7 +43,7 @@
 #'   surveillance detects. Default is all stages (when set to \code{NULL}).
 #' @param schedule Vector of discrete simulation time steps (t = 0, 1, 2, ...)
 #'   in which to apply surveillance. Default is all time steps (when set to
-#'   \code{NULL}).
+#'   \code{"all"}).
 #' @param ... Additional parameters.
 #' @return A \code{Detection} class object (list) containing a function
 #'   for accessing attributes and applying simulated detection:
@@ -136,7 +136,7 @@ Detection <- function(region,
                       sensitivity_threshold = NULL,
                       surv_cost = NULL,
                       stages = NULL,
-                      schedule = NULL, ...) {
+                      schedule = "all", ...) {
   UseMethod("Detection")
 }
 
@@ -151,7 +151,7 @@ Detection.Region <- function(region,
                              sensitivity_threshold = NULL,
                              surv_cost = NULL,
                              stages = NULL,
-                             schedule = NULL, ...) {
+                             schedule = "all", ...) {
 
   # Build via base class
   self <- Actions(region = region,
@@ -296,7 +296,7 @@ Detection.Region <- function(region,
     }
 
     # Scheduled time step?
-    if (is.null(schedule) || tm %in% schedule) {
+    if (all(schedule == "all") || tm %in% schedule) {
 
       # Occupied locations
       idx <- which(rowSums(as.matrix(undetected)) > 0)

@@ -10,7 +10,7 @@ Actions(
   population_model,
   type = c("detection", "control", "removal"),
   stages = NULL,
-  schedule = NULL,
+  schedule = "all",
   class = character(),
   ...
 )
@@ -20,7 +20,7 @@ Actions(
   population_model,
   type = c("detection", "control", "removal"),
   stages = NULL,
-  schedule = NULL,
+  schedule = "all",
   class = character(),
   ...
 )
@@ -41,7 +41,7 @@ actions are applied. Default is all stages (when set to \code{NULL}).}
 
 \item{schedule}{Vector of discrete simulation time steps (t = 0, 1, 2, ...)
 in which to apply actions. Default is all time steps (when set to
-\code{NULL}).}
+\code{"all"}).}
 
 \item{...}{Additional parameters.}
 }

@@ -67,7 +67,7 @@
 #'   control the seasonal survival rates of specified life stages.
 #' @param schedule Vector of discrete simulation time steps (t = 0, 1, 2, ...)
 #'   in which to apply controls. Default is all time steps (when set to
-#'   \code{NULL}).
+#'   \code{"all"}).
 #' @param ... Additional parameters.
 #' @return A \code{Controls} class object (list) containing a function
 #'   for accessing attributes and applying simulated controls:
@@ -179,7 +179,7 @@ Controls <- function(region, population_model,
                      radius = NULL,
                      stages = NULL,
                      apply_to = NULL,
-                     schedule = NULL, ...) {
+                     schedule = "all", ...) {
   UseMethod("Controls")
 }
 
@@ -199,7 +199,7 @@ Controls.Region <- function(region, population_model,
                             radius = NULL,
                             stages = NULL,
                             apply_to = NULL,
-                            schedule = NULL, ...) {
+                            schedule = "all", ...) {
 
   # Build via base class
   self <- Actions(region = region,
@@ -360,7 +360,7 @@ Controls.Region <- function(region, population_model,
       }
 
       # Scheduled time step?
-      if (is.null(schedule) || tm %in% schedule) {
+      if (all(schedule == "all") || tm %in% schedule) {
 
         # Partition n into detected and undetected
         if ("undetected" %in% names(attributes(n))) {
@@ -476,7 +476,7 @@ Controls.Region <- function(region, population_model,
 
       # Attach control costs as an attribute via label
       if (!is.null(control_cost)) {
-        if (is.null(schedule) || tm %in% schedule) {
+        if (all(schedule == "all") || tm %in% schedule) {
           attr(n, self$get_cost_label()) <- control_cost
         } else {
           attr(n, self$get_cost_label()) <- control_cost*0
@@ -496,7 +496,7 @@ Controls.Region <- function(region, population_model,
       }
 
       # Scheduled time step?
-      if (is.null(schedule) || tm %in% schedule) {
+      if (all(schedule == "all") || tm %in% schedule) {
 
         # Apply control to existing/known/scheduled treatment locations
         if (!is.null(exist_control)) {
@@ -568,7 +568,7 @@ Controls.Region <- function(region, population_model,
 
       # Attach control costs as an attribute via label
       if (!is.null(control_cost)) {
-        if (is.null(schedule) || tm %in% schedule) {
+        if (all(schedule == "all") || tm %in% schedule) {
           if (region$spatially_implicit()) { # cost/m2
             if (is.numeric(attr(n, "diffusion_radius"))) {
               total_area <- pi*(attr(n, "diffusion_radius"))^2
