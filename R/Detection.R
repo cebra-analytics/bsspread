@@ -296,7 +296,7 @@ Detection.Region <- function(region,
     }
 
     # Scheduled time step?
-    if (all(schedule == "all") || tm %in% schedule) {
+    if ((is.character(schedule) && schedule == "all") || tm %in% schedule) {
 
       # Occupied locations
       idx <- which(rowSums(as.matrix(undetected)) > 0)

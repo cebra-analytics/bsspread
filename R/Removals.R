@@ -260,7 +260,7 @@ Removals.Region <- function(region, population_model,
     }
 
     # Scheduled time step?
-    if (all(schedule == "all") || tm %in% schedule) {
+    if ((is.character(schedule) && schedule == "all") || tm %in% schedule) {
 
       # Detection-based removal
       if (!remove_always && "undetected" %in% names(attributes(n))) {
