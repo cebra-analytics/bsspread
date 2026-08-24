@@ -543,7 +543,7 @@ dir(pattern = "*.png")
 
 We will now rerun our population spread model simulations with surveillance (detection) and removal management actions and compare results.
 
-The mean occupancy output (at time step 2) from our unmanaged spread model simulations from step 6 may be utilised, as an approximate reproduction of the spread distribution of the Williams et al\. (2008) model, to build an example surveillance design that reproduces the design described in Hauser & McCarthy (2009). This example surveillance design is described in the [bsspread](https://github.com/cebra-analytics/bsdesign) package. The sensitivity or detection probability of this surveillance design may then be utilised for simulating surveillance (detection) actions. The sensitivity distribution of a surveillance design built using a previous population spread simulation run may be downloaded from [here](https://github.com/cebra-analytics/bsspread/tree/main/data) and copied into a *data* directory.
+The mean occupancy output (at time step 2) from our unmanaged spread model simulations from example step 6 (above) may be utilised, as an approximate reproduction of the spread distribution of the Williams et al\. (2008) model, to build an example surveillance design that reproduces the design described in Hauser & McCarthy (2009). This example surveillance design is described in the [bsspread](https://github.com/cebra-analytics/bsdesign) package. The sensitivity or detection probability of this surveillance design may then be utilised for simulating surveillance (detection) actions. The sensitivity distribution of a surveillance design built using a previous population spread simulation run may be downloaded from [here](https://github.com/cebra-analytics/bsspread/tree/main/data) and copied into a *data* directory. Our simulated surveillance detection actions are scheduled to be applied at simulation time steps 1 & 2 only, and thus not to the initial incursion at time step 0.
 
 ```{r example_8_1, message = FALSE, fig.align = "center"}
 # Load the sensitivity of our corresponding surveillance design example
@@ -553,21 +553,23 @@ detect_action <- bsspread::Detection(
   region,
   population_model,
   sensitivity = sensitivity_rast[region$get_indices()][,1], # as vector
-  sensitivity_type = "presence"
+  sensitivity_type = "presence",
+  schedule = c(1, 2)
 )
 terra::plot(sensitivity_rast,
             main = "Hawkweed surveillance sensitivity",
             colNA = "black")
 ```
 
-Our simulated removal actions will utilise a constant 90% success rate to account for undiscovered Hawkweed at locations where its simulated presence has been detected.
+Our simulated removal actions will utilise a constant 95% success rate to account for undiscovered Hawkweed at locations where its simulated presence has been detected. Again, we will schedule removals to be applied at simulation time steps 1 & 2, but not to the initial incursion at time step 0.
 
 ```{r example_8_2, message = FALSE, fig.align = "center"}
 # Presence-based detection actions
 remove_action <- bsspread::Removals(
   region,
   population_model,
-  removal_pr = 0.9
+  removal_pr = 0.95,
+  schedule = c(1, 2)
 )
 ```
 
@@ -609,11 +611,11 @@ terra::plot(log(result_rast$`impacts_non-monetary_HCAS_mean`[[3]], base = 10),
 label <- attr(result_rast$actions_1_detected_mean[[3]], "metadata")$label
 terra::plot(log(result_rast$actions_1_detected_mean[[3]], base = 10),
             colNA = "black", main = paste(label, ": time step 2 (log)"),
-            range = c(-3, -1))
+            range = c(-3, -0.5))
 label <- attr(result_rast$actions_2_removed_mean[[3]], "metadata")$label
 terra::plot(log(result_rast$actions_2_removed_mean[[3]], base = 10),
             colNA = "black", main = paste(label, ": time step 2 (log)"),
-            range = c(-3, -1))
+            range = c(-3, -0.5))
 ```
 
 The raster plots for the mean occupancy and non-monetary impacts with simulated detections and removals illustrate the reduction in Hawkweed presence and its impacts compared to that of the unmanaged simulations examined in step 7. The distribution of mean simulated Hawkweed presence detected and removed at each simulation time step are also included in the saved raster outputs. We may examine the total occupancy (locations occupied), the total area occupied, and total impacts for our managed simulations via summary tables (CSV) and compare these results with the unmanaged totals. We may also examine the mean and SD of the total detected and removed Hawkweed cell presences.

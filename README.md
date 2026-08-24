@@ -950,9 +950,9 @@ result_rast
 #> sources     : occupancy_t0_mean.tif  
 #>               occupancy_t1_mean.tif  
 #>               occupancy_t2_mean.tif  
-#> names       :     0,     1,    2 
-#> min values  : 0.000, 0.000, 0.00 
-#> max values  : 0.037, 0.313, 0.84 
+#> names       :     0,     1,     2 
+#> min values  : 0.000, 0.000, 0.000 
+#> max values  : 0.034, 0.304, 0.846 
 #> 
 #> $`impacts_non-monetary_HCAS_mean`
 #> class       : SpatRaster 
@@ -965,7 +965,7 @@ result_rast
 #>               impacts_non-monetary_HCAS_t2_mean.tif  
 #> names       :           0,          1,         2 
 #> min values  : 0.000000000, 0.00000000, 0.0000000 
-#> max values  : 0.006406152, 0.05424767, 0.1623542 
+#> max values  : 0.006237028, 0.05308106, 0.1633263 
 #> 
 #> $`impacts_non-monetary_HCAS_sd`
 #> class       : SpatRaster 
@@ -978,7 +978,7 @@ result_rast
 #>               impacts_non-monetary_HCAS_t2_sd.tif  
 #> names       :          0,         1,          2 
 #> min values  : 0.00000000, 0.0000000, 0.00000000 
-#> max values  : 0.03269842, 0.0872497, 0.09710664
+#> max values  : 0.03432082, 0.0866648, 0.09624621
 # Plot the mean occupancy for time steps 0, 1 and 2
 label <- attr(result_rast$occupancy_mean, "metadata")$label
 for (i in 1:3) {
@@ -1025,21 +1025,21 @@ results$save_csv()
 total_occupancy <- read.csv("total_occupancy.csv")
 colnames(total_occupancy)[1] <- "Total occupancy"
 print(total_occupancy)
-#>   Total occupancy t0        t1       t2
-#> 1            mean  1 22.367000 442.4290
-#> 2              sd  0  4.954883 100.9872
+#>   Total occupancy t0        t1        t2
+#> 1            mean  1 22.233000 439.92400
+#> 2              sd  0  4.626675  96.07942
 total_area_occupied <- read.csv("total_area_occupied.csv")
 colnames(total_area_occupied)[1] <- "Total area occupied"
 print(total_area_occupied)
-#>   Total area occupied    t0        t1      t2
-#> 1                mean 10000 223670.00 4424290
-#> 2                  sd     0  49548.83 1009872
+#>   Total area occupied    t0        t1        t2
+#> 1                mean 10000 222330.00 4399240.0
+#> 2                  sd     0  46266.75  960794.2
 total_impacts <- read.csv("total_impacts_non-monetary_HCAS.csv")
 colnames(total_impacts)[1] <- "Total non-monetary impacts"
 print(total_impacts)
-#>   Total non-monetary impacts         t0        t1        t2
-#> 1                       mean 0.13144877 2.3661143 39.280901
-#> 2                         sd 0.04835405 0.5813789  8.752391
+#>   Total non-monetary impacts        t0        t1        t2
+#> 1                       mean 0.1314119 2.3386164 39.057946
+#> 2                         sd 0.0480558 0.5489788  8.318391
 ```
 
 Time-series plots of total occupancy, total area occupied, and total
@@ -1064,18 +1064,20 @@ surveillance (detection) and removal management actions and compare
 results.
 
 The mean occupancy output (at time step 2) from our unmanaged spread
-model simulations from step 6 may be utilised, as an approximate
-reproduction of the spread distribution of the Williams et al. (2008)
-model, to build an example surveillance design that reproduces the
-design described in Hauser & McCarthy (2009). This example surveillance
-design is described in the
+model simulations from example step 6 (above) may be utilised, as an
+approximate reproduction of the spread distribution of the Williams et
+al. (2008) model, to build an example surveillance design that
+reproduces the design described in Hauser & McCarthy (2009). This
+example surveillance design is described in the
 [bsspread](https://github.com/cebra-analytics/bsdesign) package. The
 sensitivity or detection probability of this surveillance design may
 then be utilised for simulating surveillance (detection) actions. The
 sensitivity distribution of a surveillance design built using a previous
 population spread simulation run may be downloaded from
 [here](https://github.com/cebra-analytics/bsspread/tree/main/data) and
-copied into a *data* directory.
+copied into a *data* directory. Our simulated surveillance detection
+actions are scheduled to be applied at simulation time steps 1 & 2 only,
+and thus not to the initial incursion at time step 0.
 
 ``` r
 # Load the sensitivity of our corresponding surveillance design example
@@ -1085,7 +1087,8 @@ detect_action <- bsspread::Detection(
   region,
   population_model,
   sensitivity = sensitivity_rast[region$get_indices()][,1], # as vector
-  sensitivity_type = "presence"
+  sensitivity_type = "presence",
+  schedule = c(1, 2)
 )
 terra::plot(sensitivity_rast,
             main = "Hawkweed surveillance sensitivity",
@@ -1094,16 +1097,19 @@ terra::plot(sensitivity_rast,
 
 <img src="man/figures/README-example_8_1-1.png" width="100%" style="display: block; margin: auto;" />
 
-Our simulated removal actions will utilise a constant 90% success rate
+Our simulated removal actions will utilise a constant 95% success rate
 to account for undiscovered Hawkweed at locations where its simulated
-presence has been detected.
+presence has been detected. Again, we will schedule removals to be
+applied at simulation time steps 1 & 2, but not to the initial incursion
+at time step 0.
 
 ``` r
 # Presence-based detection actions
 remove_action <- bsspread::Removals(
   region,
   population_model,
-  removal_pr = 0.9
+  removal_pr = 0.95,
+  schedule = c(1, 2)
 )
 ```
 
@@ -1151,9 +1157,9 @@ result_rast
 #> sources     : occupancy_t0_mean.tif  
 #>               occupancy_t1_mean.tif  
 #>               occupancy_t2_mean.tif  
-#> names       :     0,     1,    2 
-#> min values  : 0.000, 0.000, 0.00 
-#> max values  : 0.007, 0.007, 0.01 
+#> names       :     0,     1,     2 
+#> min values  : 0.000, 0.000, 0.000 
+#> max values  : 0.031, 0.039, 0.047 
 #> 
 #> $`impacts_non-monetary_HCAS_mean`
 #> class       : SpatRaster 
@@ -1164,9 +1170,9 @@ result_rast
 #> sources     : impacts_non-monetary_HCAS_t0_mean.tif  
 #>               impacts_non-monetary_HCAS_t1_mean.tif  
 #>               impacts_non-monetary_HCAS_t2_mean.tif  
-#> names       :           0,           1,           2 
-#> min values  : 0.000000000, 0.000000000, 0.000000000 
-#> max values  : 0.006998935, 0.006418557, 0.007387764 
+#> names       :           0,          1,          2 
+#> min values  : 0.000000000, 0.00000000, 0.00000000 
+#> max values  : 0.005926928, 0.05444211, 0.04665956 
 #> 
 #> $`impacts_non-monetary_HCAS_sd`
 #> class       : SpatRaster 
@@ -1179,7 +1185,7 @@ result_rast
 #>               impacts_non-monetary_HCAS_t2_sd.tif  
 #> names       :          0,          1,          2 
 #> min values  : 0.00000000, 0.00000000, 0.00000000 
-#> max values  : 0.03623568, 0.03422976, 0.03718999 
+#> max values  : 0.03315338, 0.08734528, 0.08307285 
 #> 
 #> $actions_1_detected_mean
 #> class       : SpatRaster 
@@ -1190,9 +1196,9 @@ result_rast
 #> sources     : actions_1_detected_t0_mean.tif  
 #>               actions_1_detected_t1_mean.tif  
 #>               actions_1_detected_t2_mean.tif  
-#> names       :     0,     1,     2 
-#> min values  : 0.000, 0.000, 0.000 
-#> max values  : 0.036, 0.036, 0.042 
+#> names       : 0,     1,     2 
+#> min values  : 0, 0.000, 0.000 
+#> max values  : 0, 0.304, 0.254 
 #> 
 #> $actions_2_removed_mean
 #> class       : SpatRaster 
@@ -1203,9 +1209,9 @@ result_rast
 #> sources     : actions_2_removed_t0_mean.tif  
 #>               actions_2_removed_t1_mean.tif  
 #>               actions_2_removed_t2_mean.tif  
-#> names       :     0,     1,     2 
-#> min values  : 0.000, 0.000, 0.000 
-#> max values  : 0.033, 0.035, 0.038
+#> names       : 0,     1,     2 
+#> min values  : 0, 0.000, 0.000 
+#> max values  : 0, 0.295, 0.242
 # Plot the mean occupancy and impacts for time steps 2
 label <- attr(result_rast$occupancy_mean, "metadata")$label
 terra::plot(log(result_rast$occupancy_mean[[3]], base = 10), colNA = "black",
@@ -1229,7 +1235,7 @@ terra::plot(log(result_rast$`impacts_non-monetary_HCAS_mean`[[3]], base = 10),
 label <- attr(result_rast$actions_1_detected_mean[[3]], "metadata")$label
 terra::plot(log(result_rast$actions_1_detected_mean[[3]], base = 10),
             colNA = "black", main = paste(label, ": time step 2 (log)"),
-            range = c(-3, -1))
+            range = c(-3, -0.5))
 ```
 
 <img src="man/figures/README-example_8_4-3.png" width="100%" style="display: block; margin: auto;" />
@@ -1238,7 +1244,7 @@ terra::plot(log(result_rast$actions_1_detected_mean[[3]], base = 10),
 label <- attr(result_rast$actions_2_removed_mean[[3]], "metadata")$label
 terra::plot(log(result_rast$actions_2_removed_mean[[3]], base = 10),
             colNA = "black", main = paste(label, ": time step 2 (log)"),
-            range = c(-3, -1))
+            range = c(-3, -0.5))
 ```
 
 <img src="man/figures/README-example_8_4-4.png" width="100%" style="display: block; margin: auto;" />
@@ -1262,37 +1268,37 @@ colnames(total_occupancy)[1] <- "Total mean occupancy"
 total_occupancy[,1] <- c("unmanaged", "managed")
 total_occupancy[2, 2:4] <- total_occupancy_managed[1, 2:4]
 print(total_occupancy)
-#>   Total mean occupancy    t0     t1      t2
-#> 1            unmanaged 1.000 22.367 442.429
-#> 2              managed 0.121  0.937  13.786
+#>   Total mean occupancy t0     t1      t2
+#> 1            unmanaged  1 22.233 439.924
+#> 2              managed  1  6.743 102.206
 total_area_occupied_managed <- read.csv("total_area_occupied.csv")
 colnames(total_area_occupied)[1] <- "Total mean area occupied"
 total_area_occupied[,1] <- c("unmanaged", "managed")
 total_area_occupied[2, 2:4] <- total_area_occupied_managed[1, 2:4]
 print(total_area_occupied)
 #>   Total mean area occupied    t0     t1      t2
-#> 1                unmanaged 10000 223670 4424290
-#> 2                  managed  1210   9370  137860
+#> 1                unmanaged 10000 222330 4399240
+#> 2                  managed 10000  67430 1022060
 total_impacts_managed <- read.csv("total_impacts_non-monetary_HCAS.csv")
 colnames(total_impacts)[1] <- "Total mean impacts"
 total_impacts[,1] <- c("unmanaged", "managed")
 total_impacts[2, 2:4] <- total_impacts_managed[1, 2:4]
 print(total_impacts)
-#>   Total mean impacts        t0        t1        t2
-#> 1          unmanaged 0.1314488 2.3661143 39.280901
-#> 2            managed 0.1312390 0.2849031  1.958447
+#>   Total mean impacts        t0       t1       t2
+#> 1          unmanaged 0.1314119 2.338616 39.05795
+#> 2            managed 0.1297683 2.339835 13.92141
 total_detected <- read.csv("total_actions_1_detected.csv")
 colnames(total_detected)[1] <- "Total detected"
 print(total_detected)
-#>   Total detected        t0       t1       t2
-#> 1           mean 0.9560000 1.983000  9.80100
-#> 2             sd 0.2051977 5.581565 28.98734
+#>   Total detected t0        t1       t2
+#> 1           mean  0 16.262000 64.14800
+#> 2             sd  0  4.105876 30.47367
 total_removed <- read.csv("total_actions_2_removed.csv")
 colnames(total_removed)[1] <- "Total removed"
 print(total_removed)
-#>   Total removed        t0       t1       t2
-#> 1          mean 0.8790000 1.782000  8.86800
-#> 2            sd 0.3262905 5.032077 26.25109
+#>   Total removed t0        t1       t2
+#> 1          mean  0 15.390000 60.92100
+#> 2            sd  0  3.981174 29.14134
 ```
 
 Time-series plots of total occupancy, total area occupied, total
