@@ -874,7 +874,7 @@ carrying capacity at each location.
 ``` r
 # Environmental impacts estimated via 20% loss in habitat condition
 hcas_rast <- terra::rast("../downloaded_data/HCAS33_HCB_1988_2024.tif")
-hcas_rast <- 1 - terra::resample(
+hcas_rast <- terra::resample(
   terra::project(terra::crop(hcas_rast,
                              c(1354000, 1372000, -4120000, -4103000)),
                  region_nvis_rast), region_nvis_rast)
@@ -952,7 +952,7 @@ result_rast
 #>               occupancy_t2_mean.tif  
 #> names       :     0,     1,     2 
 #> min values  : 0.000, 0.000, 0.000 
-#> max values  : 0.034, 0.304, 0.846 
+#> max values  : 0.039, 0.304, 0.859 
 #> 
 #> $`impacts_non-monetary_HCAS_mean`
 #> class       : SpatRaster 
@@ -965,7 +965,7 @@ result_rast
 #>               impacts_non-monetary_HCAS_t2_mean.tif  
 #> names       :           0,          1,         2 
 #> min values  : 0.000000000, 0.00000000, 0.0000000 
-#> max values  : 0.006237028, 0.05308106, 0.1633263 
+#> max values  : 0.004262021, 0.02293879, 0.1007508 
 #> 
 #> $`impacts_non-monetary_HCAS_sd`
 #> class       : SpatRaster 
@@ -976,9 +976,9 @@ result_rast
 #> sources     : impacts_non-monetary_HCAS_t0_sd.tif  
 #>               impacts_non-monetary_HCAS_t1_sd.tif  
 #>               impacts_non-monetary_HCAS_t2_sd.tif  
-#> names       :          0,         1,          2 
-#> min values  : 0.00000000, 0.0000000, 0.00000000 
-#> max values  : 0.03432082, 0.0866648, 0.09624621
+#> names       :          0,          1,          2 
+#> min values  : 0.00000000, 0.00000000, 0.00000000 
+#> max values  : 0.02559808, 0.05399875, 0.07893027
 # Plot the mean occupancy for time steps 0, 1 and 2
 label <- attr(result_rast$occupancy_mean, "metadata")$label
 for (i in 1:3) {
@@ -1025,21 +1025,21 @@ results$save_csv()
 total_occupancy <- read.csv("total_occupancy.csv")
 colnames(total_occupancy)[1] <- "Total occupancy"
 print(total_occupancy)
-#>   Total occupancy t0        t1        t2
-#> 1            mean  1 22.233000 439.92400
-#> 2              sd  0  4.626675  96.07942
+#>   Total occupancy t0        t1       t2
+#> 1            mean  1 22.343000 443.9320
+#> 2              sd  0  4.708239  95.9998
 total_area_occupied <- read.csv("total_area_occupied.csv")
 colnames(total_area_occupied)[1] <- "Total area occupied"
 print(total_area_occupied)
-#>   Total area occupied    t0        t1        t2
-#> 1                mean 10000 222330.00 4399240.0
-#> 2                  sd     0  46266.75  960794.2
+#>   Total area occupied    t0        t1      t2
+#> 1                mean 10000 223430.00 4439320
+#> 2                  sd     0  47082.39  959998
 total_impacts <- read.csv("total_impacts_non-monetary_HCAS.csv")
 colnames(total_impacts)[1] <- "Total non-monetary impacts"
 print(total_impacts)
-#>   Total non-monetary impacts        t0        t1        t2
-#> 1                       mean 0.1314119 2.3386164 39.057946
-#> 2                         sd 0.0480558 0.5489788  8.318391
+#>   Total non-monetary impacts         t0        t1       t2
+#> 1                       mean 0.07205267 2.1068120 49.38869
+#> 2                         sd 0.04776766 0.4892155 10.93326
 ```
 
 Time-series plots of total occupancy, total area occupied, and total
@@ -1159,7 +1159,7 @@ result_rast
 #>               occupancy_t2_mean.tif  
 #> names       :     0,     1,     2 
 #> min values  : 0.000, 0.000, 0.000 
-#> max values  : 0.031, 0.039, 0.047 
+#> max values  : 0.031, 0.034, 0.049 
 #> 
 #> $`impacts_non-monetary_HCAS_mean`
 #> class       : SpatRaster 
@@ -1172,7 +1172,7 @@ result_rast
 #>               impacts_non-monetary_HCAS_t2_mean.tif  
 #> names       :           0,          1,          2 
 #> min values  : 0.000000000, 0.00000000, 0.00000000 
-#> max values  : 0.005926928, 0.05444211, 0.04665956 
+#> max values  : 0.004315573, 0.02296502, 0.01949047 
 #> 
 #> $`impacts_non-monetary_HCAS_sd`
 #> class       : SpatRaster 
@@ -1183,9 +1183,9 @@ result_rast
 #> sources     : impacts_non-monetary_HCAS_t0_sd.tif  
 #>               impacts_non-monetary_HCAS_t1_sd.tif  
 #>               impacts_non-monetary_HCAS_t2_sd.tif  
-#> names       :          0,          1,          2 
-#> min values  : 0.00000000, 0.00000000, 0.00000000 
-#> max values  : 0.03315338, 0.08734528, 0.08307285 
+#> names       :          0,          1,         2 
+#> min values  : 0.00000000, 0.00000000, 0.0000000 
+#> max values  : 0.02543958, 0.05491053, 0.0504461 
 #> 
 #> $actions_1_detected_mean
 #> class       : SpatRaster 
@@ -1198,7 +1198,7 @@ result_rast
 #>               actions_1_detected_t2_mean.tif  
 #> names       : 0,     1,     2 
 #> min values  : 0, 0.000, 0.000 
-#> max values  : 0, 0.304, 0.254 
+#> max values  : 0, 0.266, 0.246 
 #> 
 #> $actions_2_removed_mean
 #> class       : SpatRaster 
@@ -1211,7 +1211,7 @@ result_rast
 #>               actions_2_removed_t2_mean.tif  
 #> names       : 0,     1,     2 
 #> min values  : 0, 0.000, 0.000 
-#> max values  : 0, 0.295, 0.242
+#> max values  : 0, 0.254, 0.232
 # Plot the mean occupancy and impacts for time steps 2
 label <- attr(result_rast$occupancy_mean, "metadata")$label
 terra::plot(log(result_rast$occupancy_mean[[3]], base = 10), colNA = "black",
@@ -1269,36 +1269,36 @@ total_occupancy[,1] <- c("unmanaged", "managed")
 total_occupancy[2, 2:4] <- total_occupancy_managed[1, 2:4]
 print(total_occupancy)
 #>   Total mean occupancy t0     t1      t2
-#> 1            unmanaged  1 22.233 439.924
-#> 2              managed  1  6.743 102.206
+#> 1            unmanaged  1 22.343 443.932
+#> 2              managed  1  6.850 104.824
 total_area_occupied_managed <- read.csv("total_area_occupied.csv")
 colnames(total_area_occupied)[1] <- "Total mean area occupied"
 total_area_occupied[,1] <- c("unmanaged", "managed")
 total_area_occupied[2, 2:4] <- total_area_occupied_managed[1, 2:4]
 print(total_area_occupied)
 #>   Total mean area occupied    t0     t1      t2
-#> 1                unmanaged 10000 222330 4399240
-#> 2                  managed 10000  67430 1022060
+#> 1                unmanaged 10000 223430 4439320
+#> 2                  managed 10000  68500 1048240
 total_impacts_managed <- read.csv("total_impacts_non-monetary_HCAS.csv")
 colnames(total_impacts)[1] <- "Total mean impacts"
 total_impacts[,1] <- c("unmanaged", "managed")
 total_impacts[2, 2:4] <- total_impacts_managed[1, 2:4]
 print(total_impacts)
-#>   Total mean impacts        t0       t1       t2
-#> 1          unmanaged 0.1314119 2.338616 39.05795
-#> 2            managed 0.1297683 2.339835 13.92141
+#>   Total mean impacts         t0       t1       t2
+#> 1          unmanaged 0.07205267 2.106812 49.38869
+#> 2            managed 0.06843477 2.100852 19.02699
 total_detected <- read.csv("total_actions_1_detected.csv")
 colnames(total_detected)[1] <- "Total detected"
 print(total_detected)
-#>   Total detected t0        t1       t2
-#> 1           mean  0 16.262000 64.14800
-#> 2             sd  0  4.105876 30.47367
+#>   Total detected t0      t1       t2
+#> 1           mean  0 16.1290 64.14100
+#> 2             sd  0  4.2176 30.01053
 total_removed <- read.csv("total_actions_2_removed.csv")
 colnames(total_removed)[1] <- "Total removed"
 print(total_removed)
 #>   Total removed t0        t1       t2
-#> 1          mean  0 15.390000 60.92100
-#> 2            sd  0  3.981174 29.14134
+#> 1          mean  0 15.352000 60.91400
+#> 2            sd  0  4.150822 28.62618
 ```
 
 Time-series plots of total occupancy, total area occupied, total

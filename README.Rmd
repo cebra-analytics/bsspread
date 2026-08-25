@@ -443,7 +443,7 @@ We will estimate non-monetary environmental impacts of our simulated Hawkweed in
 ```{r example_5, message = FALSE, fig.align = "center"}
 # Environmental impacts estimated via 20% loss in habitat condition
 hcas_rast <- terra::rast("../downloaded_data/HCAS33_HCB_1988_2024.tif")
-hcas_rast <- 1 - terra::resample(
+hcas_rast <- terra::resample(
   terra::project(terra::crop(hcas_rast,
                              c(1354000, 1372000, -4120000, -4103000)),
                  region_nvis_rast), region_nvis_rast)
