@@ -1,6 +1,6 @@
 Package: bsspread
 Title: Biosecurity Population Spread Modelling
-Version: 0.4.6
+Version: 0.4.7
 Authors@R: c(
     person("Sean", "Haythorne", email = "sean.haythorne@unimelb.edu.au", role = c("aut", "cre")),
     person("John", "Baumgartner", email = "john.baumgartner@unimelb.edu.au", role = c("aut")))
@@ -14,6 +14,7 @@ RoxygenNote: 7.3.3
 Imports:
     doParallel (>= 1.0.16),
     foreach (>= 1.5.1),
+    fs,
     igraph (>= 1.2.8),
     parallel,
     raster (>= 3.5.2),

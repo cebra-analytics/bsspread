@@ -1939,14 +1939,20 @@ Results.Region <- function(region, population_model,
             cum_aspects <- NULL
           }
           for (a in aspects) {
+            # Safe filename segment; keep original `a` for result keys/labels
+            if (a %in% names(cum_aspects)) {
+              a_file <- fs::path_sanitize(cum_aspects[a], replacement = "-")
+            } else {
+              a_file <- fs::path_sanitize(a, replacement = "-")
+            }
             for (s in summaries) {
 
               # Add nested list to output list
               if (a %in% names(cum_aspects)) {
                 output_key <- paste0("cumulative_impacts", ic, "_",
-                                     cum_aspects[a], s_post[[s]])
+                                     a_file, s_post[[s]])
               } else {
-                output_key <- paste0("impacts", ic, "_", a, s_post[[s]])
+                output_key <- paste0("impacts", ic, "_", a_file, s_post[[s]])
               }
               output_list[[output_key]] <- list()
 
@@ -2002,12 +2008,12 @@ Results.Region <- function(region, population_model,
                   filename <- sprintf(
                     paste0("cumulative_impacts%s_%s_t%0",
                            nchar(as.character(time_steps)), "d%s.tif"),
-                    ic, cum_aspects[a], as.integer(tmc), s_post[[s]])
+                    ic, a_file, as.integer(tmc), s_post[[s]])
                 } else {
                   filename <- sprintf(
                     paste0("impacts%s_%s_t%0", nchar(as.character(time_steps)),
                            "d%s.tif"),
-                    ic, a, as.integer(tmc), s_post[[s]])
+                    ic, a_file, as.integer(tmc), s_post[[s]])
                 }
                 output_list[[output_key]][[tmc]] <-
                   terra::writeRaster(output_rast, filename, ...)
@@ -2840,6 +2846,12 @@ Results.Region <- function(region, population_model,
           # Save impact CSV file(s)
           if (include_collated) { # spatial with coordinates
             for (a in aspects) {
+              # Safe filename segment; keep original `a` for result keys
+              if (a %in% names(cum_aspects)) {
+                a_file <- fs::path_sanitize(cum_aspects[a], replacement = "-")
+              } else {
+                a_file <- fs::path_sanitize(a, replacement = "-")
+              }
               output_df <- list()
               if (replicates > 1) {
                 summaries <- c("mean", "sd")
@@ -2868,9 +2880,9 @@ Results.Region <- function(region, population_model,
                 output_df[[s]] <- cbind(coords, as.data.frame(output_df[[s]]))
                 if (a %in% names(cum_aspects)) {
                   filename <- sprintf("cumulative_impacts%s_%s%s.csv", ic,
-                                      cum_aspects[a], s_post[[s]])
+                                      a_file, s_post[[s]])
                 } else {
-                  filename <- sprintf("impacts%s_%s%s.csv", ic, a,
+                  filename <- sprintf("impacts%s_%s%s.csv", ic, a_file,
                                       s_post[[s]])
                 }
                 utils::write.csv(output_df[[s]], filename, row.names = FALSE)
@@ -2889,11 +2901,12 @@ Results.Region <- function(region, population_model,
                     results$impacts[[i]]$cumulative[[cum_aspects[a]]],
                     function(imp) as.data.frame(imp))
                   filename <- sprintf("cumulative_impacts%s_%s.csv", ic,
-                                      cum_aspects[a])
+                                      fs::path_sanitize(cum_aspects[a], replacement = "-"))
                 } else {
                   output_df <- sapply(results$impacts[[i]][[a]],
                                       function(imp) as.data.frame(imp))
-                  filename <- sprintf("impacts%s_%s.csv", ic, a)
+                  filename <- sprintf("impacts%s_%s.csv", ic,
+                                      fs::path_sanitize(a, replacement = "-"))
                 }
                 colnames(output_df) <- time_steps_labels
                 utils::write.csv(output_df, filename, row.names = TRUE)
@@ -2929,7 +2942,8 @@ Results.Region <- function(region, population_model,
                   sapply(results$impacts[[i]]$total[[a]],
                          function(tot) unlist(tot)))
                 colnames(output_df) <- time_steps_labels
-                filename <- sprintf("total_impacts%s_%s.csv", ic, a)
+                filename <- sprintf("total_impacts%s_%s.csv", ic,
+                                    fs::path_sanitize(a, replacement = "-"))
                 utils::write.csv(output_df, filename, row.names = TRUE)
               }
             }
@@ -2942,7 +2956,8 @@ Results.Region <- function(region, population_model,
                   sapply(results$impacts[[i]]$cumulative$total[[a]],
                          function(tot) unlist(tot)))
                 colnames(output_df) <- time_steps_labels
-                filename <- sprintf("total_cumulative_impacts%s_%s.csv", ic, a)
+                filename <- sprintf("total_cumulative_impacts%s_%s.csv", ic,
+                                    fs::path_sanitize(a, replacement = "-"))
                 utils::write.csv(output_df, filename, row.names = TRUE)
               }
             }
@@ -3858,12 +3873,13 @@ Results.Region <- function(region, population_model,
             unit <- paste0(" (", unit, ")")
           }
 
-          # Impact labels
+          # Impact labels (sanitise filename segment only; keep title text)
           if (a %in% names(cum_aspects)) {
-            ac <- c(paste0("_", cum_aspects[a]), paste0(cum_aspects[a], " "))
+            ac <- c(paste0("_", fs::path_sanitize(cum_aspects[a], replacement = "-")),
+                    paste0(cum_aspects[a], " "))
             cc <- c("cumulative_", "cumulative ")
           } else {
-            ac <- c(paste0("_", a), paste0(a, " "))
+            ac <- c(paste0("_", fs::path_sanitize(a, replacement = "-")), paste0(a, " "))
             cc <- c("", "")
           }
 
