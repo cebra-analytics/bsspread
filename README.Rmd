@@ -16,6 +16,8 @@ terra::terraOptions(progress = 0)
 
 # bsspread: Biosecurity Population Spread Modelling
 
+> **Archived.** This package repository is archived and has been migrated to GitLab: <https://gitlab.com/biosecuritycommons/packages/bsspread>. The content below may be outdated; please refer to the GitLab repository for the current documentation.
+
 <!-- badges: start -->
 [![Last commit](https://img.shields.io/github/last-commit/cebra-analytics/bsspread.svg)](https://github.com/cebra-analytics/bsspread/commits/main)
 <!-- badges: end -->
